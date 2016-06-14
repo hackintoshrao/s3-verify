@@ -17,13 +17,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -31,14 +26,13 @@ import (
 )
 
 // MakeBucket creates a new bucket with bucketName.
-
 type MakeBucket struct {
-	bucketName string
+	BucketName string
 }
 
 // Construct URLPath for MakeBucket.
 func (mb MakeBucket) MakeURLPath(endPoint string) (*url.URL, error) {
-	makeBucketPath := func(path string) string {
+	makeBucketPath := func(bucketName string) string {
 		return "/" + bucketName + "/"
 	}
 	targetURL, err := url.Parse(endPoint)
@@ -50,10 +44,13 @@ func (mb MakeBucket) MakeURLPath(endPoint string) (*url.URL, error) {
 }
 
 // Construct Http request with URL Path for MakeBucket.
-func (mb MakeBucket) MakePlainRequest() (*http.Request, error) {
+func (mb MakeBucket) MakePlainRequest(endPointStr string) (*http.Request, error) {
 	// returns path for creating the bucket.
 	// Parse parses rawurl into a URL structure.
-	targetURL := mb.MakeURLPath(endPoint)
+	targetURL, err := mb.MakeURLPath(endPointStr)
+	if err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequest("PUT", targetURL.String(), nil)
 	if err != nil {
 		return nil, err
@@ -61,8 +58,8 @@ func (mb MakeBucket) MakePlainRequest() (*http.Request, error) {
 	return req, nil
 }
 
-func (mb MakeBucket) SignRequest(req *http.Request) (*http.Request, error) {
-	return signv4.SignV4(*req, c.accessKeyID, c.secretAccessKey, "us-east-1")
+func (mb MakeBucket) SignRequest(req *http.Request, accessKeyID, secretAccessKey string) *http.Request {
+	return signv4.SignV4(*req, accessKeyID, secretAccessKey, "us-east-1")
 }
 
 // No request body required in this case.
@@ -72,10 +69,9 @@ func (mb MakeBucket) SetBody(req *http.Request) *http.Request {
 }
 
 // Set headers.
-func (mb MakeBucket) SetHeaders(req *http.Request) (*http.Request, error) {
+func (mb MakeBucket) SetHeaders(req *http.Request) *http.Request {
 	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum256([]byte{})))
 	return req
-
 }
 
 // Executes the HTTP request and returns the response.

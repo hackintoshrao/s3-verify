@@ -23,13 +23,13 @@ import (
 
 type S3Verify interface {
 	// construct HTTP request.
-	MakePlainRequest() *http.Request
+	MakePlainRequest(endPointStr string) (*http.Request, error)
 	// construct the URL for bucket operation.
-	MakeURLPath(endPointStr string) *url.Url
+	MakeURLPath(endPointStr string) (*url.URL, error)
 	// interface containing methods for setting body, signature and headers of the request.
 	FillHTTPRequest
 	// Executes the HTTP request and returns the response.
-	ExecRequest(*http.Request) *http.Response
+	ExecRequest(*http.Request) (*http.Response, error)
 	// Verifies the response for S3 Compatibility.
 	VerifyResponse(*http.Response) error
 }
@@ -39,5 +39,5 @@ type S3Verify interface {
 type FillHTTPRequest interface {
 	SetHeaders(req *http.Request) *http.Request
 	SetBody(req *http.Request) *http.Request
-	SignRequest(req *http.Request) (*http.Request, error)
+	SignRequest(req *http.Request, accessKeyID, secretAccessKey string) *http.Request
 }
