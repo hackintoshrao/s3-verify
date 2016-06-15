@@ -58,10 +58,13 @@ func execTest(s3Verify S3Verify, config TestConfig) error {
 	if err != nil {
 		return err
 	}
+	// setting the request Headers.
+	req = s3Verify.SetHeaders(req)
+	// setting the request body.
+	req = s3Verify.SetBody(req)
+	// Getting the v4 Sign on the request.
 	req = s3Verify.SignRequest(req, config.access, config.secret)
 
-	req = s3Verify.SetBody(req)
-	req = s3Verify.SetHeaders(req)
 	resp, err := s3Verify.ExecRequest(req)
 	if err != nil {
 		return err
