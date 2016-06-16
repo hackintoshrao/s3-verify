@@ -17,12 +17,20 @@
 package main
 
 import (
-	"crypto/sha256"
+	"github.com/minio/s3-verify/signv4"
 )
 
-// sum256 calculate sha256 sum for an input byte array.
-func sum256(data []byte) []byte {
-	hash := sha256.New()
-	hash.Write(data)
-	return hash.Sum(nil)
+// Sign with v4 signature.
+func SignRequestV4(req *http.Request, accessKeyID, secretAccessKey string) *http.Request {
+	return signv4.SignV4(*req, accessKeyID, secretAccessKey, "us-east-1")
+}
+
+// Initialize and return the HTTP request.
+func InitHTTPRequest(method, urlStr string, body io.ReadSeeker) (*http.Request, error) {
+	switch body {
+	case nil:
+		return &http.NewRequest(method, urlStr, nil)
+	default:
+		return &http.NewRequest(method, urlStr, ioutil.NopCloser(body))
+	}
 }
