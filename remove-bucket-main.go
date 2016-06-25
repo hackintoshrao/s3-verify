@@ -56,7 +56,7 @@ var removeBucketFlags = []cli.Flag{
 }
 
 var (
-	bucketExists = "[5/5] RemoveBucket (BucketExists):"
+	bucketExists = "[7/7] RemoveBucket (BucketExists):"
 )
 
 // mainRemoveBucket - Handler for setting up and tearing down a DELETE bucket request.

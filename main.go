@@ -25,7 +25,7 @@ import (
 )
 
 // Global number of tests implemented currently
-var totalTests = 5
+var totalTests = 6
 
 // Global scanBar for all tests to access and update.
 var scanBar = scanBarFactory()

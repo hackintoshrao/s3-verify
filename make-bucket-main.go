@@ -59,7 +59,7 @@ var (
 )
 
 var (
-	bucketDNE = "[2/5] MakeBucket (Bucket DNE):"
+	bucketDNE = "[2/7] MakeBucket (Bucket DNE):"
 )
 
 // Entry point for the make bucket test.

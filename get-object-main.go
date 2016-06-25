@@ -56,9 +56,15 @@ var (
 		},
 	}
 )
-var (
-	noHeader    = "[3/5] GetObject (No Header):"
-	rangeHeader = "[4/5] GetObject (Range):"
+
+// TODO: Create array of functions called GetObject. functions of type *config and returns error. Each test handles its own test.
+
+// Messages printed during the running of the test.
+const (
+	noHeader          = "[3/7] GetObject (No Header):"
+	rangeHeader       = "[4/7] GetObject (Range):"
+	ifMatchHeader     = "[5/7] GetObject (If-Match):"
+	ifNoneMatchHeader = "[6/7] GetObject (If-None-Match):"
 )
 
 // mainGetObject - Entry point for the getobject command and test.
@@ -66,13 +72,17 @@ func mainGetObject(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
 	// Set up a new config.
 	config := newServerConfig(ctx)
+	// Test GetObject with no header set.
 	if err := mainGetObjectNoHeader(*config, noHeader); err != nil {
 		console.Fatalln(err)
 	}
 	// Erase the old progress bar
 	console.Eraseline()
+	// Get amount of padding needed.
 	padding := messageWidth - len([]rune(noHeader))
+	// Update test progress.
 	console.PrintC(noHeader + strings.Repeat(" ", padding) + "[OK]\n")
+	// Test GetObject with Range header set.
 	if err := mainGetObjectRange(*config, rangeHeader); err != nil {
 		console.Fatalln(err)
 	}
@@ -80,5 +90,27 @@ func mainGetObject(ctx *cli.Context) {
 	padding = messageWidth - len([]rune(rangeHeader))
 	// Erase the old progress bar
 	console.Eraseline()
+	// Update test progress.
 	console.PrintC(rangeHeader + strings.Repeat(" ", padding) + "[OK]\n")
+	// Test GetObject with If-Match header set.
+	if err := mainGetObjectIfMatch(*config, ifMatchHeader); err != nil {
+		console.Fatalln(err)
+	}
+	// Erase the old progress bar
+	console.Eraseline()
+	// Update amount of padding needed.
+	padding = messageWidth - len([]rune(ifMatchHeader))
+	// Update test progress.
+	console.PrintC(ifMatchHeader + strings.Repeat(" ", padding) + "[OK]\n")
+	// Test GetObject with If-None-Match header set.
+	if err := mainGetObjectIfNoneMatch(*config, ifNoneMatchHeader); err != nil {
+		console.Fatalln(err)
+	}
+	// Erase the old progress bar
+	console.Eraseline()
+	// Update the amound of padding needed.
+	padding = messageWidth - len([]rune(ifNoneMatchHeader))
+	// Update test progress.
+	console.PrintC(ifNoneMatchHeader + strings.Repeat(" ", padding) + "[OK]\n")
+
 }

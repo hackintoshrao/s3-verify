@@ -58,7 +58,7 @@ EXAMPLES:
 	`,
 }
 
-var lbMessage = "[1/5] ListBuckets:"
+var lbMessage = "[1/7] ListBuckets:"
 
 // mainListBuckets - Entry point for the listbuckets command and List Buckets test.
 func mainListBuckets(ctx *cli.Context) {

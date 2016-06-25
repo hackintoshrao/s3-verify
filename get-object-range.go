@@ -36,11 +36,11 @@ import (
 // GetObjectRangeReq - a new HTTP request for a GET object with a specific range request.
 var GetObjectRangeReq = &http.Request{
 	Header: map[string][]string{
-		// Set Content SHA with empty body for GET / DELETE requests because no data is being uploaded.
+		// Set Content SHA with empty body for GET requests because no data is being uploaded.
 		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		"Range":                {""}, // To be filled later?
+		"Range":                {""}, // To be filled later.
 	},
-	Body:   nil, // There is no body sent for GET / DELETE requests.
+	Body:   nil, // There is no body sent for GET requests.
 	Method: "GET",
 }
 

@@ -38,20 +38,13 @@ import (
 // If-Unmodified-Since
 // If-Match
 // If-Non-Match
-
-type expectedGetRes struct {
-	Header map[string]string // Pseudo header values to expected of the response.
-	Body   []byte            // The information retrieved by each request.
-	Status string            // The expected status of a request.
-}
-
 // GetObjectReq - a new HTTP request for a GET object.
 var GetObjectReq = &http.Request{
 	Header: map[string][]string{
-		// Set Content SHA with empty body for GET / DELETE requests because no data is being uploaded.
+		// Set Content SHA with empty body for GET requests because no data is being uploaded.
 		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
 	},
-	Body:   nil, // There is no body for GET / DELETE requests.
+	Body:   nil, // There is no body for GET requests.
 	Method: "GET",
 }
 
