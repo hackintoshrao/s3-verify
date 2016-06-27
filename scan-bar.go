@@ -29,7 +29,7 @@ var cursorCh = cursorAnimate()
 
 // Set up a constant width to follow.
 const (
-	messageWidth = 35
+	messageWidth = 40
 )
 
 /******************************** Scan Bar ************************************/

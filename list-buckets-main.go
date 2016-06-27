@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/minio/cli"
@@ -58,69 +59,33 @@ EXAMPLES:
 	`,
 }
 
-var lbMessage = "[1/7] ListBuckets:"
+// Messages printed during the running of the listBuckets test.
+// When a new test for ListBuckets is added make sure its message is added here.
+var (
+	listBucketsMessages = []string{"ListBuckets (No Params):"}
+)
+
+// Declare all tests run for the ListBuckets API.
+// When a new test for ListBuckets is added make sure its added here.
+var (
+	listBucketsTests = []APItest{mainListBucketsExist}
+)
 
 // mainListBuckets - Entry point for the listbuckets command and List Buckets test.
 func mainListBuckets(ctx *cli.Context) {
 	// TODO: Differentiate different errors: s3verify vs Minio vs test failure.
 	// Generate a new config.
 	config := newServerConfig(ctx)
-	// Spin the scanBar
-	scanBar(lbMessage)
-	// Create a pseudo body for a http.Response
-	expectedBody, err := ListBucketsInit(*config)
-	if err != nil {
-		// Attempt a clean up of the created buckets.
-		if errC := ListBucketsCleanUp(*config, expectedBody); errC != nil {
-			console.Fatalln(errC)
+	for i, test := range listBucketsTests {
+		message := fmt.Sprintf("[%d/%d] "+listBucketsMessages[i], i+1, len(listBucketsTests))
+		if err := test(*config, message); err != nil {
+			console.Fatalln(err)
 		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(lbMessage)
-	// Generate new List Buckets request.
-	req, err := NewListBucketsReq(*config)
-	if err != nil {
-		// Attempt a clean up of the created buckets.
-		if errC := ListBucketsCleanUp(*config, expectedBody); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(lbMessage)
+		// Print final success message.
+		console.Eraseline()
+		// Pad the message accordingly
+		padding := messageWidth - len([]rune(message))
+		console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
 
-	// Generate the server response.
-	res, err := ExecRequest(req)
-	if err != nil {
-		// Attempt a clean up of the created buckets.
-		if errC := ListBucketsCleanUp(*config, expectedBody); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
 	}
-	// Spin the scanBar
-	scanBar(lbMessage)
-
-	// Check for S3 Compatibility
-	if err := ListBucketsVerify(res, expectedBody); err != nil {
-		// Attempt a clean up of the created buckets.
-		if errC := ListBucketsCleanUp(*config, expectedBody); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(lbMessage)
-
-	// Delete all Minio created test buckets.
-	if err := ListBucketsCleanUp(*config, expectedBody); err != nil {
-		console.Fatalln(err)
-	}
-	// Print final success message.
-	console.Eraseline()
-	// Pad the message accordingly
-	padding := messageWidth - len([]rune(lbMessage))
-	console.PrintC(lbMessage + strings.Repeat(" ", padding) + "[OK]\n")
-
 }

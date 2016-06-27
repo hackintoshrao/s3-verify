@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/minio/cli"
@@ -59,12 +60,25 @@ var (
 
 // TODO: Create array of functions called GetObject. functions of type *config and returns error. Each test handles its own test.
 
-// Messages printed during the running of the test.
-const (
-	noHeader          = "[3/7] GetObject (No Header):"
-	rangeHeader       = "[4/7] GetObject (Range):"
-	ifMatchHeader     = "[5/7] GetObject (If-Match):"
-	ifNoneMatchHeader = "[6/7] GetObject (If-None-Match):"
+// Messages printed during the running of the GetObject tests.
+var (
+	getObjectMessages = []string{
+		"GetObject (No Header):",
+		"GetObject (Range):",
+		"GetObject (If-Match):",
+		"GetObject (If-None-Match):",
+	}
+)
+
+// Declare all tests run for the GetObject API.
+// When a new test for GetObject is added make sure its added here.
+var (
+	getObjectTests = []APItest{
+		mainGetObjectNoHeader,
+		mainGetObjectRange,
+		mainGetObjectIfMatch,
+		mainGetObjectIfNoneMatch,
+	}
 )
 
 // mainGetObject - Entry point for the getobject command and test.
@@ -72,45 +86,15 @@ func mainGetObject(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
 	// Set up a new config.
 	config := newServerConfig(ctx)
-	// Test GetObject with no header set.
-	if err := mainGetObjectNoHeader(*config, noHeader); err != nil {
-		console.Fatalln(err)
+	for i, test := range getObjectTests {
+		message := fmt.Sprintf("[%d/%d] "+getObjectMessages[i], i+1, len(getObjectTests))
+		if err := test(*config, message); err != nil {
+			console.Fatalln(err)
+		}
+		// Erase the old progress bar.
+		console.Eraseline()
+		padding := messageWidth - len([]rune(message))
+		// Update test as complete.
+		console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
 	}
-	// Erase the old progress bar
-	console.Eraseline()
-	// Get amount of padding needed.
-	padding := messageWidth - len([]rune(noHeader))
-	// Update test progress.
-	console.PrintC(noHeader + strings.Repeat(" ", padding) + "[OK]\n")
-	// Test GetObject with Range header set.
-	if err := mainGetObjectRange(*config, rangeHeader); err != nil {
-		console.Fatalln(err)
-	}
-	// Update amount of padding needed.
-	padding = messageWidth - len([]rune(rangeHeader))
-	// Erase the old progress bar
-	console.Eraseline()
-	// Update test progress.
-	console.PrintC(rangeHeader + strings.Repeat(" ", padding) + "[OK]\n")
-	// Test GetObject with If-Match header set.
-	if err := mainGetObjectIfMatch(*config, ifMatchHeader); err != nil {
-		console.Fatalln(err)
-	}
-	// Erase the old progress bar
-	console.Eraseline()
-	// Update amount of padding needed.
-	padding = messageWidth - len([]rune(ifMatchHeader))
-	// Update test progress.
-	console.PrintC(ifMatchHeader + strings.Repeat(" ", padding) + "[OK]\n")
-	// Test GetObject with If-None-Match header set.
-	if err := mainGetObjectIfNoneMatch(*config, ifNoneMatchHeader); err != nil {
-		console.Fatalln(err)
-	}
-	// Erase the old progress bar
-	console.Eraseline()
-	// Update the amound of padding needed.
-	padding = messageWidth - len([]rune(ifNoneMatchHeader))
-	// Update test progress.
-	console.PrintC(ifNoneMatchHeader + strings.Repeat(" ", padding) + "[OK]\n")
-
 }

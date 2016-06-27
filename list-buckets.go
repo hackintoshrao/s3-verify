@@ -235,3 +235,60 @@ func VerifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult)
 	}
 	return nil
 }
+
+// Test the ListBuckets API with no added parameters.
+func mainListBucketsExist(config ServerConfig, message string) error {
+	// Spin the scanBar
+	scanBar(message)
+	// Create a pseudo body for a http.Response
+	expectedBody, err := ListBucketsInit(config)
+	if err != nil {
+		// Attempt a clean up of the created buckets.
+		if errC := ListBucketsCleanUp(config, expectedBody); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+	// Generate new List Buckets request.
+	req, err := NewListBucketsReq(config)
+	if err != nil {
+		// Attempt a clean up of the created buckets.
+		if errC := ListBucketsCleanUp(config, expectedBody); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Generate the server response.
+	res, err := ExecRequest(req)
+	if err != nil {
+		// Attempt a clean up of the created buckets.
+		if errC := ListBucketsCleanUp(config, expectedBody); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Check for S3 Compatibility
+	if err := ListBucketsVerify(res, expectedBody); err != nil {
+		// Attempt a clean up of the created buckets.
+		if errC := ListBucketsCleanUp(config, expectedBody); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Delete all Minio created test buckets.
+	if err := ListBucketsCleanUp(config, expectedBody); err != nil {
+		return err
+	}
+	return nil
+}

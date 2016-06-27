@@ -19,13 +19,11 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
 )
-
-// Global number of tests implemented currently
-var totalTests = 6
 
 // Global scanBar for all tests to access and update.
 var scanBar = scanBarFactory()
@@ -62,6 +60,19 @@ EXAMPLES:
 	Note that passing access and secret keys as flags should be avoided on a multi-user server for security reasons.
 		$ s3verify --access YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY --url https://s3.amazonaws.com makebucket listbuckets
 `
+
+// Define all mainXXX tests to be of this form.
+type APItest func(ServerConfig, string) error
+
+// Slice of all defined tests.
+var (
+	allTests = [][]APItest{getObjectTests, listBucketsTests, makeBucketTests, removeBucketTests}
+)
+
+// Slice of all defined messages.
+var (
+	allMessages = [][]string{getObjectMessages, listBucketsMessages, makeBucketMessages, removeBucketMessages}
+)
 
 func commandNotFound(ctx *cli.Context, command string) {
 	msg := fmt.Sprintf("'%s' is not a s3verify command. See 's3verify --help'.", command)
@@ -118,13 +129,28 @@ func registerApp() *cli.App {
 }
 
 // callAllAPIS parse context extract flags and then call all.
-// runAllCommands - Run all the available tests.
 func callAllAPIs(ctx *cli.Context) {
 	if ctx.GlobalString("access") != "" && ctx.GlobalString("secret") != "" && ctx.GlobalString("url") != "" { // Necessary variables passed, run all tests.
-		mainListBuckets(ctx)
-		mainMakeBucket(ctx)
-		mainGetObject(ctx)
-		mainRemoveBucket(ctx)
+		numTests := 0
+		config := newServerConfig(ctx)
+		for _, APItests := range allTests {
+			numTests += len(APItests)
+		}
+		curTest := 1
+		for i, APItests := range allTests {
+			for j, test := range APItests {
+				message := fmt.Sprintf("[%d/%d] "+allMessages[i][j], curTest, numTests)
+				if err := test(*config, message); err != nil {
+					console.Fatalln(err)
+				}
+				// Erase the old progress bar.
+				console.Eraseline()
+				padding := messageWidth - len([]rune(message))
+				// Update test as complete.
+				console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+				curTest++
+			}
+		}
 	} else {
 		cli.ShowAppHelp(ctx)
 	}

@@ -148,3 +148,57 @@ func VerifyStatusRemoveBucket(res *http.Response) error {
 	}
 	return nil
 }
+
+// Test the RemoveBucket API when the bucket exists.
+func mainRemoveBucketExists(config ServerConfig, message string) error {
+	// Spin the scanBar.
+	scanBar(message)
+
+	bucketName, err := RemoveBucketInit(config)
+	if err != nil {
+		// Attempt a clean up.
+		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Generate the new DELETE bucket request.
+	req, err := NewRemoveBucketReq(config, bucketName)
+	if err != nil {
+		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Perform the request.
+	res, err := ExecRequest(req)
+	if err != nil {
+		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	if err = RemoveBucketVerify(res); err != nil {
+		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	if err := RemoveBucketCleanUp(config, bucketName); err != nil {
+		// Bucket should have been successfully removed by the request.
+		return err
+	}
+	return nil
+}

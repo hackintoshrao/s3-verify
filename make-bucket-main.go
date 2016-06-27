@@ -17,9 +17,8 @@
 package main
 
 import (
-	"math/rand"
+	"fmt"
 	"strings"
-	"time"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
@@ -58,65 +57,32 @@ var (
 	}
 )
 
+// Messages printed during the running of the MakeBucket tests.
+// When a new test for MakeBucket is added make sure to add its message here.
 var (
-	bucketDNE = "[2/7] MakeBucket (Bucket DNE):"
+	makeBucketMessages = []string{"MakeBucket (No Header):"}
+)
+
+// Declare all tests run for the MakeBucket API.
+// When a new test for MakeBucket is added make sure its added here.
+var (
+	makeBucketTests = []APItest{mainMakeBucketNoHeader}
 )
 
 // Entry point for the make bucket test.
 func mainMakeBucket(ctx *cli.Context) {
 	// TODO: Differentiate different errors: s3verify vs Minio vs test failure.
-	// Spin the scanBar
-	scanBar(bucketDNE)
 	// Generate a new config.
 	config := newServerConfig(ctx)
-	// Generate new random bucket name.
-	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-mb")
-	// Spin the scanBar
-	scanBar(bucketDNE)
-
-	// Create a new Make bucket request.
-	req, err := NewMakeBucketReq(*config, bucketName)
-	if err != nil {
-		// Attempt clean up.
-		if errC := MakeBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
+	for i, test := range makeBucketTests {
+		message := fmt.Sprintf("[%d/%d] "+makeBucketMessages[i], i+1, len(makeBucketTests))
+		if err := test(*config, message); err != nil {
+			console.Fatalln(err)
 		}
-		console.Fatalln(err)
+		// Print final success message.
+		console.Eraseline()
+		// Pad accordingly
+		padding := messageWidth - len([]rune(message))
+		console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
 	}
-	// Spin the scanBar
-	scanBar(bucketDNE)
-
-	// Execute the request.
-	res, err := ExecRequest(req)
-	if err != nil {
-		// Attempt clean up.
-		if errC := MakeBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(bucketDNE)
-
-	// Check the responses Body, Status, Header.
-	if err := VerifyResponseMakeBucket(res, bucketName); err != nil {
-		// Attempt clean up.
-		if errC := MakeBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(bucketDNE)
-
-	// Clean up the test.
-	if err := MakeBucketCleanUp(*config, bucketName); err != nil {
-		console.Fatalln(err)
-	}
-	// Print final success message.
-	console.Eraseline()
-	// Pad accordingly
-	padding := messageWidth - len([]rune(bucketDNE))
-	console.PrintC(bucketDNE + strings.Repeat(" ", padding) + "[OK]\n")
-
 }

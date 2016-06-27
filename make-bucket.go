@@ -20,8 +20,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
@@ -121,6 +123,57 @@ func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	if location != "/"+bucketName && location != "/"+bucketName+"/" { // Remove second part of the and statement after minio bug is fixed.
 		fmt.Println(location, "/"+bucketName+"/")
 		err := fmt.Errorf("Unexpected Location: got %v, wanted %v", location, "/"+bucketName)
+		return err
+	}
+	return nil
+}
+
+// Test the MakeBucket API when no extra headers are set.
+func mainMakeBucketNoHeader(config ServerConfig, message string) error {
+	// Spin the scanBar
+	scanBar(message)
+	// Generate new random bucket name.
+	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-mb")
+	// Spin the scanBar
+	scanBar(message)
+
+	// Create a new Make bucket request.
+	req, err := NewMakeBucketReq(config, bucketName)
+	if err != nil {
+		// Attempt clean up.
+		if errC := MakeBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Execute the request.
+	res, err := ExecRequest(req)
+	if err != nil {
+		// Attempt clean up.
+		if errC := MakeBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Check the responses Body, Status, Header.
+	if err := VerifyResponseMakeBucket(res, bucketName); err != nil {
+		// Attempt clean up.
+		if errC := MakeBucketCleanUp(config, bucketName); errC != nil {
+			return errC
+		}
+		return err
+	}
+	// Spin the scanBar
+	scanBar(message)
+
+	// Clean up the test.
+	if err := MakeBucketCleanUp(config, bucketName); err != nil {
 		return err
 	}
 	return nil

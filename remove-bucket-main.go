@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/minio/cli"
@@ -56,66 +57,26 @@ var removeBucketFlags = []cli.Flag{
 }
 
 var (
-	bucketExists = "[7/7] RemoveBucket (BucketExists):"
+	removeBucketMessages = []string{"RemoveBucket (Bucket Exists):"}
 )
+
+var removeBucketTests = []APItest{mainRemoveBucketExists}
 
 // mainRemoveBucket - Handler for setting up and tearing down a DELETE bucket request.
 func mainRemoveBucket(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
 	// Generate a new config.
 	config := newServerConfig(ctx)
-	// Spin the scanBar.
-	scanBar(bucketExists)
-
-	bucketName, err := RemoveBucketInit(*config)
-	if err != nil {
-		// Attempt a clean up.
-		if errC := RemoveBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
+	for i, test := range removeBucketTests {
+		message := fmt.Sprintf("[%d/%d] "+removeBucketMessages[i], i+1, len(removeBucketTests))
+		if err := test(*config, message); err != nil {
+			console.Fatalln(err)
 		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(bucketExists)
+		// Print final success message.
+		console.Eraseline()
+		// Pad the ok to the standard width.
+		padding := messageWidth - len([]rune(message))
+		console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
 
-	// Generate the new DELETE bucket request.
-	req, err := NewRemoveBucketReq(*config, bucketName)
-	if err != nil {
-		if errC := RemoveBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
 	}
-	// Spin the scanBar
-	scanBar(bucketExists)
-
-	// Perform the request.
-	res, err := ExecRequest(req)
-	if err != nil {
-		if errC := RemoveBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(bucketExists)
-
-	if err = RemoveBucketVerify(res); err != nil {
-		if errC := RemoveBucketCleanUp(*config, bucketName); errC != nil {
-			console.Fatalln(errC)
-		}
-		console.Fatalln(err)
-	}
-	// Spin the scanBar
-	scanBar(bucketExists)
-
-	if err := RemoveBucketCleanUp(*config, bucketName); err != nil {
-		// Bucket should have been successfully removed by the request.
-		console.Fatalln(err)
-	}
-	// Print final success message.
-	console.Eraseline()
-	// Pad the ok to the standard width.
-	padding := messageWidth - len([]rune(bucketExists))
-	console.PrintC(bucketExists + strings.Repeat(" ", padding) + "[OK]\n")
 }
