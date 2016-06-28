@@ -67,6 +67,8 @@ var (
 		"GetObject (Range):",
 		"GetObject (If-Match):",
 		"GetObject (If-None-Match):",
+		"GetObject (If-Modified-Since):",
+		"GetObject (If-Unmodified-Since):",
 	}
 )
 
@@ -78,6 +80,8 @@ var (
 		mainGetObjectRange,
 		mainGetObjectIfMatch,
 		mainGetObjectIfNoneMatch,
+		mainGetObjectIfModifiedSince,
+		mainGetObjectIfUnModifiedSince,
 	}
 )
 
