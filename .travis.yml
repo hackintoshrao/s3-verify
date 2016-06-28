@@ -1,0 +1,19 @@
+sudo: false
+language: go
+
+os:
+- linux
+- osx
+
+env:
+- ARCH=x84_64
+- ARCH=i686
+
+
+go:
+- 1.6
+
+script:
+- diff -au <(gofmt -d .) <(printf "")
+- go vet ./...
+
