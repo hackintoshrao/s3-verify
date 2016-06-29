@@ -46,14 +46,9 @@ var GetObjectIfUnModifiedSinceReq = &http.Request{
 
 // NewGetObjectIfUnModifiedSinceReq - Create a new HTTP GET request with the If-Unmodified-Since header set to perform.
 func NewGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName, lastModified string) (*http.Request, error) {
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) {          // Virtual style supported, use virtual style.
-		targetURL.Path = "/" + objectName
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	GetObjectIfUnModifiedSinceReq.Header["If-Unmodified-Since"] = []string{lastModified}
 

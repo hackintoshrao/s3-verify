@@ -44,14 +44,9 @@ var HeadObjectReq = &http.Request{
 
 // NewHeadObjectReq - Create a new HTTP request for a HEAD object.
 func NewHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) {
-		targetURL.Path = "/" + objectName
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	// Fill request URL and sign.
 	HeadObjectReq.URL = targetURL

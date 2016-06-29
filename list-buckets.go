@@ -64,11 +64,10 @@ var ListBucketsReq = &http.Request{
 // NewListBucketsReq - Create a new List Buckets request.
 func NewListBucketsReq(config ServerConfig) (*http.Request, error) {
 	// Set the GET req URL.
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, "", "", config.Region)
 	if err != nil {
 		return nil, err
 	}
-	targetURL.Path = "/"
 	ListBucketsReq.URL = targetURL
 	// Sign the necessary headers.
 	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, config.Region)

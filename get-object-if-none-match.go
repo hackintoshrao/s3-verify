@@ -44,14 +44,9 @@ var GetObjectIfNoneMatchReq = &http.Request{
 
 // NewGetObjectIfNoneMatchReq - Create a new HTTP request to perform.
 func NewGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) {          // Virtual style supported, use virtual style.
-		targetURL.Path = "/" + objectName
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	GetObjectIfNoneMatchReq.Header["If-None-Match"] = []string{ETag}
 	// Add the URL and sign

@@ -20,8 +20,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
@@ -59,41 +57,7 @@ func randString(n int, src rand.Source, prefix string) string {
 	return prefix + string(b[0:30-len(prefix)])
 }
 
-// TODO: Check these functions.
-
-// isValidAccessKey - Verify that the provided access key is valid.
-func isValidAccessKey(accessKey string) bool {
-	if accessKey == "" {
-		return true
-	}
-	regex := regexp.MustCompile(`.{5,40}$`)
-	return regex.MatchString(accessKey) && !strings.ContainsAny(accessKey, "$%^~`!|&*#@")
-}
-
-// isValidSecretKey - Verify that the provided secret key is valid.
-func isValidSecretKey(secretKey string) bool {
-	if secretKey == "" {
-		return true
-	}
-	regex := regexp.MustCompile(`.{8,40}$`)
-	return regex.MatchString(secretKey) && !strings.ContainsAny(secretKey, "$%^~`!|&*#@")
-}
-
-// isValidHostURL - Verify that the provided host is valid.
-func isValidHostURL(urlStr string) bool {
-	if strings.TrimSpace(urlStr) == "" {
-		return false
-	}
-	targetURL, err := url.Parse(urlStr)
-	if err != nil {
-		return false
-	}
-	if targetURL.Scheme != "https" && targetURL.Scheme != "http" {
-		return false
-	}
-	return true
-}
-
+// Check whether provided URL is an AWS endpoint.
 func isAmazonEndpoint(endpointURL *url.URL) bool {
 	if endpointURL == nil {
 		return false
@@ -104,6 +68,7 @@ func isAmazonEndpoint(endpointURL *url.URL) bool {
 	return false
 }
 
+// Check whether provided URL is a GCS endpoint.
 func isGoogleEndpoint(endpointURL *url.URL) bool {
 	if endpointURL == nil {
 		return false
@@ -114,7 +79,29 @@ func isGoogleEndpoint(endpointURL *url.URL) bool {
 	return false
 }
 
+// Check whether endpoint supports virtual style.
 func isVirtualStyleHostSupported(endpointURL *url.URL) bool {
-	// can return true for all other cases.
+	// can return true for Amazon / GCS endpoints.
 	return isAmazonEndpoint(endpointURL) || isGoogleEndpoint(endpointURL)
+}
+
+// Generate a new URL from the user provided endpoint.
+func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, error) {
+	targetURL, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	targetURL.Path = "/"
+	if bucketName != "" || objectName != "" {
+		targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
+		if isVirtualStyleHostSupported(targetURL) {          // Virtual style supported, use virtual style.
+			targetURL.Path = "/" + objectName
+			targetURL.Host = bucketName + "." + targetURL.Host
+			if isAmazonEndpoint(targetURL) { // If the URL provided was an AMZ endpoint update the host with the correct region.
+				targetURL.Host = bucketName + "." + getS3Endpoint(region)
+			}
+		}
+
+	}
+	return targetURL, nil
 }

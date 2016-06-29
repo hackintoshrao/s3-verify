@@ -42,14 +42,9 @@ var RemoveBucketReq = &http.Request{
 // NewRemoveBucketReq - Fill in the dynamic fields of a DELETE request here.
 func NewRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
 	// Set the DELETE req URL.
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/"     // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) { // Virtual style supported, use virtual style.
-		targetURL.Path = "/"
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	RemoveBucketReq.URL = targetURL
 	// Sign the necessary headers.

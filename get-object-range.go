@@ -46,14 +46,9 @@ var GetObjectRangeReq = &http.Request{
 
 // NewGetObjectRangeReq - create a new GET object range request.
 func NewGetObjectRangeReq(config ServerConfig, bucketName, objectName string, startRange, endRange int) (*http.Request, error) {
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) {
-		targetURL.Path = "/" + objectName
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	// Fill the request URL.
 	GetObjectRangeReq.URL = targetURL

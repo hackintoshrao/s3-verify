@@ -40,14 +40,9 @@ var MakeBucketReq = &http.Request{
 
 // NewMakeBucketReq - Create a new Make bucket request.
 func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
-	targetURL, err := url.Parse(config.Endpoint)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
 	if err != nil {
 		return nil, err
-	}
-	targetURL.Path = "/" + bucketName + "/"     // Default to path style.
-	if isVirtualStyleHostSupported(targetURL) { // Virtual style supported, use virtual style.
-		targetURL.Path = "/"
-		targetURL.Host = bucketName + "." + targetURL.Host
 	}
 	MakeBucketReq.URL = targetURL
 	MakeBucketReq = signv4.SignV4(*MakeBucketReq, config.Access, config.Secret, config.Region)
