@@ -65,13 +65,15 @@ EXAMPLES:
 type APItest func(ServerConfig, string) error
 
 // Slice of all defined tests.
+// When a new API is added for testing make sure to add it here.
 var (
-	allTests = [][]APItest{getObjectTests, listBucketsTests, makeBucketTests, removeBucketTests}
+	allTests = [][]APItest{getObjectTests, listBucketsTests, makeBucketTests, removeBucketTests, headObjectTests}
 )
 
 // Slice of all defined messages.
+// When a new API is added for testing make sure to add its messages here.
 var (
-	allMessages = [][]string{getObjectMessages, listBucketsMessages, makeBucketMessages, removeBucketMessages}
+	allMessages = [][]string{getObjectMessages, listBucketsMessages, makeBucketMessages, removeBucketMessages, headObjectMessages}
 )
 
 func commandNotFound(ctx *cli.Context, command string) {
@@ -115,6 +117,7 @@ func registerApp() *cli.App {
 	registerCmd(listBucketsCmd)  // Register 'listbuckets' as a command.
 	registerCmd(removeBucketCmd) // Register 'removebucket' as a command.
 	registerCmd(makeBucketCmd)   // Register 'makebucket' as a command.
+	registerCmd(headObjectCmd)   // Register 'headobject' as a command.
 
 	app := cli.NewApp()
 	app.Usage = "Test for Amazon S3 v4 API compatibility."
