@@ -85,9 +85,13 @@ var (
 // mainHeadObject - Entry point for the headobject command and test.
 func mainHeadObject(ctx *cli.Context) {
 	config := newServerConfig(ctx)
+	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
+	if err != nil {
+		console.Fatalln(err)
+	}
 	for i, test := range headObjectTests {
 		message := fmt.Sprintf("[%d/%d] "+headObjectMessages[i], i+1, len(headObjectMessages))
-		if err := test(*config, message); err != nil {
+		if err := test(*config, *s3Client, message); err != nil {
 			console.Fatalln(err)
 		}
 		// Erase the old progress bar.

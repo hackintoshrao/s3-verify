@@ -26,7 +26,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/minio/minio-go"
@@ -59,7 +58,7 @@ func NewGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectNam
 }
 
 // GetObjectIfUnModifiedSinceInit - Set up a test bucket and object.
-func GetObjectIfUnModifiedSinceInit(config ServerConfig) (bucketName, objectName, lastModified string, buf []byte, err error) {
+func GetObjectIfUnModifiedSinceInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName, lastModified string, buf []byte, err error) {
 	// Create a new random bucket and object name prefixed by s3verify-get.
 	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
 	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
@@ -69,18 +68,7 @@ func GetObjectIfUnModifiedSinceInit(config ServerConfig) (bucketName, objectName
 	_, err = io.ReadFull(crand.Reader, buf)
 	if err != nil {
 		return bucketName, objectName, lastModified, buf, err
-	}
-	// Only need host part of endpoint for Minio.
-	hostURL, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	}
-	secure := true // Use HTTPS request.
-	s3Client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	}
-	// Create the test bucket and object.
+	} // Create the test bucket and object.
 	err = s3Client.MakeBucket(bucketName, config.Region)
 	if err != nil {
 		return bucketName, objectName, lastModified, buf, err
@@ -161,16 +149,16 @@ func VerifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
 }
 
 // Test the GET object API with the If-Unmodified-Since header set.
-func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
+func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, message string) error {
 	// Set up past date.
 	pastDate := "Thu, 01 Jan 1970 00:00:00 GMT"
 	// Spin scanBar
 	scanBar(message)
 	// Set up new bucket and object to GET against.
-	bucketName, objectName, lastModified, buf, err := GetObjectIfUnModifiedSinceInit(config)
+	bucketName, objectName, lastModified, buf, err := GetObjectIfUnModifiedSinceInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -181,7 +169,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	req, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, pastDate)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -192,7 +180,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -202,7 +190,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Verify that the response returns an error.
 	if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -213,7 +201,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	curReq, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, lastModified)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -224,7 +212,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	curRes, err := ExecRequest(curReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -234,7 +222,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Verify that the lastModified date in a request returns the object.
 	if err := VerifyGetObjectIfUnModifiedSince(curRes, buf, "200 OK", false); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -242,7 +230,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Clean up after the test.
-	if err := GetObjectCleanUp(config, bucketName, objectName); err != nil {
+	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
 		return err
 	}
 	// Spin scanBar

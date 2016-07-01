@@ -67,9 +67,13 @@ func mainRemoveBucket(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
 	// Generate a new config.
 	config := newServerConfig(ctx)
+	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
+	if err != nil {
+		console.Fatalln(err)
+	}
 	for i, test := range removeBucketTests {
 		message := fmt.Sprintf("[%d/%d] "+removeBucketMessages[i], i+1, len(removeBucketTests))
-		if err := test(*config, message); err != nil {
+		if err := test(*config, *s3Client, message); err != nil {
 			console.Fatalln(err)
 		}
 		// Print final success message.

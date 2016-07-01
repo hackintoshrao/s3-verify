@@ -23,7 +23,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -60,7 +59,7 @@ func NewGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 }
 
 // GetObjectRangeInit - Set up the GET object range test.
-func GetObjectRangeInit(config ServerConfig) (bucketName, objectName string, startRange, endRange int, bufRange []byte, err error) {
+func GetObjectRangeInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName string, startRange, endRange int, bufRange []byte, err error) {
 	// Create random bucket and object names prefixed by s3verify-get.
 	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
 	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
@@ -73,16 +72,6 @@ func GetObjectRangeInit(config ServerConfig) (bucketName, objectName string, sta
 	buf := make([]byte, rand.Intn(1<<20)+32*1024)
 	_, err = io.ReadFull(crand.Reader, buf)
 	bufRange = buf[startRange : endRange+1] // Must be inclusive.
-	if err != nil {
-		return bucketName, objectName, startRange, endRange, bufRange, err
-	}
-	// Only need host part of endpoint for Minio.
-	hostURL, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return bucketName, objectName, startRange, endRange, bufRange, err
-	}
-	secure := true // Use HTTPS request
-	s3Client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
 	if err != nil {
 		return bucketName, objectName, startRange, endRange, bufRange, err
 	}
@@ -100,15 +89,15 @@ func GetObjectRangeInit(config ServerConfig) (bucketName, objectName string, sta
 }
 
 // Test a GET object request with a range header set.
-func mainGetObjectRange(config ServerConfig, message string) error {
+func mainGetObjectRange(config ServerConfig, s3Client minio.Client, message string) error {
 	// TODO: should errors be returned to the top level or printed here.
 	// Spin scanBar
 	scanBar(message)
 	// Set up a new Bucket and Object to GET
-	bucketName, objectName, startRange, endRange, bufRange, err := GetObjectRangeInit(config)
+	bucketName, objectName, startRange, endRange, bufRange, err := GetObjectRangeInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -119,7 +108,7 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	req, err := NewGetObjectRangeReq(config, bucketName, objectName, startRange, endRange)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -130,7 +119,7 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -140,7 +129,7 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	// Verify the response...these checks do not check the headers yet.
 	if err := GetObjectVerify(res, bufRange, "206 Partial Content"); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -148,7 +137,7 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Clean up after the test.
-	if err := GetObjectCleanUp(config, bucketName, objectName); err != nil {
+	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
 		return err
 	}
 	// Spin scanBar

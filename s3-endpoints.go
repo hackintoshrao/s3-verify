@@ -29,7 +29,7 @@ var awsS3EndpointMap = map[string]string{
 	"cn-north-1":     "s3.cn-north-1.amazonaws.com.cn",
 }
 
-// getS3Endpoint get Amazon S3 endpoint based on the bucket location.
+// getS3Endpoint gets Amazon S3 endpoint based on location.
 func getS3Endpoint(bucketLocation string) (s3Endpoint string) {
 	s3Endpoint, ok := awsS3EndpointMap[bucketLocation]
 	if !ok {

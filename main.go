@@ -23,6 +23,7 @@ import (
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
+	"github.com/minio/minio-go"
 )
 
 // Global scanBar for all tests to access and update.
@@ -62,7 +63,7 @@ EXAMPLES:
 `
 
 // Define all mainXXX tests to be of this form.
-type APItest func(ServerConfig, string) error
+type APItest func(ServerConfig, minio.Client, string) error
 
 // Slice of all defined tests.
 // When a new API is added for testing make sure to add it here.
@@ -136,6 +137,10 @@ func callAllAPIs(ctx *cli.Context) {
 	if ctx.GlobalString("access") != "" && ctx.GlobalString("secret") != "" && ctx.GlobalString("url") != "" { // Necessary variables passed, run all tests.
 		numTests := 0
 		config := newServerConfig(ctx)
+		s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
+		if err != nil {
+			console.Fatalln(err)
+		}
 		for _, APItests := range allTests {
 			numTests += len(APItests)
 		}
@@ -143,7 +148,7 @@ func callAllAPIs(ctx *cli.Context) {
 		for i, APItests := range allTests {
 			for j, test := range APItests {
 				message := fmt.Sprintf("[%d/%d] "+allMessages[i][j], curTest, numTests)
-				if err := test(*config, message); err != nil {
+				if err := test(*config, *s3Client, message); err != nil {
 					console.Fatalln(err)
 				}
 				// Erase the old progress bar.

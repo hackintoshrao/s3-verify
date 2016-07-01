@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/minio/minio-go"
@@ -68,49 +67,16 @@ func RemoveBucketVerify(res *http.Response) error {
 }
 
 // RemoveBucketInit - Set up the RemoveBucket test.
-func RemoveBucketInit(config ServerConfig) (string, error) {
+func RemoveBucketInit(s3Client minio.Client, config ServerConfig) (string, error) {
 	// Create random bucket name.
 	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-rb")
 
-	// Only need host part of endpoint for Minio.
-	hostURL, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return bucketName, err
-	}
-	secure := true // Use HTTPS request.
-	s3Client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
-	if err != nil {
-		return bucketName, err
-	}
 	// Use Minio to create a test bucket.
-	err = s3Client.MakeBucket(bucketName, config.Region)
+	err := s3Client.MakeBucket(bucketName, config.Region)
 	if err != nil {
 		return bucketName, err
 	}
 	return bucketName, nil
-}
-
-// RemoveBucketCleanUp - Clean up after any successful and failed tests.
-func RemoveBucketCleanUp(config ServerConfig, bucketName string) error {
-	// Only need host part of endpoint for Minio.
-	hostURL, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return err
-	}
-	secure := true // Use HTTPS request.
-	s3Client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
-	if err != nil {
-		return err
-	}
-	// Explicitly remove the Minio created test bucket.
-	err = s3Client.RemoveBucket(bucketName)
-	if err != nil {
-		if minio.ToErrorResponse(err).Code == "NoSuchBucket" {
-			return nil
-		}
-		return err
-	}
-	return nil
 }
 
 // TODO: right now only checks for correctly deleted buckets...need to add in checks for 'failed' tests.
@@ -147,14 +113,14 @@ func VerifyStatusRemoveBucket(res *http.Response) error {
 }
 
 // Test the RemoveBucket API when the bucket exists.
-func mainRemoveBucketExists(config ServerConfig, message string) error {
+func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message string) error {
 	// Spin the scanBar.
 	scanBar(message)
 
-	bucketName, err := RemoveBucketInit(config)
+	bucketName, err := RemoveBucketInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up.
-		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
 			return errC
 		}
 		return err
@@ -165,7 +131,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	// Generate the new DELETE bucket request.
 	req, err := NewRemoveBucketReq(config, bucketName)
 	if err != nil {
-		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
 			return errC
 		}
 		return err
@@ -176,7 +142,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	// Perform the request.
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
-		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
 			return errC
 		}
 		return err
@@ -185,7 +151,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	scanBar(message)
 
 	if err = RemoveBucketVerify(res); err != nil {
-		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
+		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
 			return errC
 		}
 		return err
@@ -193,7 +159,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	// Spin the scanBar
 	scanBar(message)
 
-	if err := RemoveBucketCleanUp(config, bucketName); err != nil {
+	if err := cleanUpTest(s3Client, []string{bucketName}, nil); err != nil {
 		// Bucket should have been successfully removed by the request.
 		return err
 	}

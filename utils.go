@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/minio/minio-go"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
@@ -69,21 +71,10 @@ func isAmazonEndpoint(endpointURL *url.URL) bool {
 	return false
 }
 
-// Check whether provided URL is a GCS endpoint.
-func isGoogleEndpoint(endpointURL *url.URL) bool {
-	if endpointURL == nil {
-		return false
-	}
-	if endpointURL.Host == "storage.googleapis.com" {
-		return true
-	}
-	return false
-}
-
 // Check whether endpoint supports virtual style.
 func isVirtualStyleHostSupported(endpointURL *url.URL) bool {
-	// can return true for Amazon / GCS endpoints.
-	return isAmazonEndpoint(endpointURL) || isGoogleEndpoint(endpointURL)
+	// can return true for Amazon
+	return isAmazonEndpoint(endpointURL)
 }
 
 // Generate a new URL from the user provided endpoint.
@@ -97,14 +88,51 @@ func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, e
 		targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
 		if isVirtualStyleHostSupported(targetURL) {          // Virtual style supported, use virtual style.
 			targetURL.Path = "/" + objectName
-			targetURL.Host = bucketName + "." + targetURL.Host
-			if isAmazonEndpoint(targetURL) { // If the URL provided was an AMZ endpoint update the host with the correct region.
-				targetURL.Host = bucketName + "." + getS3Endpoint(region)
+			targetURL.Host = bucketName + "." + getS3Endpoint(region)
+		}
+	}
+	return targetURL, nil
+}
+
+// NewS3Client - Generate a new client to perform S3
+func NewS3Client(endpoint, access, secret string) (*minio.Client, error) {
+	secure := true // Use HTTPS connection.
+	hostURL, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	s3Client, err := minio.New(hostURL.Host, access, secret, secure)
+	if err != nil {
+		return nil, err
+	}
+	return s3Client, nil
+}
+
+// Remove any s3verify created buckets and objects.
+func cleanUpTest(s3Client minio.Client, bucketNames, objectNames []string) error {
+	// If there are test object/s to remove, remove it/them first.
+	if objectNames != nil {
+		for _, objectName := range objectNames {
+			// TODO: for now assume if objectNames are given they are all stored in the first passed bucketName.
+			err := s3Client.RemoveObject(bucketNames[0], objectName)
+			if minio.ToErrorResponse(err).Code != "NoSuchKey" {
+				return err
+			}
+
+		}
+	}
+	// Remove any test buckets.
+	for _, bucketName := range bucketNames {
+		err := s3Client.RemoveBucket(bucketName)
+		if err != nil {
+			if minio.ToErrorResponse(err).Code != "NoSuchBucket" {
+				fmt.Println(err)
+				return err
 			}
 		}
 
 	}
-	return targetURL, nil
+	return nil
 
 }
 

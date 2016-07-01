@@ -90,9 +90,13 @@ func mainGetObject(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
 	// Set up a new config.
 	config := newServerConfig(ctx)
+	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
+	if err != nil {
+		console.Fatalln(err)
+	}
 	for i, test := range getObjectTests {
 		message := fmt.Sprintf("[%d/%d] "+getObjectMessages[i], i+1, len(getObjectTests))
-		if err := test(*config, message); err != nil {
+		if err := test(*config, *s3Client, message); err != nil {
 			console.Fatalln(err)
 		}
 		// Erase the old progress bar.
