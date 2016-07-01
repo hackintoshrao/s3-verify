@@ -12,11 +12,12 @@ Currently s3verify is only available to be downloaded from source.
 ```$ go get -u github.com/minio/s3verify```
 
 ## APIs
-Currently S3 Verify is under heavy development and is subject to breaking changes. Currently we support four different API checks:
-* PUT Bucket (Make Bucket)
-* GET Service (List Buckets)
-* DELETE Bucket (Remove Bucket)
-* GET Object (Get Object)
+Currently S3 Verify is under heavy development and is subject to breaking changes. Currently we support five different API checks:
+* PUT Bucket (makebucket)
+* GET Service (listbuckets)
+* DELETE Bucket (removebucket)
+* GET Object (getobject)
+* HEAD Object (headobject)
 
 We look forward to adding support for all standard AWS APIs for both Bucket and Object based operations.
 
@@ -33,10 +34,13 @@ $ s3verify [COMMAND...] [FLAGS]
     --access    -a      Allows user to input their AWS access key.
     --secretkey -s      Allows user to input their AWS secret access key.
     --url       -u      Allows user to input the host URL of the server they wish to test.
+    --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' or
+                        automatic cleanup of test buckets and objects will fail.
+    --debug     -d      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
 ```
 
 ## EXAMPLES
-Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to the Make Bucket, Remove Bucket, List Buckets, and Get Object APIs.
+Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to the MakeBucket, RemoveBucket, ListBuckets, HeadObject and GetObject APIs.
 ```
 $ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io
 ```
