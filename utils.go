@@ -32,8 +32,7 @@ const (
 )
 
 // ExecRequest - Executes an HTTP request creating an HTTP response.
-func ExecRequest(req *http.Request) (*http.Response, error) {
-	client := &http.Client{}
+func ExecRequest(req *http.Request, client *http.Client) (*http.Response, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

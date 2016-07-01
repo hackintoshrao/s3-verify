@@ -147,7 +147,7 @@ func mainMakeBucketNoHeader(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Execute the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt clean up.
 		if errC := MakeBucketCleanUp(config, bucketName); errC != nil {

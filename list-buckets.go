@@ -265,7 +265,7 @@ func mainListBucketsExist(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Generate the server response.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of the created buckets.
 		if errC := ListBucketsCleanUp(config, expectedBody); errC != nil {

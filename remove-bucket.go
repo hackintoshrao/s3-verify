@@ -174,7 +174,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Perform the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		if errC := RemoveBucketCleanUp(config, bucketName); errC != nil {
 			return errC

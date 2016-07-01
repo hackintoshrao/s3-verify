@@ -50,6 +50,10 @@ var globalFlags = []cli.Flag{
 		Usage:  "URL to S3 compatible server.",
 		EnvVar: "S3_URL",
 	},
+	cli.BoolFlag{
+		Name:  "debug, d",
+		Usage: "Enable debugging output.",
+	},
 }
 
 // registerCmd - registers a cli command.

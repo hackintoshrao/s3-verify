@@ -172,7 +172,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
@@ -204,7 +204,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the response that should give back a body.
-	goodRes, err := ExecRequest(goodReq)
+	goodRes, err := ExecRequest(goodReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {

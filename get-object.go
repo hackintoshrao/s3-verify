@@ -207,7 +207,7 @@ func mainGetObjectNoHeader(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Execute the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {

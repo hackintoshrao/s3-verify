@@ -17,7 +17,10 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/minio/cli"
+	"github.com/minio/mc/pkg/httptracer"
 )
 
 type ServerConfig struct {
@@ -25,15 +28,22 @@ type ServerConfig struct {
 	Secret   string
 	Endpoint string
 	Region   string
+	Client   *http.Client
 }
 
 // newServerConfig - new server config.
 func newServerConfig(ctx *cli.Context) *ServerConfig {
-	serverCfg := &ServerConfig{}
 	// Set config fields from either flags or env. variables.
-	serverCfg.Access = ctx.String("access")
-	serverCfg.Secret = ctx.String("secret")
-	serverCfg.Endpoint = ctx.String("url")
-	serverCfg.Region = ctx.String("region")
+	serverCfg := &ServerConfig{
+		Access:   ctx.String("access"),
+		Secret:   ctx.String("secret"),
+		Endpoint: ctx.String("url"),
+		Region:   ctx.String("region"),
+		Client:   &http.Client{},
+	}
+	if ctx.Bool("debug") || ctx.GlobalBool("debug") {
+		// Set up new tracer.
+		serverCfg.Client.Transport = httptracer.GetNewTraceTransport(newTraceV4(), http.DefaultTransport)
+	}
 	return serverCfg
 }

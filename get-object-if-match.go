@@ -188,7 +188,7 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
@@ -220,7 +220,7 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	badRes, err := ExecRequest(badReq)
+	badRes, err := ExecRequest(badReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {

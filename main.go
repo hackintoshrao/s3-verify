@@ -162,5 +162,9 @@ func callAllAPIs(ctx *cli.Context) {
 // main - Set up and run the app.
 func main() {
 	app := registerApp()
+	app.Before = func(ctx *cli.Context) error {
+		setGlobalsFromContext(ctx)
+		return nil
+	}
 	app.RunAndExitOnError()
 }

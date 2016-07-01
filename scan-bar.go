@@ -54,7 +54,6 @@ type scanBarFunc func(string)
 func scanBarFactory() scanBarFunc {
 	prevLineSize := 0
 	prevMessage := ""
-	//	testCount := 0
 	termWidth, e := pb.GetTerminalWidth()
 	if e != nil {
 		console.Fatalln("Unable to get terminal size. Please use --quiet option.")
@@ -62,21 +61,20 @@ func scanBarFactory() scanBarFunc {
 
 	return func(message string) {
 		scanPrefix := fmt.Sprintf("%s", message)
-		//cmnPrefix := commonPrefix(message, prevMessage)
-		eraseLen := prevLineSize // - len([]rune(cmnPrefix))
+		eraseLen := prevLineSize
 		if eraseLen < 1 {
 			eraseLen = 0
 		}
-		if prevLineSize != 0 { // erase previous line
-			console.PrintC("\r" + strings.Repeat(" ", eraseLen))
-		}
-		// TODO: need to find length of message and space accordingly.
 		padding := messageWidth - len([]rune(scanPrefix))
+
 		message = fixateScanBar(message, termWidth-len([]rune(scanPrefix))-1)
 		barText := scanPrefix + strings.Repeat(" ", padding) + string(<-cursorCh)
-		console.PrintC("\r" + barText)
+
+		if prevLineSize != 0 { // erase previous line
+			console.PrintC("\r")
+		}
+		console.PrintC(barText + " \b ") // Remove only the cursor from the text.
 		prevMessage = message
 		prevLineSize = len([]rune(barText))
-		//	testCount++
 	}
 }

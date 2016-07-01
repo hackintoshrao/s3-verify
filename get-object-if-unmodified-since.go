@@ -189,7 +189,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := ExecRequest(req)
+	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
@@ -221,7 +221,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Execute current request.
-	curRes, err := ExecRequest(curReq)
+	curRes, err := ExecRequest(curReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
