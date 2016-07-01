@@ -101,7 +101,7 @@ func GetObjectIfModifiedSinceInit(config ServerConfig) (bucketName, objectName, 
 
 // VerifyGetObjectIfModifiedSince - Verify that the response matches what is expected.
 func VerifyGetObjectIfModifiedSince(res *http.Response, expectedBody []byte, expectedStatus string, expectedHeader map[string][]string) error {
-	if err := VerifyHeaderGetObjectIfModifiedSince(res, expectedHeader); err != nil {
+	if err := VerifyHeaderGetObjectIfModifiedSince(res); err != nil {
 		return err
 	}
 	if err := VerifyBodyGetObjectIfModifiedSince(res, expectedBody); err != nil {
@@ -136,8 +136,10 @@ func VerifyStatusGetObjectIfModifiedSince(res *http.Response, expectedStatus str
 }
 
 // VerifyHeaderGetObjectIfModifiedSince - Verify that the response header matches what is expected.
-func VerifyHeaderGetObjectIfModifiedSince(res *http.Response, expectedHeader map[string][]string) error {
-	// TODO: Fill this in.
+func VerifyHeaderGetObjectIfModifiedSince(res *http.Response) error {
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -133,8 +133,8 @@ func GetObjectCleanUp(config ServerConfig, bucketName, objectName string) error 
 // TODO: These checks only verify correctly formatted requests. There is no request that is made to fail / check failure yet.
 
 // GetObjectVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
-func GetObjectVerify(res *http.Response, expectedBody []byte, expectedStatus string, expectedHeader map[string]string) error {
-	if err := VerifyHeaderGetObject(res, expectedHeader); err != nil {
+func GetObjectVerify(res *http.Response, expectedBody []byte, expectedStatus string) error {
+	if err := VerifyHeaderGetObject(res); err != nil {
 		return err
 	}
 	if err := VerifyBodyGetObject(res, expectedBody); err != nil {
@@ -147,12 +147,9 @@ func GetObjectVerify(res *http.Response, expectedBody []byte, expectedStatus str
 }
 
 // VerifyHeaderGetObject - Verify that the header returned matches what is expected.
-func VerifyHeaderGetObject(res *http.Response, expectedHeaders map[string]string) error {
-	for k, v := range expectedHeaders {
-		if res.Header[k][0] != v {
-			err := fmt.Errorf("Unexpected header returned under %v: wanted %v, got %v", k, v, res.Header[k][0])
-			return err
-		}
+func VerifyHeaderGetObject(res *http.Response) error {
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
 	}
 	return nil
 }
@@ -222,7 +219,7 @@ func mainGetObjectNoHeader(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Verify the response...these checks do not check the header yet.
-	if err := GetObjectVerify(res, buf, "200 OK", nil); err != nil {
+	if err := GetObjectVerify(res, buf, "200 OK"); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC

@@ -99,8 +99,8 @@ func GetObjectIfMatchInit(config ServerConfig) (bucketName, objectName, ETag str
 }
 
 // GetObjectIfMatchVerify - Verify that the response matches what is expected.
-func GetObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, expectedHeader map[string]string, shouldFail bool) error {
-	if err := VerifyHeaderGetObjectIfMatch(res, expectedHeader); err != nil {
+func GetObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, shouldFail bool) error {
+	if err := VerifyHeaderGetObjectIfMatch(res); err != nil {
 		return err
 	}
 	if err := VerifyBodyGetObjectIfMatch(res, objectBody, shouldFail); err != nil {
@@ -113,8 +113,10 @@ func GetObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatu
 }
 
 // VerifyHeaderGetObjectIfMatch - Verify that the response header matches what is expected.
-func VerifyHeaderGetObjectIfMatch(res *http.Response, expectedHeader map[string]string) error {
-	// TODO: Fill this in.
+func VerifyHeaderGetObjectIfMatch(res *http.Response) error {
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -197,7 +199,7 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response...these checks do not check the headers yet.
-	if err := GetObjectIfMatchVerify(res, buf, "200 OK", nil, false); err != nil {
+	if err := GetObjectIfMatchVerify(res, buf, "200 OK", false); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC
@@ -229,7 +231,7 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request fails as expected.
-	if err := GetObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", nil, true); err != nil {
+	if err := GetObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC

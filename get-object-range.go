@@ -138,7 +138,7 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response...these checks do not check the headers yet.
-	if err := GetObjectVerify(res, bufRange, "206 Partial Content", nil); err != nil {
+	if err := GetObjectVerify(res, bufRange, "206 Partial Content"); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC

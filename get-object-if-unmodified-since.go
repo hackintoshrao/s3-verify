@@ -101,14 +101,14 @@ func GetObjectIfUnModifiedSinceInit(config ServerConfig) (bucketName, objectName
 }
 
 // VerifyGetObjectIfUnModifiedSince - Verify the response matches what is expected.
-func VerifyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byte, expectedStatus string, expectedHeader map[string][]string, shouldFail bool) error {
+func VerifyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byte, expectedStatus string, shouldFail bool) error {
 	if err := VerifyBodyGetObjectIfUnModifiedSince(res, expectedBody, shouldFail); err != nil {
 		return err
 	}
 	if err := VerifyStatusGetObjectIfUnModifiedSince(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyHeaderGetObjectIfUnModifiedSince(res, expectedHeader); err != nil {
+	if err := VerifyHeaderGetObjectIfUnModifiedSince(res); err != nil {
 		return err
 	}
 	return nil
@@ -153,8 +153,10 @@ func VerifyStatusGetObjectIfUnModifiedSince(res *http.Response, expectedStatus s
 }
 
 // VerifyHeaderGetObjectIfUnModifiedSince - Verify that the header returned matches what is expected.
-func VerifyHeaderGetObjectIfUnModifiedSince(res *http.Response, expectedHeader map[string][]string) error {
-	// TODO: Fill this in.
+func VerifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -198,7 +200,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Verify that the response returns an error.
-	if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", nil, true); err != nil {
+	if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC
@@ -230,7 +232,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Verify that the lastModified date in a request returns the object.
-	if err := VerifyGetObjectIfUnModifiedSince(curRes, buf, "200 OK", nil, false); err != nil {
+	if err := VerifyGetObjectIfUnModifiedSince(curRes, buf, "200 OK", false); err != nil {
 		// Attempt a clean up of created object and bucket.
 		if errC := GetObjectCleanUp(config, bucketName, objectName); errC != nil {
 			return errC

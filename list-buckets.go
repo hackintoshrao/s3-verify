@@ -180,7 +180,9 @@ func VerifyStatusListBuckets(res *http.Response) error {
 
 // VerifyHeaderListBuckets - Verify that the headers returned match what is expected.
 func VerifyHeaderListBuckets(res *http.Response) error {
-	// TODO: Needs discussion on what to actually check here...
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
+	}
 	return nil
 }
 

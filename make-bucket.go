@@ -115,9 +115,11 @@ func VerifyBodyMakeBucket(res *http.Response) error {
 // VerifyHeaderMakeBucket - Check the response header for AWS S3 compliance.
 func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	location := res.Header["Location"][0]
-	if location != "/"+bucketName && location != "/"+bucketName+"/" { // Remove second part of the and statement after minio bug is fixed.
-		fmt.Println(location, "/"+bucketName+"/")
+	if location != "/"+bucketName {
 		err := fmt.Errorf("Unexpected Location: got %v, wanted %v", location, "/"+bucketName)
+		return err
+	}
+	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil

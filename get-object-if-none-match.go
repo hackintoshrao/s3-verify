@@ -112,7 +112,9 @@ func GetObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedS
 
 // VerifyHeaderGetObjectIfNoneMatch - Verify that the header fields of the response match what is expected.
 func VerifyHeaderGetObjectIfNoneMatch(res *http.Response, expectedHeader map[string]string) error {
-	// TODO: Fill this in.
+	if err := verifyStandardHeaders(res); err != nil {
+		return err
+	}
 	return nil
 }
 

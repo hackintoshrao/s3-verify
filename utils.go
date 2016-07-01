@@ -17,9 +17,11 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
@@ -104,4 +106,25 @@ func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, e
 
 	}
 	return targetURL, nil
+
+}
+
+// Verify the date field of an HTTP response is formatted with HTTP time format.
+func verifyDate(respDateStr string) error {
+	_, err := time.Parse(http.TimeFormat, respDateStr)
+	if err != nil {
+		err = fmt.Errorf("Invalid time format recieved, expected http.TimeFormat")
+		return err
+	}
+	return nil
+}
+
+// Verify all standard headers in an HTTP response.
+func verifyStandardHeaders(res *http.Response) error {
+	// Check the date header.
+	respDateStr := res.Header.Get("Date")
+	if err := verifyDate(respDateStr); err != nil {
+		return err
+	}
+	return nil
 }
