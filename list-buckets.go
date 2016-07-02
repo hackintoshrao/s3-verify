@@ -63,13 +63,14 @@ var ListBucketsReq = &http.Request{
 // NewListBucketsReq - Create a new List Buckets request.
 func NewListBucketsReq(config ServerConfig) (*http.Request, error) {
 	// Set the GET req URL.
-	targetURL, err := makeTargetURL(config.Endpoint, "", "", config.Region)
+	// ListBuckets / GET Service is always run through https://s3.amazonaws.com and subsequently us-east-1.
+	targetURL, err := makeTargetURL("https://s3.amazonaws.com", "", "", "us-east-1")
 	if err != nil {
 		return nil, err
 	}
 	ListBucketsReq.URL = targetURL
 	// Sign the necessary headers.
-	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, config.Region)
+	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, "us-east-1")
 	return ListBucketsReq, nil
 }
 
