@@ -17,8 +17,13 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
+	"hash"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -27,6 +32,12 @@ import (
 	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
+
+// Struct defining XML needed to specify the bucket location.
+type bucketConfig struct {
+	XMLName  xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ CreateBucketConfiguration" json:"-"`
+	Location string   `xml:"LocationConstraint"`
+}
 
 // MakeBucketReq - hardcode the static portions of a new Make Bucket request.
 var MakeBucketReq = &http.Request{
@@ -44,6 +55,32 @@ func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 		return nil, err
 	}
 	MakeBucketReq.URL = targetURL
+	if config.Region != "us-east-1" { // Must set the request elements for non us-east-1 regions.
+		bucketConfig := bucketConfig{}
+		bucketConfig.Location = config.Region
+		bucketConfigBytes, err := xml.Marshal(bucketConfig)
+		if err != nil {
+			return nil, err
+		}
+		bucketConfigBuffer := bytes.NewReader(bucketConfigBytes)
+		MakeBucketReq.ContentLength = int64(bucketConfigBuffer.Size())
+		// Reset X-Amz-Content-Sha256
+		var hashSHA256 hash.Hash
+		// Create a reader from the data.
+		hashSHA256 = sha256.New()
+		_, err = io.Copy(hashSHA256, bucketConfigBuffer)
+		if err != nil {
+			return nil, err
+		}
+		// Move back to beginning of data.
+		bucketConfigBuffer.Seek(0, 0)
+		// Set the body.
+		MakeBucketReq.Body = ioutil.NopCloser(bucketConfigBuffer)
+		// Finalize the SHA calculation.
+		sha256Sum := hashSHA256.Sum(nil)
+		// Fill request headers and URL.
+		MakeBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	}
 	MakeBucketReq = signv4.SignV4(*MakeBucketReq, config.Access, config.Secret, config.Region)
 	return MakeBucketReq, nil
 }
@@ -90,8 +127,9 @@ func VerifyBodyMakeBucket(res *http.Response) error {
 // VerifyHeaderMakeBucket - Check the response header for AWS S3 compliance.
 func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	location := res.Header["Location"][0]
-	if location != "/"+bucketName {
-		err := fmt.Errorf("Unexpected Location: got %v, wanted %v", location, "/"+bucketName)
+	if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
+		// TODO: wait for Minio server to fix endpoint detection.
+		err := fmt.Errorf("Unexpected Location: got %v")
 		return err
 	}
 	if err := verifyStandardHeaders(res); err != nil {
