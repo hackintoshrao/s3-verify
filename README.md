@@ -34,8 +34,9 @@ $ s3verify [COMMAND...] [FLAGS]
     --access    -a      Allows user to input their AWS access key.
     --secretkey -s      Allows user to input their AWS secret access key.
     --url       -u      Allows user to input the host URL of the server they wish to test.
-    --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' or
-                        automatic cleanup of test buckets and objects will fail.
+    --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' with
+                        AWS servers or automatic cleanup of test buckets and objects will fail. If tests are being run on 
+                        Minio server region must be set to 'us-east-1'
     --debug     -d      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
 ```
 
