@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httputil"
 	"regexp"
@@ -75,9 +76,18 @@ func (t traceV4) Response(res *http.Response) (err error) {
 		res.StatusCode != http.StatusNoContent {
 		respTrace, err = httputil.DumpResponse(res, true)
 	} else {
-		respTrace, err = httputil.DumpResponse(res, false)
-		if err != nil {
-			return err
+		if res.ContentLength == 0 {
+			var buffer bytes.Buffer
+			if err = res.Header.Write(&buffer); err != nil {
+				return err
+			}
+			respTrace = buffer.Bytes()
+			respTrace = append(respTrace, []byte("\r\n")...)
+		} else {
+			respTrace, err = httputil.DumpResponse(res, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if err == nil {
