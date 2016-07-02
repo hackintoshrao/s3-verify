@@ -72,6 +72,7 @@ var (
 // Entry point for the make bucket test.
 func mainMakeBucket(ctx *cli.Context) {
 	// TODO: Differentiate different errors: s3verify vs Minio vs test failure.
+	setGlobalsFromContext(ctx)
 	// Generate a new config.
 	config := newServerConfig(ctx)
 	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)

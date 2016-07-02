@@ -65,6 +65,7 @@ var removeBucketTests = []APItest{mainRemoveBucketExists}
 // mainRemoveBucket - Handler for setting up and tearing down a DELETE bucket request.
 func mainRemoveBucket(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
+	setGlobalsFromContext(ctx)
 	// Generate a new config.
 	config := newServerConfig(ctx)
 	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)

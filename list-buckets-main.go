@@ -74,6 +74,7 @@ var (
 // mainListBuckets - Entry point for the listbuckets command and List Buckets test.
 func mainListBuckets(ctx *cli.Context) {
 	// TODO: Differentiate different errors: s3verify vs Minio vs test failure.
+	setGlobalsFromContext(ctx)
 	// Generate a new config.
 	config := newServerConfig(ctx)
 	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)

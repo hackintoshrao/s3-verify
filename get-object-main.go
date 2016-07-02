@@ -88,6 +88,7 @@ var (
 // mainGetObject - Entry point for the getobject command and test.
 func mainGetObject(ctx *cli.Context) {
 	// TODO: Differentiate errors: s3verify vs Minio vs test failure.
+	setGlobalsFromContext(ctx)
 	// Set up a new config.
 	config := newServerConfig(ctx)
 	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)

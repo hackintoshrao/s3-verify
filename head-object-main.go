@@ -84,6 +84,7 @@ var (
 
 // mainHeadObject - Entry point for the headobject command and test.
 func mainHeadObject(ctx *cli.Context) {
+	setGlobalsFromContext(ctx)
 	config := newServerConfig(ctx)
 	s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
 	if err != nil {
