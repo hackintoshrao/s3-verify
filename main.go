@@ -68,13 +68,13 @@ type APItest func(ServerConfig, minio.Client, string) error
 // Slice of all defined tests.
 // When a new API is added for testing make sure to add it here.
 var (
-	allTests = [][]APItest{getObjectTests, listBucketsTests, makeBucketTests, removeBucketTests, headObjectTests}
+	allTests = [][]APItest{getObjectTests, listBucketsTests, makeBucketTests, removeBucketTests, headObjectTests, putObjectTests}
 )
 
 // Slice of all defined messages.
 // When a new API is added for testing make sure to add its messages here.
 var (
-	allMessages = [][]string{getObjectMessages, listBucketsMessages, makeBucketMessages, removeBucketMessages, headObjectMessages}
+	allMessages = [][]string{getObjectMessages, listBucketsMessages, makeBucketMessages, removeBucketMessages, headObjectMessages, putObjectMessages}
 )
 
 func commandNotFound(ctx *cli.Context, command string) {
@@ -119,6 +119,7 @@ func registerApp() *cli.App {
 	registerCmd(removeBucketCmd) // Register 'removebucket' as a command.
 	registerCmd(makeBucketCmd)   // Register 'makebucket' as a command.
 	registerCmd(headObjectCmd)   // Register 'headobject' as a command.
+	registerCmd(putObjectCmd)    // Register 'putobject' as a command.
 
 	app := cli.NewApp()
 	app.Usage = "Test for Amazon S3 v4 API compatibility."

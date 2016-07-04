@@ -17,7 +17,11 @@
 package main
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
+	"hash"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -115,22 +119,17 @@ func cleanUpTest(s3Client minio.Client, bucketNames, objectNames []string) error
 		for _, objectName := range objectNames {
 			// TODO: for now assume if objectNames are given they are all stored in the first passed bucketName.
 			err := s3Client.RemoveObject(bucketNames[0], objectName)
-			if minio.ToErrorResponse(err).Code != "NoSuchKey" {
+			if err != nil && minio.ToErrorResponse(err).Code != "NoSuchKey" {
 				return err
 			}
-
 		}
 	}
 	// Remove any test buckets.
 	for _, bucketName := range bucketNames {
 		err := s3Client.RemoveBucket(bucketName)
-		if err != nil {
-			if minio.ToErrorResponse(err).Code != "NoSuchBucket" {
-				fmt.Println(err)
-				return err
-			}
+		if err != nil && minio.ToErrorResponse(err).Code != "NoSuchBucket" {
+			return err
 		}
-
 	}
 	return nil
 
@@ -154,4 +153,29 @@ func verifyStandardHeaders(res *http.Response) error {
 		return err
 	}
 	return nil
+}
+
+// Generate MD5 and SHA256 for an input readseeker.
+func computeHash(reader io.ReadSeeker) (md5Sum, sha256Sum []byte, contentLength int64, err error) {
+	// MD5 and SHA256 hasher.
+	var hashMD5, hashSHA256 hash.Hash
+	// MD5 and SHA256 hasher.
+	hashMD5 = md5.New()
+	hashSHA256 = sha256.New()
+	hashWriter := io.MultiWriter(hashMD5, hashSHA256)
+
+	// If no buffer is provided, no need to allocate just use io.Copy
+	contentLength, err = io.Copy(hashWriter, reader)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	// Seek back to beginning location.
+	if _, err := reader.Seek(0, 0); err != nil {
+		return nil, nil, 0, err
+	}
+	// Finalize md5sum and sha256sum.
+	md5Sum = hashMD5.Sum(nil)
+	sha256Sum = hashSHA256.Sum(nil)
+
+	return md5Sum, sha256Sum, contentLength, nil
 }

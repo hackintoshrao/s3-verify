@@ -129,7 +129,7 @@ func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	location := res.Header["Location"][0]
 	if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
 		// TODO: wait for Minio server to fix endpoint detection.
-		err := fmt.Errorf("Unexpected Location: got %v")
+		err := fmt.Errorf("Unexpected Location: got %v", location)
 		return err
 	}
 	if err := verifyStandardHeaders(res); err != nil {
