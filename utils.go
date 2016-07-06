@@ -64,7 +64,7 @@ func randString(n int, src rand.Source, prefix string) string {
 	return prefix + string(b[0:30-len(prefix)])
 }
 
-// Check whether provided URL is an AWS endpoint.
+// Check if the endpoint is for an AWS S3 server.
 func isAmazonEndpoint(endpointURL *url.URL) bool {
 	if endpointURL == nil {
 		return false
@@ -75,25 +75,18 @@ func isAmazonEndpoint(endpointURL *url.URL) bool {
 	return false
 }
 
-// Check whether endpoint supports virtual style.
-func isVirtualStyleHostSupported(endpointURL *url.URL) bool {
-	// can return true for Amazon
-	return isAmazonEndpoint(endpointURL)
-}
-
 // Generate a new URL from the user provided endpoint.
 func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, error) {
 	targetURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
+	if isAmazonEndpoint(targetURL) { // Change host to reflect the region.
+		targetURL.Host = getS3Endpoint(region)
+	}
 	targetURL.Path = "/"
-	if bucketName != "" || objectName != "" {
-		targetURL.Path = "/" + bucketName + "/" + objectName // Default to path style.
-		if isVirtualStyleHostSupported(targetURL) {          // Virtual style supported, use virtual style.
-			targetURL.Path = "/" + objectName
-			targetURL.Host = bucketName + "." + getS3Endpoint(region)
-		}
+	if bucketName != "" {
+		targetURL.Path = "/" + bucketName + "/" + objectName // Use path style requests only.
 	}
 	return targetURL, nil
 }
