@@ -18,12 +18,6 @@ package main
 
 import "github.com/minio/cli"
 
-// Collection of s3verify commands currently supported.
-var commands = []cli.Command{}
-
-// Collection of s3verify commands currently supported in a trie tree.
-var commandsTree = newTrie()
-
 // Collection of flags currently supported by every command.
 var globalFlags = []cli.Flag{
 	cli.StringFlag{
@@ -54,10 +48,4 @@ var globalFlags = []cli.Flag{
 		Name:  "debug, d",
 		Usage: "Enable debugging output.",
 	},
-}
-
-// registerCmd - registers a cli command.
-func registerCmd(cmd cli.Command) {
-	commands = append(commands, cmd)
-	commandsTree.Insert(cmd.Name)
 }

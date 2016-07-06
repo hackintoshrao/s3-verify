@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/minio/cli"
@@ -79,52 +78,14 @@ var (
 
 func commandNotFound(ctx *cli.Context, command string) {
 	msg := fmt.Sprintf("'%s' is not a s3verify command. See 's3verify --help'.", command)
-	closestCommands := findClosestCommands(command)
-	if len(closestCommands) > 0 {
-		msg += fmt.Sprintf("\n\nDid you mean one of these?\n")
-		if len(closestCommands) == 1 {
-			cmd := closestCommands[0]
-			msg += fmt.Sprintf("\t'%s'\n", cmd)
-		} else {
-			for _, cmd := range closestCommands {
-				msg += fmt.Sprintf("\t'%s'\n", cmd)
-			}
-		}
-	}
 	console.PrintC(msg)
-}
-
-func findClosestCommands(command string) []string {
-	var closestCommands []string
-	for _, value := range commandsTree.PrefixMatch(command) {
-		closestCommands = append(closestCommands, value.(string))
-	}
-	sort.Strings(closestCommands)
-	for _, value := range commandsTree.walk(commandsTree.root) {
-		if sort.SearchStrings(closestCommands, value.(string)) < len(closestCommands) {
-			continue
-		}
-		// 2 is arbitrary and represents the max allowed number of typed errors.
-		if DamerauLevenshteinDistance(command, value.(string)) < 2 {
-			closestCommands = append(closestCommands, value.(string))
-		}
-	}
-	return closestCommands
 }
 
 // registerApp - Create a new s3verify app.
 func registerApp() *cli.App {
-	registerCmd(getObjectCmd)    // Register 'getobject' as a command.
-	registerCmd(listBucketsCmd)  // Register 'listbuckets' as a command.
-	registerCmd(removeBucketCmd) // Register 'removebucket' as a command.
-	registerCmd(makeBucketCmd)   // Register 'makebucket' as a command.
-	registerCmd(headObjectCmd)   // Register 'headobject' as a command.
-	registerCmd(putObjectCmd)    // Register 'putobject' as a command.
-
 	app := cli.NewApp()
 	app.Usage = "Test for Amazon S3 v4 API compatibility."
 	app.Author = "Minio.io"
-	app.Commands = commands
 	app.Name = "s3verify"
 	app.Flags = append(s3verifyFlags, globalFlags...)
 	app.CustomAppHelpTemplate = s3verifyHelpTemplate // Custom help template defined above.
