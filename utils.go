@@ -112,27 +112,19 @@ func NewS3Client(endpoint, access, secret string) (*minio.Client, error) {
 	return s3Client, nil
 }
 
-// Remove any s3verify created buckets and objects.
-func cleanUpTest(s3Client minio.Client, bucketNames, objectNames []string) error {
-	// If there are test object/s to remove, remove it/them first.
-	if objectNames != nil {
-		for _, objectName := range objectNames {
-			// TODO: for now assume if objectNames are given they are all stored in the first passed bucketName.
-			err := s3Client.RemoveObject(bucketNames[0], objectName)
-			if err != nil && minio.ToErrorResponse(err).Code != "NoSuchKey" {
-				return err
-			}
-		}
-	}
-	// Remove any test buckets.
-	for _, bucketName := range bucketNames {
-		err := s3Client.RemoveBucket(bucketName)
-		if err != nil && minio.ToErrorResponse(err).Code != "NoSuchBucket" {
+// cleanUpBucket - remove any objects that may be inside a bucket and then remove the now empty bucket.
+func cleanUpBucket(s3Client minio.Client, bucketName string, objectNames []string) error {
+	for _, objectName := range objectNames {
+		err := s3Client.RemoveObject(bucketName, objectName)
+		if err != nil && minio.ToErrorResponse(err).Code != "NoSuchKey" { // Object may not have been created successfully.
 			return err
 		}
 	}
+	err := s3Client.RemoveBucket(bucketName)
+	if err != nil && minio.ToErrorResponse(err).Code != "NoSuchBucket" { // Bucket may not have been created successfully.
+		return err
+	}
 	return nil
-
 }
 
 // Verify the date field of an HTTP response is formatted with HTTP time format.

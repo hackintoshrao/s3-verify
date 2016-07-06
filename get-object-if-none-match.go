@@ -140,7 +140,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	bucketName, objectName, ETag, buf, err := GetObjectIfNoneMatchInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created objec and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -151,7 +151,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	req, err := NewGetObjectIfNoneMatchReq(config, bucketName, objectName, ETag)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -162,7 +162,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -172,7 +172,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	// Verify the response...these checks do not check the headers yet.
 	if err := GetObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified", nil); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -183,7 +183,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	badReq, err := NewGetObjectIfNoneMatchReq(config, bucketName, objectName, invalidETag)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -194,7 +194,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	badRes, err := ExecRequest(badReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -204,7 +204,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	// Verify the response returns the object since ETag != invalidETag
 	if err := GetObjectIfNoneMatchVerify(badRes, buf, "200 OK", nil); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -212,7 +212,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, messag
 	// Spin scanBar
 	scanBar(message)
 	// Clean up after the test.
-	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
+	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
 		return err
 	}
 	return nil

@@ -67,7 +67,6 @@ func GetObjectInit(s3Client minio.Client, config ServerConfig) (bucketName strin
 	// Create random bucket and object names.
 	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
 	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-
 	// Create random data more than 32K.
 	buf = make([]byte, rand.Intn(1<<20)+32*1024)
 	_, err = io.ReadFull(crand.Reader, buf)
@@ -143,7 +142,7 @@ func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message s
 	bucketName, objectName, buf, err := GetObjectInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -155,7 +154,7 @@ func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message s
 	req, err := NewGetObjectReq(config, bucketName, objectName)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -167,7 +166,7 @@ func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message s
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -178,7 +177,7 @@ func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message s
 	// Verify the response...these checks do not check the header yet.
 	if err := GetObjectVerify(res, buf, "200 OK"); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -187,7 +186,7 @@ func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message s
 	scanBar(message)
 
 	// Clean up after the test.
-	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
+	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
 		return err
 	}
 	// Spin scanBar

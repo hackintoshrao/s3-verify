@@ -138,6 +138,14 @@ func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	return nil
 }
 
+// CleanUpMakeBucket - clean up after the makebucket test.
+func CleanUpMakeBucket(s3Client minio.Client, bucketName string) error {
+	if err := cleanUpBucket(s3Client, bucketName, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Test the MakeBucket API when no extra headers are set.
 func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
 	// Spin the scanBar
@@ -151,7 +159,7 @@ func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message 
 	req, err := NewMakeBucketReq(config, bucketName)
 	if err != nil {
 		// Attempt clean up.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -163,7 +171,7 @@ func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message 
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt clean up.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -174,7 +182,7 @@ func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message 
 	// Check the responses Body, Status, Header.
 	if err := VerifyResponseMakeBucket(res, bucketName); err != nil {
 		// Attempt clean up.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -183,8 +191,9 @@ func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message 
 	scanBar(message)
 
 	// Clean up the test.
-	if err := cleanUpTest(s3Client, []string{bucketName}, nil); err != nil {
+	if err := CleanUpMakeBucket(s3Client, bucketName); err != nil {
 		return err
 	}
+
 	return nil
 }

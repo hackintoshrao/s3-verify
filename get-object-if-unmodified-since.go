@@ -158,7 +158,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	bucketName, objectName, lastModified, buf, err := GetObjectIfUnModifiedSinceInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -169,7 +169,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	req, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, pastDate)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -180,7 +180,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -190,7 +190,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	// Verify that the response returns an error.
 	if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -201,7 +201,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	curReq, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, lastModified)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -212,7 +212,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	curRes, err := ExecRequest(curReq, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -222,7 +222,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	// Verify that the lastModified date in a request returns the object.
 	if err := VerifyGetObjectIfUnModifiedSince(curRes, buf, "200 OK", false); err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -230,7 +230,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, 
 	// Spin scanBar
 	scanBar(message)
 	// Clean up after the test.
-	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
+	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
 		return err
 	}
 	// Spin scanBar

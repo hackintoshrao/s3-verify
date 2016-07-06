@@ -112,6 +112,14 @@ func VerifyStatusRemoveBucket(res *http.Response) error {
 	return nil
 }
 
+//
+func CleanUpRemoveBucket(s3Client minio.Client, bucketName string) error {
+	if err := cleanUpBucket(s3Client, bucketName, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Test the RemoveBucket API when the bucket exists.
 func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message string) error {
 	// Spin the scanBar.
@@ -120,7 +128,7 @@ func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message 
 	bucketName, err := RemoveBucketInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -131,7 +139,7 @@ func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message 
 	// Generate the new DELETE bucket request.
 	req, err := NewRemoveBucketReq(config, bucketName)
 	if err != nil {
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -142,7 +150,7 @@ func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message 
 	// Perform the request.
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -151,7 +159,7 @@ func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message 
 	scanBar(message)
 
 	if err = RemoveBucketVerify(res); err != nil {
-		if errC := cleanUpTest(s3Client, []string{bucketName}, nil); errC != nil {
+		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
 			return errC
 		}
 		return err
@@ -159,7 +167,7 @@ func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message 
 	// Spin the scanBar
 	scanBar(message)
 
-	if err := cleanUpTest(s3Client, []string{bucketName}, nil); err != nil {
+	if err := CleanUpRemoveBucket(s3Client, bucketName); err != nil {
 		// Bucket should have been successfully removed by the request.
 		return err
 	}

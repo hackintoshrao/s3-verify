@@ -203,6 +203,16 @@ func VerifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult)
 	return nil
 }
 
+// CleanUpListBuckets - clean up after a failed or successful listbuckets test.
+func CleanUpListBuckets(s3Client minio.Client, bucketNames []string) error {
+	for _, bucketName := range bucketNames {
+		if err := cleanUpBucket(s3Client, bucketName, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Test the ListBuckets API with no added parameters.
 func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message string) error {
 	// Spin the scanBar
@@ -211,7 +221,7 @@ func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message st
 	expectedBody, names, err := ListBucketsInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of the created buckets.
-		if errC := cleanUpTest(s3Client, names, nil); errC != nil {
+		if errC := CleanUpListBuckets(s3Client, names); errC != nil {
 			return errC
 		}
 		return err
@@ -222,7 +232,7 @@ func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message st
 	req, err := NewListBucketsReq(config)
 	if err != nil {
 		// Attempt a clean up of the created buckets.
-		if errC := cleanUpTest(s3Client, names, nil); errC != nil {
+		if errC := CleanUpListBuckets(s3Client, names); errC != nil {
 			return errC
 		}
 		return err
@@ -234,7 +244,7 @@ func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message st
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of the created buckets.
-		if errC := cleanUpTest(s3Client, names, nil); errC != nil {
+		if errC := CleanUpListBuckets(s3Client, names); errC != nil {
 			return errC
 		}
 		return err
@@ -245,7 +255,7 @@ func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message st
 	// Check for S3 Compatibility
 	if err := ListBucketsVerify(res, expectedBody); err != nil {
 		// Attempt a clean up of the created buckets.
-		if errC := cleanUpTest(s3Client, names, nil); errC != nil {
+		if errC := CleanUpListBuckets(s3Client, names); errC != nil {
 			return errC
 		}
 		return err
@@ -254,7 +264,7 @@ func mainListBucketsExist(config ServerConfig, s3Client minio.Client, message st
 	scanBar(message)
 
 	// Delete all Minio created test buckets.
-	if err := cleanUpTest(s3Client, names, nil); err != nil {
+	if err := CleanUpListBuckets(s3Client, names); err != nil {
 		return err
 	}
 	return nil

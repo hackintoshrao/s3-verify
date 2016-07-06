@@ -119,6 +119,14 @@ func VerifyHeaderHeadObject(res *http.Response, expectedHeader map[string][]stri
 	return nil
 }
 
+//
+func CleanUpHeadObject(s3Client minio.Client, bucketName string, objectNames []string) error {
+	if err := cleanUpBucket(s3Client, bucketName, objectNames); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Test the HeadObject API with no header set.
 func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
 	// Spin scanBar
@@ -127,7 +135,7 @@ func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message 
 	bucketName, objectName, err := HeadObjectInit(s3Client, config)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -138,7 +146,7 @@ func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message 
 	req, err := NewHeadObjectReq(config, bucketName, objectName)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -148,7 +156,7 @@ func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message 
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
 		// Attempt a clean up of created object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -159,7 +167,7 @@ func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message 
 	// Verify the response.
 	if err := HeadObjectVerify(res, "200 OK", nil); err != nil {
 		// Attempt a clean up of the object and bucket.
-		if errC := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); errC != nil {
+		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
 			return errC
 		}
 		return err
@@ -167,7 +175,7 @@ func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message 
 	// Spin scanBar
 	scanBar(message)
 	// Clean up after the test.
-	if err := cleanUpTest(s3Client, []string{bucketName}, []string{objectName}); err != nil {
+	if err := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); err != nil {
 		return err
 	}
 	// Spin scanBar
