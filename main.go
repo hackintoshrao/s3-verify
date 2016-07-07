@@ -67,13 +67,13 @@ type APItest func(ServerConfig, minio.Client, string) error
 // Slice of all defined tests.
 // When a new API is added for testing make sure to add it here.
 var (
-	allTests = [][]APItest{makeBucketTests, getObjectTests, listBucketsTests, removeBucketTests, headObjectTests, putObjectTests}
+	allTests = [][]APItest{makeBucketTests, getObjectTests, listBucketsTests, removeBucketTests, headObjectTests, putObjectTests, removeObjectTests}
 )
 
 // Slice of all defined messages.
 // When a new API is added for testing make sure to add its messages here.
 var (
-	allMessages = [][]string{makeBucketMessages, getObjectMessages, listBucketsMessages, removeBucketMessages, headObjectMessages, putObjectMessages}
+	allMessages = [][]string{makeBucketMessages, getObjectMessages, listBucketsMessages, removeBucketMessages, headObjectMessages, putObjectMessages, removeObjectMessages}
 )
 
 func commandNotFound(ctx *cli.Context, command string) {

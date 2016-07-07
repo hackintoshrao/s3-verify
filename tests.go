@@ -96,4 +96,16 @@ var (
 	removeBucketTests = []APItest{
 		mainRemoveBucketExists,
 	}
+
+	// Messages to be printed during the RemoveObject tests.
+	// When a new test for RemoveObject is added make sure its message is added here.
+	removeObjectMessages = []string{
+		"RemoveObject (Object Exists):",
+	}
+
+	// Declare all tests run for the RemoveObject API.
+	// When a new test for RemoveObject is added make sure its added here.
+	removeObjectTests = []APItest{
+		mainRemoveObjectExists,
+	}
 )
