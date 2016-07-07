@@ -78,11 +78,13 @@ var (
 	// When a new test for PutObject is added make sure its message is added here.
 	putObjectMessages = []string{
 		"PutObject (No Header):",
+		"PutObject (Copy):",
 	}
 	// Declare all tests run for the PutObject API.
 	// When a new test for PutObject is added make sure its added here.
 	putObjectTests = []APItest{
 		mainPutObjectNoHeader,
+		mainPutObjectCopy,
 	}
 
 	// Messages to be printed during the RemoveBucket tests.
