@@ -19,8 +19,10 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"reflect"
+	"time"
 
 	"github.com/minio/s3verify/signv4"
 )
@@ -50,14 +52,14 @@ func NewRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, 
 }
 
 // RemoveBucketVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
-func RemoveBucketVerify(res *http.Response) error {
+func RemoveBucketVerify(res *http.Response, expectedStatus string, errorResponse ErrorResponse) error {
 	if err := VerifyHeaderRemoveBucket(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusRemoveBucket(res); err != nil {
+	if err := VerifyStatusRemoveBucket(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyBodyRemoveBucket(res); err != nil {
+	if err := VerifyBodyRemoveBucket(res, errorResponse); err != nil {
 		return err
 	}
 	return nil
@@ -74,23 +76,25 @@ func VerifyHeaderRemoveBucket(res *http.Response) error {
 }
 
 // VerifyBodyRemoveBucket - Check that the body of the response matches the expected body for a given DELETE Bucket request.
-func VerifyBodyRemoveBucket(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	// A successful DELETE request will return an empty body.
-	if string(body) != "" {
-		err = fmt.Errorf("Unexpected text in body: %v", body)
-		return err
+func VerifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) error {
+	if !reflect.DeepEqual(expectedError, ErrorResponse{}) {
+		errResponse := ErrorResponse{}
+		err := xmlDecoder(res.Body, &errResponse)
+		if err != nil {
+			return err
+		}
+		if errResponse.Message != expectedError.Message {
+			err := fmt.Errorf("Unexpected Error: %v", errResponse.Message)
+			return err
+		}
 	}
 	return nil
 }
 
 // VerifyStatusRemoveBucket - Check that the status of the response matches the expected status for a given DELETE Bucket request.
-func VerifyStatusRemoveBucket(res *http.Response) error {
-	if res.StatusCode != http.StatusNoContent { // Successful DELETE request will result in 204 No Content.
-		err := fmt.Errorf("Remove Bucket Failed with %v", res.StatusCode)
+func VerifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
+	if res.Status != expectedStatus { // Successful DELETE request will result in 204 No Content.
+		err := fmt.Errorf("Unexpected Status: wanted %v, got %v", expectedStatus, res.StatusCode)
 		return err
 	}
 	return nil
@@ -118,11 +122,46 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 		// Spin the scanBar
 		scanBar(message)
 
-		if err = RemoveBucketVerify(res); err != nil {
+		if err = RemoveBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
 			return err
 		}
 		// Spin the scanBar
 		scanBar(message)
 	}
+	return nil
+}
+
+// Test the RemoveBucket API when the bucket exists.
+func mainRemoveBucketDNE(config ServerConfig, message string) error {
+	// Generate a random bucketName.
+	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+	// Hardcode the expected error response.
+	errResponse := ErrorResponse{
+		Code:       "NoSuchBucket",
+		Message:    "The specified bucket does not exist",
+		BucketName: bucketName,
+		Key:        "",
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Generate a new DELETE bucket request for a bucket that does not exist.
+	req, err := NewRemoveBucketReq(config, bucketName)
+	if err != nil {
+		return err
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Perform the request.
+	res, err := ExecRequest(req, config.Client)
+	if err != nil {
+		return err
+	}
+	// Spin scanBar
+	scanBar(message)
+	if err = RemoveBucketVerify(res, "404 Not Found", errResponse); err != nil {
+		return err
+	}
+	// Spin scanBar
+	scanBar(message)
 	return nil
 }

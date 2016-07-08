@@ -65,7 +65,7 @@ var (
 	// Messages printed during the running of the MakeBucket tests.
 	// When a new test for MakeBucket is added make sure to add its message here.
 	makeBucketMessages = []string{
-		"MakeBucket (No Header):",
+		"MakeBucket (Bucket DNE):",
 	}
 
 	// Declare all tests run for the MakeBucket API.
@@ -103,12 +103,14 @@ var (
 	// When a new test for RemoveBucket is added make sure its message is added here.
 	removeBucketMessages = []string{
 		"RemoveBucket (Bucket Exists):",
+		"RemoveBucket (Bucket DNE):",
 	}
 
 	// Declare all tests run for the RemoveBucket API.
 	// When a new test for RemoveBucket is added make sure its added here.
 	removeBucketTests = []APItest{
 		mainRemoveBucketExists,
+		mainRemoveBucketDNE,
 	}
 
 	// Messages to be printed during the RemoveObject tests.
