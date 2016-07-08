@@ -18,16 +18,11 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
@@ -50,35 +45,6 @@ func NewRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*ht
 
 	RemoveObjectReq = signv4.SignV4(*RemoveObjectReq, config.Access, config.Secret, config.Region)
 	return RemoveObjectReq, nil
-}
-
-// RemoveObjectReqInit - Create a test bucket and object with Minio-Go.
-func RemoveObjectInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName string, err error) {
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-rm")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-rm")
-
-	buf := make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return bucketName, objectName, err
-	}
-	reader := bytes.NewReader(buf)
-	// Create a new bucket and object.
-	if err = s3Client.MakeBucket(bucketName, config.Region); err != nil {
-		return bucketName, objectName, err
-	}
-	if _, err = s3Client.PutObject(bucketName, objectName, reader, "application/octet-stream"); err != nil {
-		return bucketName, objectName, err
-	}
-	return bucketName, objectName, nil
-}
-
-// CleanUpRemoveObject - Clean up after a failed or successful removeobject test.
-func CleanUpRemoveObject(s3Client minio.Client, bucketName, objectName string) error {
-	if err := cleanUpBucket(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
-	}
-	return nil
 }
 
 // RemoveObjectVerify - Verify that the response returned matches what is expected.
@@ -119,60 +85,57 @@ func VerifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
-//
-func mainRemoveObjectExists(config ServerConfig, s3Client minio.Client, message string) error {
-	// Spin scanBar
-	scanBar(message)
-	bucketName, objectName, err := RemoveObjectInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up.
-		if errC := CleanUpRemoveObject(s3Client, bucketName, objectName); errC != nil {
-			return errC
+func mainRemoveObjectExists(config ServerConfig, message string) error {
+	for _, bucket := range testBuckets {
+		for _, object := range objects {
+			// Spin scanBar
+			scanBar(message)
+			// Create a new request.
+			req, err := NewRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Execute the request.
+			res, err := ExecRequest(req, config.Client)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Verify the response.
+			if err := RemoveObjectVerify(res, "200 OK"); err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Create a new request.
-	req, err := NewRemoveObjectReq(config, bucketName, objectName)
-	if err != nil {
-		// Attempt a clean up.
-		if errC := CleanUpRemoveObject(s3Client, bucketName, objectName); errC != nil {
-			return errC
+		for _, object := range copyObjects {
+			// Spin scanBar
+			scanBar(message)
+			// Create a new request.
+			req, err := NewRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Execute the request.
+			res, err := ExecRequest(req, config.Client)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Verify the response.
+			if err := RemoveObjectVerify(res, "200 OK"); err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
 		}
-
-		return err
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up.
-		if errC := CleanUpRemoveObject(s3Client, bucketName, objectName); errC != nil {
-			return errC
-		}
-
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response.
-	if err := RemoveObjectVerify(res, "200 OK"); err != nil {
-		// Attempt a clean up.
-		if errC := CleanUpRemoveObject(s3Client, bucketName, objectName); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Cleanup after the test.
-	if errC := CleanUpRemoveObject(s3Client, bucketName, objectName); errC != nil {
-		return errC
-	}
-	// Spin scanBar
-	scanBar(message)
 	return nil
 
 }

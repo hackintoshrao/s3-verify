@@ -25,19 +25,10 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
-
-// Struct defining XML needed to specify the bucket location.
-type bucketConfig struct {
-	XMLName  xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ CreateBucketConfiguration" json:"-"`
-	Location string   `xml:"LocationConstraint"`
-}
 
 // MakeBucketReq - hardcode the static portions of a new Make Bucket request.
 var MakeBucketReq = &http.Request{
@@ -48,6 +39,15 @@ var MakeBucketReq = &http.Request{
 	Body:   nil, // No Body sent for Make Bucket requests.(Need to verify)
 }
 
+var testBuckets = []BucketInfo{
+	BucketInfo{
+		Name: "s3verify-put-bucket-test",
+	},
+	BucketInfo{
+		Name: "s3verify-put-bucket-test1",
+	},
+}
+
 // NewMakeBucketReq - Create a new Make bucket request.
 func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
@@ -56,12 +56,13 @@ func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 	}
 	MakeBucketReq.URL = targetURL
 	if config.Region != "us-east-1" { // Must set the request elements for non us-east-1 regions.
-		bucketConfig := bucketConfig{}
+		bucketConfig := createBucketConfiguration{}
 		bucketConfig.Location = config.Region
 		bucketConfigBytes, err := xml.Marshal(bucketConfig)
 		if err != nil {
 			return nil, err
 		}
+		// TODO: use hash function here.
 		bucketConfigBuffer := bytes.NewReader(bucketConfigBytes)
 		MakeBucketReq.ContentLength = int64(bucketConfigBuffer.Size())
 		// Reset X-Amz-Content-Sha256
@@ -84,8 +85,6 @@ func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 	MakeBucketReq = signv4.SignV4(*MakeBucketReq, config.Access, config.Secret, config.Region)
 	return MakeBucketReq, nil
 }
-
-// TODO: These checks only work on well formatted requests. Need to add support for poorly formed tests designed to fail.
 
 // VerifyResponseMakeBucket - Check the response Body, Header, Status for AWS S3 compliance.
 func VerifyResponseMakeBucket(res *http.Response, bucketName string) error {
@@ -138,61 +137,36 @@ func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	return nil
 }
 
-// CleanUpMakeBucket - clean up after the makebucket test.
-func CleanUpMakeBucket(s3Client minio.Client, bucketName string) error {
-	if err := cleanUpBucket(s3Client, bucketName, nil); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Test the MakeBucket API when no extra headers are set.
-func mainMakeBucketNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
+// Test the MakeBucket API when no extra headers are set. This creates three new buckets and leaves them for the next tests to use.
+func mainMakeBucketNoHeader(config ServerConfig, message string) error {
 	// Spin the scanBar
 	scanBar(message)
-	// Generate new random bucket name.
-	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-mb")
-	// Spin the scanBar
-	scanBar(message)
+	for _, bucket := range testBuckets { // Test the creation of 3 new buckets. All valid for now. TODO: test invalid names/input.
+		// Spin the scanBar
+		scanBar(message)
 
-	// Create a new Make bucket request.
-	req, err := NewMakeBucketReq(config, bucketName)
-	if err != nil {
-		// Attempt clean up.
-		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
-			return errC
+		// Create a new Make bucket request.
+		req, err := NewMakeBucketReq(config, bucket.Name)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
+		// Spin the scanBar
+		scanBar(message)
 
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt clean up.
-		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
-			return errC
+		// Execute the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
+		// Spin the scanBar
+		scanBar(message)
 
-	// Check the responses Body, Status, Header.
-	if err := VerifyResponseMakeBucket(res, bucketName); err != nil {
-		// Attempt clean up.
-		if errC := CleanUpMakeBucket(s3Client, bucketName); errC != nil {
-			return errC
+		// Check the responses Body, Status, Header.
+		if err := VerifyResponseMakeBucket(res, bucket.Name); err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
-
-	// Clean up the test.
-	if err := CleanUpMakeBucket(s3Client, bucketName); err != nil {
-		return err
+		// Spin the scanBar
+		scanBar(message)
 	}
 
 	return nil

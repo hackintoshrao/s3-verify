@@ -18,20 +18,56 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
+var (
+	// First object to test PUT on.
+	putObj1 = &ObjectInfo{
+		Key: "s3verify-put-object-test1",
+		// LastModified: to be set dynamically,
+		// Size: to be set dynamically,
+		// ETag: to be set dynamically,
+		ContentType: "application/octet-stream",
+		Body:        []byte("Nemo enim ipsam voluptatem, quia voluptas sit, aspernature aut odit aut fugit,"),
+	}
+	// Second object to test PUT on.
+	putObj2 = &ObjectInfo{
+		Key: "s3verify-put-object-test2",
+		// LastModified: to be set dynamically,
+		// Size: to be set dynamically,
+		// ETag: to be set dynamically,
+		ContentType: "application/octet-stream",
+		Body:        []byte("sed quia consequuntur magni dolores eos, qui ratione voluptatem sequi nescuint,"),
+	}
+	// Third object to test PUT on.
+	putObj3 = &ObjectInfo{
+		Key: "s3verify-put-object-test3",
+		// LastModified: to be set dynamically,
+		// Size: to be set dynamically,
+		// ETag: to be set dynamically,
+		ContentType: "application/octet-stream",
+		Body:        []byte("neque porro quisquam est, qui dolorem ipsum, quia dolor sit amet, consectetur,"),
+	}
+)
+
+// Store all regularly PUT objects.
+var objects = []*ObjectInfo{
+	putObj1,
+	putObj2,
+	putObj3,
+}
+
+// Store all objects that were copied.
+var copyObjects = []*ObjectInfo{}
+
+// An HTTP request for a PUT object.
 var PutObjectReq = &http.Request{
 	Header: map[string][]string{
 	// Set Content SHA dynamically because it is based on data being uploaded.
@@ -66,25 +102,6 @@ func NewPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 	PutObjectReq.Body = ioutil.NopCloser(reader)
 	PutObjectReq = signv4.SignV4(*PutObjectReq, config.Access, config.Secret, config.Region)
 	return PutObjectReq, nil
-}
-
-// PutObjectInit - Create a new test bucket and random data for a random object upload.
-func PutObjectInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName string, objectData []byte, err error) {
-	// Generate random bucket name and object name prefixed by 's3verify-put'.
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-put")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-put")
-
-	objectData = make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, objectData)
-	if err != nil {
-		return bucketName, objectName, objectData, err
-	}
-	// Create the test bucket.
-	err = s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, objectName, objectData, err
-	}
-	return bucketName, objectName, objectData, nil
 }
 
 // PutObjectVerify - Verify the response matches what is expected.
@@ -132,68 +149,35 @@ func VerifyHeaderPutObject(res *http.Response) error {
 	return nil
 }
 
-//
-func CleanUpPutObject(s3Client minio.Client, bucketName string, objectNames []string) error {
-	if err := cleanUpBucket(s3Client, bucketName, objectNames); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Test a PUT object request with no special headers set.
-func mainPutObjectNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
-	// Spin scanBar
-	scanBar(message)
-	// Generate new test bucket and objectName/data.
-	bucketName, objectName, objectData, err := PutObjectInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up of created Bucket and Object.
-		if errC := CleanUpPutObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+// Test a PUT object request with no special headers set. This adds one object to each of the test buckets.
+func mainPutObjectNoHeader(config ServerConfig, message string) error {
+	// TODO: create tests designed to fail.
+	for _, object := range objects {
+		bucket := testBuckets[0]
+		// Spin scanBar
+		scanBar(message)
+		// PUT each object in each available bucket.
+		// Generate a new PUT object HTTP req.
+		req, err := NewPutObjectReq(config, bucket.Name, object.Key, object.Body)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Generate a new PUT object HTTP req.
-	req, err := NewPutObjectReq(config, bucketName, objectName, objectData)
-	if err != nil {
-		// Attempt a clean up of created Bucket and Object.
-		if errC := CleanUpPutObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up of created Bucket and Object.
-		if errC := CleanUpPutObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Verify the response.
+		if err := PutObjectVerify(res, "200 OK"); err != nil {
+			return err
 		}
-		return err
+		// Spin scanBar
+		scanBar(message)
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response.
-	if err := PutObjectVerify(res, "200 OK"); err != nil {
-		// Attempt a clean up of created Bucket and Object.
-		if errC := CleanUpPutObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-
-	// Clean up after the test
-	if err := CleanUpPutObject(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
 	return nil
 
 }

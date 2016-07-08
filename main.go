@@ -22,7 +22,6 @@ import (
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
-	"github.com/minio/minio-go"
 )
 
 // Global scanBar for all tests to access and update.
@@ -62,18 +61,32 @@ EXAMPLES:
 `
 
 // Define all mainXXX tests to be of this form.
-type APItest func(ServerConfig, minio.Client, string) error
+type APItest func(ServerConfig, string) error
 
 // Slice of all defined tests.
 // When a new API is added for testing make sure to add it here.
 var (
-	allTests = [][]APItest{makeBucketTests, getObjectTests, listBucketsTests, removeBucketTests, headObjectTests, putObjectTests, removeObjectTests}
+	allTests = [][]APItest{
+		makeBucketTests,
+		putObjectTests,
+		headObjectTests,
+		getObjectTests,
+		listBucketsTests,
+		removeObjectTests,
+		removeBucketTests}
 )
 
 // Slice of all defined messages.
 // When a new API is added for testing make sure to add its messages here.
 var (
-	allMessages = [][]string{makeBucketMessages, getObjectMessages, listBucketsMessages, removeBucketMessages, headObjectMessages, putObjectMessages, removeObjectMessages}
+	allMessages = [][]string{
+		makeBucketMessages,
+		putObjectMessages,
+		headObjectMessages,
+		getObjectMessages,
+		listBucketsMessages,
+		removeObjectMessages,
+		removeBucketMessages}
 )
 
 func commandNotFound(ctx *cli.Context, command string) {
@@ -86,7 +99,7 @@ func registerApp() *cli.App {
 	app := cli.NewApp()
 	app.Usage = "Test for Amazon S3 v4 API compatibility."
 	app.Author = "Minio.io"
-	app.Name = "s3verify"
+	//app.Name = "s3verify"
 	app.Flags = append(s3verifyFlags, globalFlags...)
 	app.CustomAppHelpTemplate = s3verifyHelpTemplate // Custom help template defined above.
 	app.CommandNotFound = commandNotFound            // Custom commandNotFound function defined above.
@@ -99,10 +112,6 @@ func callAllAPIs(ctx *cli.Context) {
 	if ctx.GlobalString("access") != "" && ctx.GlobalString("secret") != "" && ctx.GlobalString("url") != "" { // Necessary variables passed, run all tests.
 		numTests := 0
 		config := newServerConfig(ctx)
-		s3Client, err := NewS3Client(config.Endpoint, config.Access, config.Secret)
-		if err != nil {
-			console.Fatalln(err)
-		}
 		for _, APItests := range allTests {
 			numTests += len(APItests)
 		}
@@ -110,14 +119,19 @@ func callAllAPIs(ctx *cli.Context) {
 		for i, APItests := range allTests {
 			for j, test := range APItests {
 				message := fmt.Sprintf("[%d/%d] "+allMessages[i][j], curTest, numTests)
-				if err := test(*config, *s3Client, message); err != nil {
-					console.Fatalln(err)
-				}
-				// Erase the old progress bar.
-				console.Eraseline()
 				padding := messageWidth - len([]rune(message))
-				// Update test as complete.
-				console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+				if err := test(*config, message); err != nil {
+					// Print an error message.
+					console.Eraseline()
+					// TODO: investigate better error message handling.
+					console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
+
+				} else {
+					// Erase the old progress bar.
+					console.Eraseline()
+					// Update test as complete.
+					console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+				}
 				curTest++
 			}
 		}

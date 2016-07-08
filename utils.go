@@ -26,8 +26,6 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/minio/minio-go"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
@@ -89,35 +87,6 @@ func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, e
 		targetURL.Path = "/" + bucketName + "/" + objectName // Use path style requests only.
 	}
 	return targetURL, nil
-}
-
-// NewS3Client - Generate a new client to perform S3
-func NewS3Client(endpoint, access, secret string) (*minio.Client, error) {
-	secure := true // Use HTTPS connection.
-	hostURL, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	s3Client, err := minio.New(hostURL.Host, access, secret, secure)
-	if err != nil {
-		return nil, err
-	}
-	return s3Client, nil
-}
-
-// cleanUpBucket - remove any objects that may be inside a bucket and then remove the now empty bucket.
-func cleanUpBucket(s3Client minio.Client, bucketName string, objectNames []string) error {
-	for _, objectName := range objectNames {
-		err := s3Client.RemoveObject(bucketName, objectName)
-		if err != nil && minio.ToErrorResponse(err).Code != "NoSuchKey" { // Object may not have been created successfully.
-			return err
-		}
-	}
-	err := s3Client.RemoveBucket(bucketName)
-	if err != nil && minio.ToErrorResponse(err).Code != "NoSuchBucket" { // Bucket may not have been created successfully.
-		return err
-	}
-	return nil
 }
 
 // Verify the date field of an HTTP response is formatted with HTTP time format.

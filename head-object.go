@@ -18,16 +18,14 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
@@ -53,36 +51,12 @@ func NewHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http
 	return HeadObjectReq, nil
 }
 
-// HeadObjectInit - Create a test bucket and object to perform the HEAD request on.
-func HeadObjectInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName string, err error) {
-	// Generate random bucket and object names prefixed by s3verify-head.
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-head")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-head")
-
-	// Create random data more than 32K.
-	buf := make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return bucketName, objectName, err
-	}
-	// Create the test bucket and object.
-	err = s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, objectName, err
-	}
-	_, err = s3Client.PutObject(bucketName, objectName, bytes.NewReader(buf), "binary/octet-stream")
-	if err != nil {
-		return bucketName, objectName, err
-	}
-	return bucketName, objectName, nil
-}
-
 // HeadObjectVerify - Verify that the response received matches what is expected.
-func HeadObjectVerify(res *http.Response, expectedStatus string, expectedHeader map[string][]string) error {
+func HeadObjectVerify(res *http.Response, expectedStatus string) error {
 	if err := VerifyStatusHeadObject(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyHeaderHeadObject(res, expectedHeader); err != nil {
+	if err := VerifyHeaderHeadObject(res); err != nil {
 		return err
 	}
 	if err := VerifyBodyHeadObject(res); err != nil {
@@ -114,71 +88,56 @@ func VerifyBodyHeadObject(res *http.Response) error {
 }
 
 // VerifyHeaderHeadObject - Verify that the header received matches what is exepected.
-func VerifyHeaderHeadObject(res *http.Response, expectedHeader map[string][]string) error {
-	// TODO: fill this in.
-	return nil
-}
-
-//
-func CleanUpHeadObject(s3Client minio.Client, bucketName string, objectNames []string) error {
-	if err := cleanUpBucket(s3Client, bucketName, objectNames); err != nil {
+func VerifyHeaderHeadObject(res *http.Response) error {
+	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
+	// TODO: add verification for ETag formation.
 	return nil
 }
 
 // Test the HeadObject API with no header set.
-func mainHeadObjectNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
+func mainHeadObjectNoHeader(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	// Set up new bucket and object to test on.
-	bucketName, objectName, err := HeadObjectInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+	bucket := testBuckets[0]
+	for _, object := range objects {
+		// Create a new HEAD object with no headers.
+		req, err := NewHeadObjectReq(config, bucket.Name, object.Key)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Create a new HEAD object with no headers.
-	req, err := NewHeadObjectReq(config, bucketName, objectName)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
+		// Spin scanBar
+		scanBar(message)
 
-	// Verify the response.
-	if err := HeadObjectVerify(res, "200 OK", nil); err != nil {
-		// Attempt a clean up of the object and bucket.
-		if errC := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Verify the response.
+		if err := HeadObjectVerify(res, "200 OK"); err != nil {
+			return err
 		}
-		return err
+		// If the verification is good then set the ETag, Size, and LastModified.
+		// Remove the odd double quotes from ETag in the beginning and end.
+		ETag := strings.TrimPrefix(res.Header.Get("ETag"), "\"")
+		ETag = strings.TrimSuffix(ETag, "\"")
+		object.ETag = ETag
+		date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
+		if err != nil {
+			return err
+		}
+		object.LastModified = date
+		size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
+		if err != nil {
+			return err
+		}
+		object.Size = size
+		// Spin scanBar
+		scanBar(message)
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Clean up after the test.
-	if err := CleanUpHeadObject(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
+
 	return nil
 }

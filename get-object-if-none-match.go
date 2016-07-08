@@ -18,16 +18,11 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
@@ -47,47 +42,16 @@ func NewGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETa
 	if err != nil {
 		return nil, err
 	}
-	GetObjectIfNoneMatchReq.Header["If-None-Match"] = []string{ETag}
+	GetObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
 	// Add the URL and sign
 	GetObjectIfNoneMatchReq.URL = targetURL
 	GetObjectIfNoneMatchReq = signv4.SignV4(*GetObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
 	return GetObjectIfNoneMatchReq, nil
 }
 
-// GetObjectIfNoneMatchInit - Set up a new bucket and object to perform the request on.
-func GetObjectIfNoneMatchInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName, ETag string, buf []byte, err error) {
-	// Create random bucket and object names prefixed by s3verify-get.
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	ETag = ""
-	// Create random data more than 32K.
-	buf = make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return bucketName, objectName, ETag, buf, err
-	}
-	// Create a test bucket and object.
-	err = s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, objectName, ETag, buf, err
-	}
-	// Upload the random object.
-	_, err = s3Client.PutObject(bucketName, objectName, bytes.NewReader(buf), "binary/octet-stream")
-	if err != nil {
-		return bucketName, objectName, ETag, buf, err
-	}
-	// Gather the ETag of the object.
-	objInfo, err := s3Client.StatObject(bucketName, objectName)
-	if err != nil {
-		return bucketName, objectName, ETag, buf, err
-	}
-	ETag = objInfo.ETag
-	return bucketName, objectName, ETag, buf, err
-}
-
 // GetObjectIfNoneMatchVerify - Verify that the response matches with what is expected.
-func GetObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, expectedHeader map[string]string) error {
-	if err := VerifyHeaderGetObjectIfNoneMatch(res, expectedHeader); err != nil {
+func GetObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatus string) error {
+	if err := VerifyHeaderGetObjectIfNoneMatch(res); err != nil {
 		return err
 	}
 	if err := VerifyStatusGetObjectIfNoneMatch(res, expectedStatus); err != nil {
@@ -100,7 +64,7 @@ func GetObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedS
 }
 
 // VerifyHeaderGetObjectIfNoneMatch - Verify that the header fields of the response match what is expected.
-func VerifyHeaderGetObjectIfNoneMatch(res *http.Response, expectedHeader map[string]string) error {
+func VerifyHeaderGetObjectIfNoneMatch(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
@@ -131,89 +95,54 @@ func VerifyBodyGetObjectIfNoneMatch(res *http.Response, expectedBody []byte) err
 }
 
 // Test the compatibility of the GetObject API when using the If-None-Match header.
-func mainGetObjectIfNoneMatch(config ServerConfig, s3Client minio.Client, message string) error {
+func mainGetObjectIfNoneMatch(config ServerConfig, message string) error {
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-	// Test with If-None-Match Header set.
-	// Spin scanBar
-	scanBar(message)
-	bucketName, objectName, ETag, buf, err := GetObjectIfNoneMatchInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up of created objec and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+	bucket := testBuckets[0]
+	for _, object := range objects {
+		// Test with If-None-Match Header set.
+		// Spin scanBar
+		scanBar(message)
+		// Create new GET object If-None-Match request.
+		req, err := NewGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Create new GET object If-None-Match request.
-	req, err := NewGetObjectIfNoneMatchReq(config, bucketName, objectName, ETag)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Verify the response...these checks do not check the headers yet.
+		if err := GetObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response...these checks do not check the headers yet.
-	if err := GetObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified", nil); err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Create a bad GET object If-None-Match request with invalid ETag.
+		badReq, err := NewGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, invalidETag)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Create a bad GET object If-None-Match request with invalid ETag.
-	badReq, err := NewGetObjectIfNoneMatchReq(config, bucketName, objectName, invalidETag)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		badRes, err := ExecRequest(badReq, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	badRes, err := ExecRequest(badReq, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Verify the response returns the object since ETag != invalidETag
+		if err := GetObjectIfNoneMatchVerify(badRes, object.Body, "200 OK"); err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response returns the object since ETag != invalidETag
-	if err := GetObjectIfNoneMatchVerify(badRes, buf, "200 OK", nil); err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Clean up after the test.
-	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
+		// Spin scanBar
+		scanBar(message)
 	}
 	return nil
 }

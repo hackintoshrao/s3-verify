@@ -18,13 +18,10 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -44,48 +41,17 @@ var GetObjectIfUnModifiedSinceReq = &http.Request{
 }
 
 // NewGetObjectIfUnModifiedSinceReq - Create a new HTTP GET request with the If-Unmodified-Since header set to perform.
-func NewGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName, lastModified string) (*http.Request, error) {
+func NewGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (*http.Request, error) {
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	GetObjectIfUnModifiedSinceReq.Header["If-Unmodified-Since"] = []string{lastModified}
+	GetObjectIfUnModifiedSinceReq.Header.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
 
 	// Fill request URL and sign.
 	GetObjectIfUnModifiedSinceReq.URL = targetURL
 	GetObjectIfUnModifiedSinceReq = signv4.SignV4(*GetObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return GetObjectIfUnModifiedSinceReq, nil
-}
-
-// GetObjectIfUnModifiedSinceInit - Set up a test bucket and object.
-func GetObjectIfUnModifiedSinceInit(s3Client minio.Client, config ServerConfig) (bucketName, objectName, lastModified string, buf []byte, err error) {
-	// Create a new random bucket and object name prefixed by s3verify-get.
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	lastModified = ""
-	// Create random data more than 32K.
-	buf = make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	} // Create the test bucket and object.
-	err = s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	}
-	// Upload the random object.
-	_, err = s3Client.PutObject(bucketName, objectName, bytes.NewReader(buf), "binary/octet-stream")
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	}
-	// Gather the Last-Modified field of the object.
-	objInfo, err := s3Client.StatObject(bucketName, objectName)
-	if err != nil {
-		return bucketName, objectName, lastModified, buf, err
-	}
-	lastModifiedTime := objInfo.LastModified
-	lastModified = lastModifiedTime.Format(http.TimeFormat)
-	return bucketName, objectName, lastModified, buf, err
 }
 
 // VerifyGetObjectIfUnModifiedSince - Verify the response matches what is expected.
@@ -149,92 +115,58 @@ func VerifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
 }
 
 // Test the GET object API with the If-Unmodified-Since header set.
-func mainGetObjectIfUnModifiedSince(config ServerConfig, s3Client minio.Client, message string) error {
+func mainGetObjectIfUnModifiedSince(config ServerConfig, message string) error {
 	// Set up past date.
-	pastDate := "Thu, 01 Jan 1970 00:00:00 GMT"
-	// Spin scanBar
-	scanBar(message)
-	// Set up new bucket and object to GET against.
-	bucketName, objectName, lastModified, buf, err := GetObjectIfUnModifiedSinceInit(s3Client, config)
+	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		return err
+	}
+	bucket := testBuckets[0]
+	for _, object := range objects {
+		// Spin scanBar
+		scanBar(message)
+		// Form a request with a pastDate to make sure the object is not returned.
+		req, err := NewGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, pastDate)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Form a request with a pastDate to make sure the object is not returned.
-	req, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, pastDate)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Verify that the response returns an error.
+		if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify that the response returns an error.
-	if err := VerifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Form a request with a date in the past.
+		curReq, err := NewGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Form a request with a date in the past.
-	curReq, err := NewGetObjectIfUnModifiedSinceReq(config, bucketName, objectName, lastModified)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Execute current request.
+		curRes, err := ExecRequest(curReq, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute current request.
-	curRes, err := ExecRequest(curReq, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Spin scanBar
+		scanBar(message)
+		// Verify that the lastModified date in a request returns the object.
+		if err := VerifyGetObjectIfUnModifiedSince(curRes, object.Body, "200 OK", false); err != nil {
+			return err
 		}
-		return err
+		// Spin scanBar
+		scanBar(message)
+
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify that the lastModified date in a request returns the object.
-	if err := VerifyGetObjectIfUnModifiedSince(curRes, buf, "200 OK", false); err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Clean up after the test.
-	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
 	return nil
 
 }

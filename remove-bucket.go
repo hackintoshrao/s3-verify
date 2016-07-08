@@ -20,11 +20,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
@@ -66,19 +63,6 @@ func RemoveBucketVerify(res *http.Response) error {
 	return nil
 }
 
-// RemoveBucketInit - Set up the RemoveBucket test.
-func RemoveBucketInit(s3Client minio.Client, config ServerConfig) (string, error) {
-	// Create random bucket name.
-	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-rb")
-
-	// Use Minio to create a test bucket.
-	err := s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, err
-	}
-	return bucketName, nil
-}
-
 // TODO: right now only checks for correctly deleted buckets...need to add in checks for 'failed' tests.
 
 // VerifyHeaderRemoveBucket - Check that the responses headers match the expected headers for a given DELETE Bucket request.
@@ -112,64 +96,33 @@ func VerifyStatusRemoveBucket(res *http.Response) error {
 	return nil
 }
 
-//
-func CleanUpRemoveBucket(s3Client minio.Client, bucketName string) error {
-	if err := cleanUpBucket(s3Client, bucketName, nil); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Test the RemoveBucket API when the bucket exists.
-func mainRemoveBucketExists(config ServerConfig, s3Client minio.Client, message string) error {
-	// Spin the scanBar.
-	scanBar(message)
+func mainRemoveBucketExists(config ServerConfig, message string) error {
+	for _, bucket := range testBuckets {
+		// Spin the scanBar
+		scanBar(message)
 
-	bucketName, err := RemoveBucketInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up.
-		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
-			return errC
+		// Generate the new DELETE bucket request.
+		req, err := NewRemoveBucketReq(config, bucket.Name)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
+		// Spin the scanBar
+		scanBar(message)
 
-	// Generate the new DELETE bucket request.
-	req, err := NewRemoveBucketReq(config, bucketName)
-	if err != nil {
-		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
-			return errC
+		// Perform the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
+		// Spin the scanBar
+		scanBar(message)
 
-	// Perform the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
-			return errC
+		if err = RemoveBucketVerify(res); err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
-
-	if err = RemoveBucketVerify(res); err != nil {
-		if errC := CleanUpRemoveBucket(s3Client, bucketName); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin the scanBar
-	scanBar(message)
-
-	if err := CleanUpRemoveBucket(s3Client, bucketName); err != nil {
-		// Bucket should have been successfully removed by the request.
-		return err
+		// Spin the scanBar
+		scanBar(message)
 	}
 	return nil
 }

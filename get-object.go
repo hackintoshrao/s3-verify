@@ -18,25 +18,14 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
-// TODO: add support for additional GET object req. Headers: (Create individual funcs for each case)
-// Range
-// If-Modified-Since
-// If-Unmodified-Since
-// If-Match
-// If-Non-Match
 // GetObjectReq - a new HTTP request for a GET object.
 var GetObjectReq = &http.Request{
 	Header: map[string][]string{
@@ -57,33 +46,6 @@ func NewGetObjectReq(config ServerConfig, bucketName, objectName string) (*http.
 	GetObjectReq.URL = targetURL
 	GetObjectReq = signv4.SignV4(*GetObjectReq, config.Access, config.Secret, config.Region)
 	return GetObjectReq, nil
-}
-
-// TODO: Implement setups for different style of tests. See Above about headers. (individual funcs or switch?)
-// OR can these tests all be run on the same object? Why not...
-
-// GetObjectInit - Setup for a GET object test. NEED TO GIVE BACK A RANGE OF BYTES FOR SECOND TEST AS WELL.
-func GetObjectInit(s3Client minio.Client, config ServerConfig) (bucketName string, objectName string, buf []byte, err error) {
-	// Create random bucket and object names.
-	bucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	objectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-get")
-	// Create random data more than 32K.
-	buf = make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return bucketName, objectName, buf, err
-	}
-	// Create the test bucket and object.
-	err = s3Client.MakeBucket(bucketName, config.Region)
-	if err != nil {
-		return bucketName, objectName, buf, err
-	}
-	// TODO: Do we need to test different content-types?
-	_, err = s3Client.PutObject(bucketName, objectName, bytes.NewReader(buf), "binary/octet-stream")
-	if err != nil {
-		return bucketName, objectName, buf, err
-	}
-	return bucketName, objectName, buf, nil
 }
 
 // TODO: These checks only verify correctly formatted requests. There is no request that is made to fail / check failure yet.
@@ -134,63 +96,34 @@ func VerifyStatusGetObject(res *http.Response, expectedStatus string) error {
 }
 
 // Test a GET object request with no special headers set.
-func mainGetObjectNoHeader(config ServerConfig, s3Client minio.Client, message string) error {
+func mainGetObjectNoHeader(config ServerConfig, message string) error {
 	// TODO: should errors be returned to the top level or printed here.
-	// Spin scanBar
-	scanBar(message)
-	// Set up an new Bucket and Object to GET
-	bucketName, objectName, buf, err := GetObjectInit(s3Client, config)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+	bucket := testBuckets[0]
+	for _, object := range objects {
+		// Spin scanBar
+		scanBar(message)
+		// Create new GET object request.
+		req, err := NewGetObjectReq(config, bucket.Name, object.Key)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
+		// Spin scanBar
+		scanBar(message)
 
-	// Create new GET object request...testing standard.
-	req, err := NewGetObjectReq(config, bucketName, objectName)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Execute the request.
+		res, err := ExecRequest(req, config.Client)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
+		// Spin scanBar
+		scanBar(message)
 
-	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
-	if err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
+		// Verify the response...these checks do not check the header yet.
+		if err := GetObjectVerify(res, object.Body, "200 OK"); err != nil {
+			return err
 		}
-		return err
+		// Spin scanBar
+		scanBar(message)
 	}
-	// Spin scanBar
-	scanBar(message)
-
-	// Verify the response...these checks do not check the header yet.
-	if err := GetObjectVerify(res, buf, "200 OK"); err != nil {
-		// Attempt a clean up of created object and bucket.
-		if errC := CleanUpGetObject(s3Client, bucketName, []string{objectName}); errC != nil {
-			return errC
-		}
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-
-	// Clean up after the test.
-	if err := CleanUpGetObject(s3Client, bucketName, []string{objectName}); err != nil {
-		return err
-	}
-	// Spin scanBar
-	scanBar(message)
-
 	return nil
 }

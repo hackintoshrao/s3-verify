@@ -18,18 +18,13 @@ package main
 
 import (
 	"bytes"
-	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
-	"time"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
@@ -43,11 +38,6 @@ var PutObjectCopyReq = &http.Request{
 	// Body will be set dynamically.
 	// Body:
 	Method: "PUT",
-}
-
-type copyObjectResult struct {
-	ETag         string
-	LastModified string // time string format "2006-01-02T15:04:05.000Z"
 }
 
 // NewPutObjectCopyReq - Create a new HTTP request for PUT object with copy-
@@ -73,37 +63,6 @@ func NewPutObjectCopyReq(config ServerConfig, sourceBucketName, sourceObjectName
 	PutObjectCopyReq = signv4.SignV4(*PutObjectCopyReq, config.Access, config.Secret, config.Region)
 
 	return PutObjectCopyReq, nil
-}
-
-// PutObjectCopyReqInit - Create two test buckets and one object to copy.
-func PutObjectCopyInit(s3Client minio.Client, config ServerConfig) (sourceBucketName, sourceObjectName, destBucketName, destObjectName string, buf []byte, err error) {
-	// Create a random source/dest bucketName and objectName prefixed by 's3verify-copy'.
-	sourceBucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-copy")
-	sourceObjectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-copy")
-	destBucketName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-copy")
-	destObjectName = randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-copy")
-
-	// Create random data more than 32K.
-	buf = make([]byte, rand.Intn(1<<20)+32*1024)
-	_, err = io.ReadFull(crand.Reader, buf)
-	if err != nil {
-		return sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err
-	}
-	// Create the test bucket and object.
-	err = s3Client.MakeBucket(sourceBucketName, config.Region)
-	if err != nil {
-		return sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err
-	}
-	_, err = s3Client.PutObject(sourceBucketName, sourceObjectName, bytes.NewReader(buf), "binary/octet-stream")
-	if err != nil {
-		return sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err
-	}
-	// Create test copy bucket.
-	err = s3Client.MakeBucket(destBucketName, config.Region)
-	if err != nil {
-		return sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err
-	}
-	return sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err
 }
 
 //
@@ -148,40 +107,23 @@ func VerifyStatusPutObjectCopy(res *http.Response, expectedStatus string) error 
 	return nil
 }
 
-func CleanUpCopyObject(s3Client minio.Client, bucketNames, objectNames []string) error {
-	for _, bucketName := range bucketNames {
-		if err := cleanUpBucket(s3Client, bucketName, objectNames); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Test a PUT object request with the copy header set.
-func mainPutObjectCopy(config ServerConfig, s3Client minio.Client, message string) error {
-	// TODO: differentiate errors s3verify, minio-go, failed tests.
+func mainPutObjectCopy(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	// Set up new test buckets and object.
-	sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf, err := PutObjectCopyInit(s3Client, config)
-	bucketNames := []string{sourceBucketName, destBucketName}
-	objectNames := []string{sourceObjectName, destObjectName}
-	if err != nil {
-		// Attempt a clean up of the created object and buckets.
-		if errC := CleanUpCopyObject(s3Client, bucketNames, objectNames); errC != nil {
-			return errC
-		}
-		return err
+	// TODO: create tests designed to fail.
+	sourceBucketName := testBuckets[0].Name
+	destBucketName := testBuckets[1].Name
+	sourceObject := objects[0]
+	destObject := &ObjectInfo{
+		Key: sourceObject.Key,
 	}
+	copyObjects = append(copyObjects, destObject)
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := NewPutObjectCopyReq(config, sourceBucketName, sourceObjectName, destBucketName, destObjectName, buf)
+	req, err := NewPutObjectCopyReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.Body)
 	if err != nil {
-		// Attempt a clean up of the created object and buckets.
-		if errC := CleanUpCopyObject(s3Client, bucketNames, objectNames); errC != nil {
-			return errC
-		}
 		return err
 	}
 	// Spin scanBar
@@ -189,28 +131,15 @@ func mainPutObjectCopy(config ServerConfig, s3Client minio.Client, message strin
 	// Execute the request.
 	res, err := ExecRequest(req, config.Client)
 	if err != nil {
-		// Attempt a clean up of the created object and buckets.
-		if errC := CleanUpCopyObject(s3Client, bucketNames, objectNames); errC != nil {
-			return errC
-		}
 		return err
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err = PutObjectCopyVerify(res, "200 OK"); err != nil {
-		// Attempt a clean up of the created object and buckets.
-		if errC := CleanUpCopyObject(s3Client, bucketNames, objectNames); errC != nil {
-			return errC
-		}
 		return err
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Clean up the test.
-	if err = CleanUpCopyObject(s3Client, bucketNames, objectNames); err != nil {
-		return err
-	}
+
 	// Spin scanBar
 	scanBar(message)
 	return nil
