@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/xml"
 	"fmt"
 	"hash"
 	"io"
@@ -34,6 +35,12 @@ const (
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting into 63 bits.
 )
+
+// xmlDecoder provide decoded value in xml.
+func xmlDecoder(body io.Reader, v interface{}) error {
+	d := xml.NewDecoder(body)
+	return d.Decode(v)
+}
 
 // ExecRequest - Executes an HTTP request creating an HTTP response.
 func ExecRequest(req *http.Request, client *http.Client) (*http.Response, error) {
