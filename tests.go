@@ -78,13 +78,25 @@ var (
 	// When a new test for PutObject is added make sure its message is added here.
 	putObjectMessages = []string{
 		"PutObject (No Header):",
-		"PutObject (Copy):",
 	}
 	// Declare all tests run for the PutObject API.
 	// When a new test for PutObject is added make sure its added here.
 	putObjectTests = []APItest{
 		mainPutObjectNoHeader,
+	}
+
+	// Messages to be printed during the CopyObject tests.
+	// When a new test for CopyObject is added make sure its message is added here.
+	copyObjectMessages = []string{
+		"PutObject (Copy):",
+		"PutObject (Copy-If-Match):",
+	}
+
+	// Declare all tests run for the CopyObject API.
+	// When a new test for CopyObject is added make sure its added here.
+	copyObjectTests = []APItest{
 		mainPutObjectCopy,
+		mainPutObjectCopyIfMatch,
 	}
 
 	// Messages to be printed during the RemoveBucket tests.
