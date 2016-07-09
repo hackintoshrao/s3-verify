@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
@@ -31,12 +30,8 @@ import (
 var PutObjectCopyReq = &http.Request{
 	Header: map[string][]string{
 	// X-Amz-Content-Sha256 will be set dynamically.
-	// Content-MD5 will be set dynamically.
-	// Content-Length will be set dynamically.
 	// x-amz-copy-source will be set dynamically.
 	},
-	// Body will be set dynamically.
-	// Body:
 	Method: "PUT",
 }
 
@@ -51,12 +46,12 @@ func NewPutObjectCopyReq(config ServerConfig, sourceBucketName, sourceObjectName
 
 	// Compute md5Sum and sha256Sum from the input data.
 	reader := bytes.NewReader(objectData)
-	md5Sum, sha256Sum, _, err := computeHash(reader)
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return nil, err
 	}
 	// Fill request headers.
-	PutObjectCopyReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
+	// Content-MD5 should never be set for CopyObject API.
 	PutObjectCopyReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	PutObjectCopyReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 
@@ -115,6 +110,8 @@ func mainPutObjectCopy(config ServerConfig, message string) error {
 	sourceBucketName := testBuckets[0].Name
 	destBucketName := testBuckets[1].Name
 	sourceObject := objects[0]
+	// Copy object copies data on the server, there is no thing to be set for the body.
+	body := []byte("")
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key,
 	}
@@ -122,7 +119,7 @@ func mainPutObjectCopy(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := NewPutObjectCopyReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.Body)
+	req, err := NewPutObjectCopyReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, body)
 	if err != nil {
 		return err
 	}

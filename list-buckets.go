@@ -41,7 +41,7 @@ var ListBucketsReq = &http.Request{
 func NewListBucketsReq(config ServerConfig) (*http.Request, error) {
 	// Set the GET req URL.
 	// ListBuckets / GET Service is always run through https://s3.amazonaws.com and subsequently us-east-1.
-	targetURL, err := makeTargetURL("https://s3.amazonaws.com", "", "", "us-east-1")
+	targetURL, err := makeTargetURL(config.Endpoint, "", "", config.Region)
 	if err != nil {
 		return nil, err
 	}

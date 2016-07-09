@@ -18,14 +18,12 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
-	"strconv"
 
 	"github.com/minio/s3verify/signv4"
 )
@@ -33,8 +31,6 @@ import (
 var PutObjectCopyIfMatchReq = &http.Request{
 	Header: map[string][]string{
 	// X-Amz-Content-Sha256 will be set dynamically.
-	// Content-MD5 will be set dynamically.
-	// Content-Length will be set dynamically.
 	// x-amz-copy-source will be set dynamically.
 	// x-amz-copy-source-if-match will be set dynamically.
 	},
@@ -50,14 +46,14 @@ func NewPutObjectCopyIfMatchReq(config ServerConfig, sourceBucketName, sourceObj
 	PutObjectCopyIfMatchReq.URL = targetURL
 	// Compute the md5sum and sha256sum from the data to be uploaded.
 	reader := bytes.NewReader(objectData)
-	md5Sum, sha256Sum, contentLength, err := computeHash(reader)
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return nil, err
 	}
 	// Fill in the request header.
 	PutObjectCopyIfMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	PutObjectCopyIfMatchReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
-	PutObjectCopyIfMatchReq.Header.Set("Content-Length", strconv.FormatInt(contentLength, 10))
+	// Content-MD5 should not be set for CopyObject request.
+	// Content-Length should not be set for CopyObject request.
 	PutObjectCopyIfMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	PutObjectCopyIfMatchReq.Header.Set("x-amz-copy-source-if-match", ETag)
 
@@ -134,6 +130,8 @@ func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
 	sourceBucketName := testBuckets[0].Name
 	destBucketName := testBuckets[1].Name
 	sourceObject := objects[0]
+	// Copy object copies data on the server, there is no thing to be set for the body.
+	body := []byte("")
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-match",
 	}
@@ -145,7 +143,7 @@ func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new valid PUT object copy request.
-	req, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag, sourceObject.Body)
+	req, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag, body)
 	if err != nil {
 		return err
 	}
@@ -160,7 +158,7 @@ func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
 	}
 
 	// Create a new invalid PUT object copy request.
-	badReq, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag, sourceObject.Body)
+	badReq, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag, body)
 	if err != nil {
 		return err
 	}
