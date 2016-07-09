@@ -14,17 +14,21 @@ Currently s3verify is only available to be downloaded from source.
 ## APIs
 Currently S3 Verify is under heavy development and is subject to breaking changes. Currently we support five different API checks:
 * PUT Bucket (makebucket)
-* GET Service (listbuckets)
-* DELETE Bucket (removebucket)
-* GET Object (getobject)
+* PUT Object (putobject)
 * HEAD Object (headobject)
+* COPY Object (copyobject)
+* GET Object (getobject)
+* GET Service (listbuckets)
+* DELETE Object (removeobject)
+* DELETE Bucket (removebucket)
 
 We look forward to adding support for all standard AWS APIs for both Bucket and Object based operations.
 
 ## CLI USAGE
-Currently s3verify supports two different working modes. If s3verify is run with no commands, but is correctly set up with environment variables or flags it will test all currently supported APIs. Otherwise s3verify can run one API test at a time, with all required environment variables or flags set.
+Currently s3verify supports only one method of running. When s3verify is supplied with acceptable flags or environment variables it will run all API tests one after another.
+
 ```
-$ s3verify [COMMAND...] [FLAGS]
+$ s3verify [FLAGS]
 ```
 
 ### Flags
@@ -35,18 +39,12 @@ $ s3verify [COMMAND...] [FLAGS]
     --secretkey -s      Allows user to input their AWS secret access key.
     --url       -u      Allows user to input the host URL of the server they wish to test.
     --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' with
-                        AWS servers or automatic cleanup of test buckets and objects will fail. If tests are being run on 
-                        Minio server region must be set to 'us-east-1'
+                        AWS servers or automatic cleanup of test buckets and objects will fail. Defaults to 'us-west-1'.
     --debug     -d      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
 ```
 
 ## EXAMPLES
-Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to the MakeBucket, RemoveBucket, ListBuckets, HeadObject and GetObject APIs.
+Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to the MakeBucket, PutObject, RemoveBucket, ListBuckets, HeadObject and GetObject APIs.
 ```
 $ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io
 ```
-Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to only the listbuckets API. 
-```
-$ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io listbuckets
-```
-
