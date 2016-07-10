@@ -90,6 +90,7 @@ var (
 	copyObjectMessages = []string{
 		"PutObject (Copy):",
 		"PutObject (Copy-If-Match):",
+		"PutObject (Copy-If-None-Match):",
 	}
 
 	// Declare all tests run for the CopyObject API.
@@ -97,6 +98,7 @@ var (
 	copyObjectTests = []APItest{
 		mainPutObjectCopy,
 		mainPutObjectCopyIfMatch,
+		mainCopyObjectIfNoneMatch,
 	}
 
 	// Messages to be printed during the RemoveBucket tests.
