@@ -47,7 +47,7 @@ func NewListBucketsReq(config ServerConfig) (*http.Request, error) {
 	}
 	ListBucketsReq.URL = targetURL
 	// Sign the necessary headers.
-	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, "us-east-1")
+	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, config.Region)
 	return ListBucketsReq, nil
 }
 
