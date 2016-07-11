@@ -27,48 +27,47 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-// ListBucketsReq - hardcode the static portions of a new List buckets request.
-var ListBucketsReq = &http.Request{
-	Header: map[string][]string{
-		// Set Content SHA with empty body for GET requests because no data is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-	},
-	Body:   nil, // There is no body for GET requests.
-	Method: "GET",
-}
-
-// NewListBucketsReq - Create a new List Buckets request.
-func NewListBucketsReq(config ServerConfig) (*http.Request, error) {
+// newListBucketsReq - Create a new List Buckets request.
+func newListBucketsReq(config ServerConfig) (*http.Request, error) {
+	// listBucketsReq - a new HTTP request to list all buckets.
+	var listBucketsReq = &http.Request{
+		Header: map[string][]string{
+			// Set Content SHA with empty body for GET requests because no data is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Body:   nil, // There is no body for GET requests.
+		Method: "GET",
+	}
 	// Set the GET req URL.
 	// ListBuckets / GET Service is always run through https://s3.amazonaws.com and subsequently us-east-1.
 	targetURL, err := makeTargetURL(config.Endpoint, "", "", config.Region)
 	if err != nil {
 		return nil, err
 	}
-	ListBucketsReq.URL = targetURL
+	listBucketsReq.URL = targetURL
 	// Sign the necessary headers.
-	ListBucketsReq = signv4.SignV4(*ListBucketsReq, config.Access, config.Secret, config.Region)
-	return ListBucketsReq, nil
+	listBucketsReq = signv4.SignV4(*listBucketsReq, config.Access, config.Secret, config.Region)
+	return listBucketsReq, nil
 }
 
 // TODO: these checks only verify correctly corrected buckets for now. There is no test made to fail / check failure yet.
 
-// ListBucketsVerify - Check for S3 Compatibility in the response Status, Body, and Header
-func ListBucketsVerify(res *http.Response, expected *listAllMyBucketsResult) error {
-	if err := VerifyStatusListBuckets(res); err != nil {
+// listBucketsVerify - Check for S3 Compatibility in the response Status, Body, and Header
+func listBucketsVerify(res *http.Response, expected *listAllMyBucketsResult) error {
+	if err := verifyStatusListBuckets(res); err != nil {
 		return err
 	}
-	if err := VerifyBodyListBuckets(res, expected); err != nil {
+	if err := verifyBodyListBuckets(res, expected); err != nil {
 		return err
 	}
-	if err := VerifyHeaderListBuckets(res); err != nil {
+	if err := verifyHeaderListBuckets(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusListBuckets - Verify that the test was successful.
-func VerifyStatusListBuckets(res *http.Response) error {
+// verifyStatusListBuckets - Verify that the test was successful.
+func verifyStatusListBuckets(res *http.Response) error {
 	if res.StatusCode != http.StatusOK {
 		err := fmt.Errorf("Unexpected Response Status Code: %v", res.StatusCode)
 		return err
@@ -76,8 +75,8 @@ func VerifyStatusListBuckets(res *http.Response) error {
 	return nil
 }
 
-// VerifyHeaderListBuckets - Verify that the headers returned match what is expected.
-func VerifyHeaderListBuckets(res *http.Response) error {
+// verifyHeaderListBuckets - Verify that the headers returned match what is expected.
+func verifyHeaderListBuckets(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
@@ -93,8 +92,8 @@ func isIn(s string, buckets []BucketInfo) (int, bool) {
 	return -1, false
 }
 
-// VerifyBodyListBuckets - Verify that the body of the response matches with what is expected.
-func VerifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult) error {
+// verifyBodyListBuckets - Verify that the body of the response matches with what is expected.
+func verifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult) error {
 	// Extract body from the HTTP response.
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -147,7 +146,7 @@ func mainListBucketsExist(config ServerConfig, message string) error {
 	}
 
 	// Generate new List Buckets request.
-	req, err := NewListBucketsReq(config)
+	req, err := newListBucketsReq(config)
 	if err != nil {
 		return err
 	}
@@ -155,7 +154,7 @@ func mainListBucketsExist(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Generate the server response.
-	res, err := ExecRequest(req, config.Client)
+	res, err := execRequest(req, config.Client)
 	if err != nil {
 		return err
 	}
@@ -163,7 +162,7 @@ func mainListBucketsExist(config ServerConfig, message string) error {
 	scanBar(message)
 
 	// Check for S3 Compatibility
-	if err := ListBucketsVerify(res, expected); err != nil {
+	if err := listBucketsVerify(res, expected); err != nil {
 		return err
 	}
 	// Spin the scanBar

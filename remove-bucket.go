@@ -21,45 +21,43 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/minio/s3verify/signv4"
 )
 
-// RemoveBucketReq is a new DELETE bucket request.
-var RemoveBucketReq = &http.Request{
-	Header: map[string][]string{
-		// Set Content SHA with empty body for GET / DELETE requests because no data is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-	},
-	Method: "DELETE",
-	Body:   nil, // There is no body for GET / DELETE requests.
-}
+// newRemoveBucketReq - Fill in the dynamic fields of a DELETE request here.
+func newRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+	// removeBucketReq is a new DELETE bucket request.
+	var removeBucketReq = &http.Request{
+		Header: map[string][]string{
+			// Set Content SHA with empty body for GET / DELETE requests because no data is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Method: "DELETE",
+		Body:   nil, // There is no body for GET / DELETE requests.
+	}
 
-// NewRemoveBucketReq - Fill in the dynamic fields of a DELETE request here.
-func NewRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
 	// Set the DELETE req URL.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
 	if err != nil {
 		return nil, err
 	}
-	RemoveBucketReq.URL = targetURL
+	removeBucketReq.URL = targetURL
 	// Sign the necessary headers.
-	RemoveBucketReq = signv4.SignV4(*RemoveBucketReq, config.Access, config.Secret, config.Region)
-
-	return RemoveBucketReq, nil
+	removeBucketReq = signv4.SignV4(*removeBucketReq, config.Access, config.Secret, config.Region)
+	return removeBucketReq, nil
 }
 
-// RemoveBucketVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
-func RemoveBucketVerify(res *http.Response, expectedStatus string, errorResponse ErrorResponse) error {
-	if err := VerifyHeaderRemoveBucket(res); err != nil {
+// removeBucketVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
+func removeBucketVerify(res *http.Response, expectedStatus string, errorResponse ErrorResponse) error {
+	if err := verifyHeaderRemoveBucket(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusRemoveBucket(res, expectedStatus); err != nil {
+	if err := verifyStatusRemoveBucket(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyBodyRemoveBucket(res, errorResponse); err != nil {
+	if err := verifyBodyRemoveBucket(res, errorResponse); err != nil {
 		return err
 	}
 	return nil
@@ -67,17 +65,17 @@ func RemoveBucketVerify(res *http.Response, expectedStatus string, errorResponse
 
 // TODO: right now only checks for correctly deleted buckets...need to add in checks for 'failed' tests.
 
-// VerifyHeaderRemoveBucket - Check that the responses headers match the expected headers for a given DELETE Bucket request.
-func VerifyHeaderRemoveBucket(res *http.Response) error {
+// verifyHeaderRemoveBucket - Check that the responses headers match the expected headers for a given DELETE Bucket request.
+func verifyHeaderRemoveBucket(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyBodyRemoveBucket - Check that the body of the response matches the expected body for a given DELETE Bucket request.
-func VerifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) error {
-	if !reflect.DeepEqual(expectedError, ErrorResponse{}) {
+// verifyBodyRemoveBucket - Check that the body of the response matches the expected body for a given DELETE Bucket request.
+func verifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) error {
+	if expectedError.Message != "" { // Error is expected.
 		errResponse := ErrorResponse{}
 		err := xmlDecoder(res.Body, &errResponse)
 		if err != nil {
@@ -91,8 +89,8 @@ func VerifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) err
 	return nil
 }
 
-// VerifyStatusRemoveBucket - Check that the status of the response matches the expected status for a given DELETE Bucket request.
-func VerifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
+// verifyStatusRemoveBucket - Check that the status of the response matches the expected status for a given DELETE Bucket request.
+func verifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus { // Successful DELETE request will result in 204 No Content.
 		err := fmt.Errorf("Unexpected Status: wanted %v, got %v", expectedStatus, res.StatusCode)
 		return err
@@ -107,7 +105,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Generate the new DELETE bucket request.
-		req, err := NewRemoveBucketReq(config, bucket.Name)
+		req, err := newRemoveBucketReq(config, bucket.Name)
 		if err != nil {
 			return err
 		}
@@ -115,14 +113,14 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Perform the request.
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin the scanBar
 		scanBar(message)
 
-		if err = RemoveBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
+		if err = removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
 			return err
 		}
 		// Spin the scanBar
@@ -131,7 +129,7 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 	return nil
 }
 
-// Test the RemoveBucket API when the bucket exists.
+// Test the RemoveBucket API when the bucket does not exist.
 func mainRemoveBucketDNE(config ServerConfig, message string) error {
 	// Generate a random bucketName.
 	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "")
@@ -145,20 +143,20 @@ func mainRemoveBucketDNE(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Generate a new DELETE bucket request for a bucket that does not exist.
-	req, err := NewRemoveBucketReq(config, bucketName)
+	req, err := newRemoveBucketReq(config, bucketName)
 	if err != nil {
 		return err
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := ExecRequest(req, config.Client)
+	res, err := execRequest(req, config.Client)
 	if err != nil {
 		return err
 	}
 	// Spin scanBar
 	scanBar(message)
-	if err = RemoveBucketVerify(res, "404 Not Found", errResponse); err != nil {
+	if err = removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
 		return err
 	}
 	// Spin scanBar

@@ -20,7 +20,7 @@ var (
 	// Messages printed during the running of the GetObject tests.
 	// When a new test for GetObject is added make sure it is added here.
 	getObjectMessages = []string{
-		"GetObject (No Header):",
+		"GetObject:",
 		"GetObject (Range):",
 		"GetObject (If-Match):",
 		"GetObject (If-None-Match):",
@@ -31,7 +31,7 @@ var (
 	// Declare all tests run for the GetObject API.
 	// When a new test for GetObject is added make sure its added here.
 	getObjectTests = []APItest{
-		mainGetObjectNoHeader,
+		mainGetObject,
 		mainGetObjectRange,
 		mainGetObjectIfMatch,
 		mainGetObjectIfNoneMatch,
@@ -48,12 +48,12 @@ var (
 	// Declare all tests run for the HeadObject API.
 	// When a new test for HeadObject is added make sure its added here.
 	headObjectTests = []APItest{
-		mainHeadObjectNoHeader,
+		mainHeadObject,
 	}
 	// Messages printed during the running of the ListBuckets tests.
 	// When a new test for ListBuckets is added make sure its message is added here.
 	listBucketsMessages = []string{
-		"ListBuckets (No Params):",
+		"ListBuckets:",
 	}
 
 	// Declare all tests run for the ListBuckets API.
@@ -62,43 +62,41 @@ var (
 		mainListBucketsExist,
 	}
 
-	// Messages printed during the running of the MakeBucket tests.
-	// When a new test for MakeBucket is added make sure to add its message here.
-	makeBucketMessages = []string{
+	// Messages printed during the running of the PutBucket tests.
+	// When a new test for PutBucket is added make sure to add its message here.
+	putBucketMessages = []string{
 		"MakeBucket (Bucket DNE):",
 	}
 
-	// Declare all tests run for the MakeBucket API.
-	// When a new test for MakeBucket is added make sure its added here.
-	makeBucketTests = []APItest{
-		mainMakeBucketNoHeader,
+	// Declare all tests run for the PutBucket API.
+	// When a new test for PutBucket is added make sure its added here.
+	putBucketTests = []APItest{
+		mainPutBucket,
 	}
 
 	// Messages to be printed during the PutObject tests.
 	// When a new test for PutObject is added make sure its message is added here.
 	putObjectMessages = []string{
-		"PutObject (No Header):",
+		"PutObject:",
 	}
 	// Declare all tests run for the PutObject API.
 	// When a new test for PutObject is added make sure its added here.
 	putObjectTests = []APItest{
-		mainPutObjectNoHeader,
+		mainPutObject,
 	}
 
 	// Messages to be printed during the CopyObject tests.
 	// When a new test for CopyObject is added make sure its message is added here.
 	copyObjectMessages = []string{
-		"PutObject (Copy):",
-		"PutObject (Copy-If-Match):",
-		"PutObject (Copy-If-None-Match):",
+		"CopyObject:",
+		"CopyObject (If-Match):",
 	}
 
 	// Declare all tests run for the CopyObject API.
 	// When a new test for CopyObject is added make sure its added here.
 	copyObjectTests = []APItest{
-		mainPutObjectCopy,
-		mainPutObjectCopyIfMatch,
-		mainCopyObjectIfNoneMatch,
+		mainCopyObject,
+		mainCopyObjectIfMatch,
 	}
 
 	// Messages to be printed during the RemoveBucket tests.

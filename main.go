@@ -67,7 +67,7 @@ type APItest func(ServerConfig, string) error
 // When a new API is added for testing make sure to add it here.
 var (
 	allTests = [][]APItest{
-		makeBucketTests,
+		putBucketTests,
 		putObjectTests,
 		headObjectTests,
 		copyObjectTests,
@@ -81,7 +81,7 @@ var (
 // When a new API is added for testing make sure to add its messages here.
 var (
 	allMessages = [][]string{
-		makeBucketMessages,
+		putBucketMessages,
 		putObjectMessages,
 		headObjectMessages,
 		copyObjectMessages,

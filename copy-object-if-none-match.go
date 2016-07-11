@@ -26,53 +26,52 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var CopyObjectIfNoneMatchReq = &http.Request{
-	Header: map[string][]string{
-	// X-Amz-Content-Sha256 will be set dynamically.
-	// x-amz-copy-source will be set dynamically.
-	// x-amz-copy-source-if-match will be set dynamically.
-	},
-	Method: "PUT",
-}
-
-// NewPutObjectCopyIfNoneMatchReq - Create a new HTTP request for a CopyObject with the if-none-match header set.
-func NewCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string, objectData []byte) (*http.Request, error) {
+// newPutObjectCopyIfNoneMatchReq - Create a new HTTP request for a CopyObject with the if-none-match header set.
+func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (*http.Request, error) {
+	var copyObjectIfNoneMatchReq = &http.Request{
+		Header: map[string][]string{
+		// X-Amz-Content-Sha256 will be set dynamically.
+		// x-amz-copy-source will be set dynamically.
+		// x-amz-copy-source-if-match will be set dynamically.
+		},
+		Method: "PUT",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	CopyObjectIfNoneMatchReq.URL = targetURL
-	// Compute the md5sum and sha256sum from the data to be uploaded.
-	reader := bytes.NewReader(objectData)
+	copyObjectIfNoneMatchReq.URL = targetURL
+	// Body will be calculated by the server so no body needs to be sent in the request.
+	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return nil, err
 	}
 	// Fill in the request header.
-	CopyObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	CopyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	CopyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source-if-none-match", ETag)
+	copyObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source-if-none-match", ETag)
 
-	CopyObjectIfNoneMatchReq = signv4.SignV4(*CopyObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
-	return CopyObjectIfNoneMatchReq, nil
+	copyObjectIfNoneMatchReq = signv4.SignV4(*copyObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
+	return copyObjectIfNoneMatchReq, nil
 }
 
 // Verify that the response returned matches what is expected.
-func CopyObjectIfNoneMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := VerifyStatusCopyObjectIfNoneMatch(res, expectedStatus); err != nil {
+func copyObjectIfNoneMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
+	if err := verifyStatusCopyObjectIfNoneMatch(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyHeaderCopyObjectIfNoneMatch(res); err != nil {
+	if err := verifyHeaderCopyObjectIfNoneMatch(res); err != nil {
 		return err
 	}
-	if err := VerifyBodyCopyObjectIfNoneMatch(res, expectedError); err != nil {
+	if err := verifyBodyCopyObjectIfNoneMatch(res, expectedError); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusCopyIfNoneMatch - Verify that the response status matches what is expected.
-func VerifyStatusCopyObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
+// verifyStatusCopyIfNoneMatch - Verify that the response status matches what is expected.
+func verifyStatusCopyObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -80,8 +79,8 @@ func VerifyStatusCopyObjectIfNoneMatch(res *http.Response, expectedStatus string
 	return nil
 }
 
-// VerifyBodyCopyIfNoneMatch - Verify the body returned matches what is expected.
-func VerifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResponse) error {
+// verifyBodyCopyIfNoneMatch - Verify the body returned matches what is expected.
+func verifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResponse) error {
 	if expectedError.Message != "" { // Error is expected.
 		errResponse := ErrorResponse{}
 		if err := xmlDecoder(res.Body, &errResponse); err != nil {
@@ -101,8 +100,8 @@ func VerifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResp
 	}
 }
 
-// VerifyHeaderCopyIfNoneMatch - Verify that the header returned matches what is expected.
-func VerifyHeaderCopyObjectIfNoneMatch(res *http.Response) error {
+// verifyHeaderCopyIfNoneMatch - Verify that the header returned matches what is expected.
+func verifyHeaderCopyObjectIfNoneMatch(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
@@ -128,34 +127,32 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, message string) error {
 		Code:    "PreconditionFailed",
 		Message: "At least one of the pre-conditions you specified did not hold",
 	}
-	// Copy object copies data on the server, there is nothing to be set in the body.
-	body := []byte("")
 	// Create a successful copy request.
-	req, err := NewCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, goodETag, body)
+	req, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, goodETag)
 	if err != nil {
 		return err
 	}
 	// Execute the response.
-	res, err := ExecRequest(req, config.Client)
+	res, err := execRequest(req, config.Client)
 	if err != nil {
 		return err
 	}
 	// Verify the response.
-	if err = CopyObjectIfNoneMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
+	if err = copyObjectIfNoneMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
 		return err
 	}
 	// Create a bad copy request.
-	badReq, err := NewCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag, body)
+	badReq, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
 		return err
 	}
 	// Execute the response.
-	badRes, err := ExecRequest(badReq, config.Client)
+	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
 		return err
 	}
 	// Verify the response errors out as it should.
-	if err = CopyObjectIfNoneMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
+	if err = copyObjectIfNoneMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
 		return err
 	}
 	return nil

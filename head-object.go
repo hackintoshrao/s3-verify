@@ -29,44 +29,43 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-// HeadObjectReq - an HTTP request for HEAD with no headers set.
-var HeadObjectReq = &http.Request{
-	Header: map[string][]string{
-		// Set Content SHA with an empty for HEAD requests because no data is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-	},
-	Body:   nil, // No body is sent with HEAD requests.
-	Method: "HEAD",
-}
-
-// NewHeadObjectReq - Create a new HTTP request for a HEAD object.
-func NewHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+// newHeadObjectReq - Create a new HTTP request for a HEAD object.
+func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+	// headObjectReq - an HTTP request for HEAD with no headers set.
+	var headObjectReq = &http.Request{
+		Header: map[string][]string{
+			// Set Content SHA with an empty for HEAD requests because no data is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Body:   nil, // No body is sent with HEAD requests.
+		Method: "HEAD",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
 	// Fill request URL and sign.
-	HeadObjectReq.URL = targetURL
-	HeadObjectReq = signv4.SignV4(*HeadObjectReq, config.Access, config.Secret, config.Region)
-	return HeadObjectReq, nil
+	headObjectReq.URL = targetURL
+	headObjectReq = signv4.SignV4(*headObjectReq, config.Access, config.Secret, config.Region)
+	return headObjectReq, nil
 }
 
-// HeadObjectVerify - Verify that the response received matches what is expected.
-func HeadObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := VerifyStatusHeadObject(res, expectedStatus); err != nil {
+// headObjectVerify - Verify that the response received matches what is expected.
+func headObjectVerify(res *http.Response, expectedStatus string) error {
+	if err := verifyStatusHeadObject(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyHeaderHeadObject(res); err != nil {
+	if err := verifyHeaderHeadObject(res); err != nil {
 		return err
 	}
-	if err := VerifyBodyHeadObject(res); err != nil {
+	if err := verifyBodyHeadObject(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusHeadObject - Verify that the status received matches what is expected.
-func VerifyStatusHeadObject(res *http.Response, expectedStatus string) error {
+// verifyStatusHeadObject - Verify that the status received matches what is expected.
+func verifyStatusHeadObject(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -74,8 +73,8 @@ func VerifyStatusHeadObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
-// VerifyBodyHeadObject - Verify that the body recieved is empty.
-func VerifyBodyHeadObject(res *http.Response) error {
+// verifyBodyHeadObject - Verify that the body recieved is empty.
+func verifyBodyHeadObject(res *http.Response) error {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -87,8 +86,8 @@ func VerifyBodyHeadObject(res *http.Response) error {
 	return nil
 }
 
-// VerifyHeaderHeadObject - Verify that the header received matches what is exepected.
-func VerifyHeaderHeadObject(res *http.Response) error {
+// verifyHeaderHeadObject - Verify that the header received matches what is exepected.
+func verifyHeaderHeadObject(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
@@ -97,19 +96,19 @@ func VerifyHeaderHeadObject(res *http.Response) error {
 }
 
 // Test the HeadObject API with no header set.
-func mainHeadObjectNoHeader(config ServerConfig, message string) error {
+func mainHeadObject(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	bucket := testBuckets[0]
 	for _, object := range objects {
 		// Create a new HEAD object with no headers.
-		req, err := NewHeadObjectReq(config, bucket.Name, object.Key)
+		req, err := newHeadObjectReq(config, bucket.Name, object.Key)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
@@ -117,7 +116,7 @@ func mainHeadObjectNoHeader(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Verify the response.
-		if err := HeadObjectVerify(res, "200 OK"); err != nil {
+		if err := headObjectVerify(res, "200 OK"); err != nil {
 			return err
 		}
 		// If the verification is good then set the ETag, Size, and LastModified.
@@ -138,6 +137,5 @@ func mainHeadObjectNoHeader(config ServerConfig, message string) error {
 		// Spin scanBar
 		scanBar(message)
 	}
-
 	return nil
 }

@@ -26,45 +26,43 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var RemoveObjectReq = &http.Request{
-	Header: map[string][]string{
-		// Set Content SHA with empty body for DELETE requests because no data is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-	},
-	Body:   nil, // There is no body for DELETE requests.
-	Method: "DELETE",
-}
-
-// NewRemoveObjectReq - Create a new DELETE object HTTP request.
-func NewRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+// newRemoveObjectReq - Create a new DELETE object HTTP request.
+func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+	var removeObjectReq = &http.Request{
+		Header: map[string][]string{
+			// Set Content SHA with empty body for DELETE requests because no data is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Body:   nil, // There is no body for DELETE requests.
+		Method: "DELETE",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	RemoveObjectReq.URL = targetURL
-
-	RemoveObjectReq = signv4.SignV4(*RemoveObjectReq, config.Access, config.Secret, config.Region)
-	return RemoveObjectReq, nil
+	removeObjectReq.URL = targetURL
+	removeObjectReq = signv4.SignV4(*removeObjectReq, config.Access, config.Secret, config.Region)
+	return removeObjectReq, nil
 }
 
-// RemoveObjectVerify - Verify that the response returned matches what is expected.
-func RemoveObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := VerifyHeaderRemoveObject(res); err != nil {
+// removeObjectVerify - Verify that the response returned matches what is expected.
+func removeObjectVerify(res *http.Response, expectedStatus string) error {
+	if err := verifyHeaderRemoveObject(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyHeaderRemoveObject - Verify that header returned matches what is expected.
-func VerifyHeaderRemoveObject(res *http.Response) error {
+// verifyHeaderRemoveObject - Verify that header returned matches what is expected.
+func verifyHeaderRemoveObject(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyBodyRemoveObject - Verify that the body returned is empty.
-func VerifyBodyRemoveObject(res *http.Response) error {
+// verifyBodyRemoveObject - Verify that the body returned is empty.
+func verifyBodyRemoveObject(res *http.Response) error {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -76,8 +74,8 @@ func VerifyBodyRemoveObject(res *http.Response) error {
 	return nil
 }
 
-// VerifyStatusRemoveObject - Verify that the status returned matches what is expected.
-func VerifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
+// verifyStatusRemoveObject - Verify that the status returned matches what is expected.
+func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -91,21 +89,21 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			// Spin scanBar
 			scanBar(message)
 			// Create a new request.
-			req, err := NewRemoveObjectReq(config, bucket.Name, object.Key)
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
 				return err
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
-			res, err := ExecRequest(req, config.Client)
+			res, err := execRequest(req, config.Client)
 			if err != nil {
 				return err
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
-			if err := RemoveObjectVerify(res, "200 OK"); err != nil {
+			if err := removeObjectVerify(res, "200 OK"); err != nil {
 				return err
 			}
 			// Spin scanBar
@@ -115,21 +113,21 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			// Spin scanBar
 			scanBar(message)
 			// Create a new request.
-			req, err := NewRemoveObjectReq(config, bucket.Name, object.Key)
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
 				return err
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
-			res, err := ExecRequest(req, config.Client)
+			res, err := execRequest(req, config.Client)
 			if err != nil {
 				return err
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
-			if err := RemoveObjectVerify(res, "200 OK"); err != nil {
+			if err := removeObjectVerify(res, "200 OK"); err != nil {
 				return err
 			}
 			// Spin scanBar
@@ -137,5 +135,4 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 		}
 	}
 	return nil
-
 }

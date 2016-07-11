@@ -26,53 +26,51 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var GetObjectIfNoneMatchReq = &http.Request{
-	Header: map[string][]string{
-		// Set the Content SHA with empty body for GET requests because nothing is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		"If-None-Match":        {""}, // To be filled by the request.
-	},
-	Body:   nil, // There is no body for GET requests
-	Method: "GET",
-}
-
-// NewGetObjectIfNoneMatchReq - Create a new HTTP request to perform.
-func NewGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
+// newGetObjectIfNoneMatchReq - Create a new HTTP request to perform.
+func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
+	var getObjectIfNoneMatchReq = &http.Request{
+		Header: map[string][]string{
+			// Set the Content SHA with empty body for GET requests because nothing is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Body:   nil, // There is no body for GET requests
+		Method: "GET",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	GetObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
+	getObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
 	// Add the URL and sign
-	GetObjectIfNoneMatchReq.URL = targetURL
-	GetObjectIfNoneMatchReq = signv4.SignV4(*GetObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
-	return GetObjectIfNoneMatchReq, nil
+	getObjectIfNoneMatchReq.URL = targetURL
+	getObjectIfNoneMatchReq = signv4.SignV4(*getObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
+	return getObjectIfNoneMatchReq, nil
 }
 
-// GetObjectIfNoneMatchVerify - Verify that the response matches with what is expected.
-func GetObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatus string) error {
-	if err := VerifyHeaderGetObjectIfNoneMatch(res); err != nil {
+// getObjectIfNoneMatchVerify - Verify that the response matches with what is expected.
+func getObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatus string) error {
+	if err := verifyHeaderGetObjectIfNoneMatch(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusGetObjectIfNoneMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObjectIfNoneMatch(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyBodyGetObjectIfNoneMatch(res, objectBody); err != nil {
+	if err := verifyBodyGetObjectIfNoneMatch(res, objectBody); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyHeaderGetObjectIfNoneMatch - Verify that the header fields of the response match what is expected.
-func VerifyHeaderGetObjectIfNoneMatch(res *http.Response) error {
+// verifyHeaderGetObjectIfNoneMatch - Verify that the header fields of the response match what is expected.
+func verifyHeaderGetObjectIfNoneMatch(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusGetObjectIfNoneMatch - Verify that the response status matches what is expected.
-func VerifyStatusGetObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
+// verifyStatusGetObjectIfNoneMatch - Verify that the response status matches what is expected.
+func verifyStatusGetObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -80,8 +78,8 @@ func VerifyStatusGetObjectIfNoneMatch(res *http.Response, expectedStatus string)
 	return nil
 }
 
-// VerifyBodyGetObjectIfNoneMatch - Verify that the response body matches what is expected.
-func VerifyBodyGetObjectIfNoneMatch(res *http.Response, expectedBody []byte) error {
+// verifyBodyGetObjectIfNoneMatch - Verify that the response body matches what is expected.
+func verifyBodyGetObjectIfNoneMatch(res *http.Response, expectedBody []byte) error {
 	// The body should be returned in full.
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -104,41 +102,41 @@ func mainGetObjectIfNoneMatch(config ServerConfig, message string) error {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-None-Match request.
-		req, err := NewGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
+		req, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response...these checks do not check the headers yet.
-		if err := GetObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
+		if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Create a bad GET object If-None-Match request with invalid ETag.
-		badReq, err := NewGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, invalidETag)
+		badReq, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, invalidETag)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		badRes, err := ExecRequest(badReq, config.Client)
+		badRes, err := execRequest(badReq, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response returns the object since ETag != invalidETag
-		if err := GetObjectIfNoneMatchVerify(badRes, object.Body, "200 OK"); err != nil {
+		if err := getObjectIfNoneMatchVerify(badRes, object.Body, "200 OK"); err != nil {
 			return err
 		}
 		// Spin scanBar

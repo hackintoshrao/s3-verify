@@ -19,68 +19,62 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/minio/minio-go"
 	"github.com/minio/s3verify/signv4"
 )
 
-// GetObjectIfMatchReq - an HTTP GET request with the If-Match header.
-var GetObjectIfMatchReq = &http.Request{
-	Header: map[string][]string{
-		// Set Content SHA with empty body for GET requests because no data is being uploaded.
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		"If-Match":             {""}, //To be filled in the request.
-	},
-	Body:   nil, // There is no body for GET requests.
-	Method: "GET",
-}
-
-// NewGetObjectIfMatchReq - Create a new HTTP request to perform.
-func NewGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
+// newGetObjectIfMatchReq - Create a new HTTP request to perform.
+func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
+	var getObjectIfMatchReq = &http.Request{
+		Header: map[string][]string{
+			// Set Content SHA with empty body for GET requests because no data is being uploaded.
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Body:   nil, // There is no body for GET requests.
+		Method: "GET",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	GetObjectIfMatchReq.Header["If-Match"] = []string{ETag}
+	getObjectIfMatchReq.Header.Set("If-Match", ETag)
 	// Fill request URL and sign
-	GetObjectIfMatchReq.URL = targetURL
-	GetObjectIfMatchReq = signv4.SignV4(*GetObjectIfMatchReq, config.Access, config.Secret, config.Region)
-	return GetObjectIfMatchReq, nil
+	getObjectIfMatchReq.URL = targetURL
+	getObjectIfMatchReq = signv4.SignV4(*getObjectIfMatchReq, config.Access, config.Secret, config.Region)
+	return getObjectIfMatchReq, nil
 }
 
-// GetObjectIfMatchVerify - Verify that the response matches what is expected.
-func GetObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, shouldFail bool) error {
-	if err := VerifyHeaderGetObjectIfMatch(res); err != nil {
+// getObjectIfMatchVerify - Verify that the response matches what is expected.
+func getObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, shouldFail bool) error {
+	if err := verifyHeaderGetObjectIfMatch(res); err != nil {
 		return err
 	}
-	if err := VerifyBodyGetObjectIfMatch(res, objectBody, shouldFail); err != nil {
+	if err := verifyBodyGetObjectIfMatch(res, objectBody, shouldFail); err != nil {
 		return err
 	}
-	if err := VerifyStatusGetObjectIfMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObjectIfMatch(res, expectedStatus); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyHeaderGetObjectIfMatch - Verify that the response header matches what is expected.
-func VerifyHeaderGetObjectIfMatch(res *http.Response) error {
+// verifyHeaderGetObjectIfMatch - Verify that the response header matches what is expected.
+func verifyHeaderGetObjectIfMatch(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyBodyGetObjectIfMatch - Verify that the response body matches what is expected.
-func VerifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFail bool) error {
+// verifyBodyGetObjectIfMatch - Verify that the response body matches what is expected.
+func verifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFail bool) error {
 	if shouldFail {
 		// Decode the supposed error response.
-		errBody := minio.ErrorResponse{}
-		decoder := xml.NewDecoder(res.Body)
-		err := decoder.Decode(&errBody)
+		errBody := ErrorResponse{}
+		err := xmlDecoder(res.Body, &errBody)
 		if err != nil {
 			return err
 		}
@@ -103,8 +97,8 @@ func VerifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFai
 	return nil
 }
 
-// VerifyStatusGetObjectIfMatch - Verify that the response status matches what is expected.
-func VerifyStatusGetObjectIfMatch(res *http.Response, expectedStatus string) error {
+// verifyStatusGetObjectIfMatch - Verify that the response status matches what is expected.
+func verifyStatusGetObjectIfMatch(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -124,41 +118,41 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-Match request.
-		req, err := NewGetObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
+		req, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response...these checks do not check the headers yet.
-		if err := GetObjectIfMatchVerify(res, object.Body, "200 OK", false); err != nil {
+		if err := getObjectIfMatchVerify(res, object.Body, "200 OK", false); err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Create a bad GET object If-Match request.
-		badReq, err := NewGetObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
+		badReq, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		badRes, err := ExecRequest(badReq, config.Client)
+		badRes, err := execRequest(badReq, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the request fails as expected.
-		if err := GetObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
+		if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
 			return err
 		}
 		// Spin scanBar

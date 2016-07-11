@@ -67,26 +67,25 @@ var objects = []*ObjectInfo{
 // Store all objects that were copied.
 var copyObjects = []*ObjectInfo{}
 
-// An HTTP request for a PUT object.
-var PutObjectReq = &http.Request{
-	Header: map[string][]string{
-	// Set Content SHA dynamically because it is based on data being uploaded.
-	// Set Content MD5 dynamically because it is based on data being uploaded.
-	// Set Content-Length dynamically because it is based on data being uploaded.
-	},
-	// Body will be set dynamically.
-	// Body:
-	Method: "PUT",
-}
-
-// NewPutObjectReq - Create a new HTTP request for PUT object.
-func NewPutObjectReq(config ServerConfig, bucketName, objectName string, objectData []byte) (*http.Request, error) {
+// newPutObjectReq - Create a new HTTP request for PUT object.
+func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectData []byte) (*http.Request, error) {
+	// An HTTP request for a PUT object.
+	var putObjectReq = &http.Request{
+		Header: map[string][]string{
+		// Set Content SHA dynamically because it is based on data being uploaded.
+		// Set Content MD5 dynamically because it is based on data being uploaded.
+		// Set Content-Length dynamically because it is based on data being uploaded.
+		},
+		// Body will be set dynamically.
+		// Body:
+		Method: "PUT",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
 	// Fill request headers and URL.
-	PutObjectReq.URL = targetURL
+	putObjectReq.URL = targetURL
 
 	// Compute md5Sum and sha256Sum from the input data.
 	reader := bytes.NewReader(objectData)
@@ -94,32 +93,31 @@ func NewPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 	if err != nil {
 		return nil, err
 	}
-	PutObjectReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
-	PutObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-
-	PutObjectReq.ContentLength = contentLength
+	putObjectReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
+	putObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	putObjectReq.ContentLength = contentLength
 	// Set the body to the data held in objectData.
-	PutObjectReq.Body = ioutil.NopCloser(reader)
-	PutObjectReq = signv4.SignV4(*PutObjectReq, config.Access, config.Secret, config.Region)
-	return PutObjectReq, nil
+	putObjectReq.Body = ioutil.NopCloser(reader)
+	putObjectReq = signv4.SignV4(*putObjectReq, config.Access, config.Secret, config.Region)
+	return putObjectReq, nil
 }
 
-// PutObjectVerify - Verify the response matches what is expected.
-func PutObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := VerifyHeaderPutObject(res); err != nil {
+// putObjectVerify - Verify the response matches what is expected.
+func putObjectVerify(res *http.Response, expectedStatus string) error {
+	if err := verifyHeaderPutObject(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusPutObject(res, expectedStatus); err != nil {
+	if err := verifyStatusPutObject(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := VerifyBodyPutObject(res); err != nil {
+	if err := verifyBodyPutObject(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusPutObject - Verify that the res status code matches what is expected.
-func VerifyStatusPutObject(res *http.Response, expectedStatus string) error {
+// verifyStatusPutObject - Verify that the res status code matches what is expected.
+func verifyStatusPutObject(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -127,8 +125,8 @@ func VerifyStatusPutObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
-// VerifyBodyPutObject - Verify that the body returned matches what is uploaded.
-func VerifyBodyPutObject(res *http.Response) error {
+// verifyBodyPutObject - Verify that the body returned matches what is uploaded.
+func verifyBodyPutObject(res *http.Response) error {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -141,8 +139,8 @@ func VerifyBodyPutObject(res *http.Response) error {
 	return nil
 }
 
-// VerifyHeaderPutObject - Verify that the header returned matches waht is expected.
-func VerifyHeaderPutObject(res *http.Response) error {
+// verifyHeaderPutObject - Verify that the header returned matches waht is expected.
+func verifyHeaderPutObject(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
@@ -150,7 +148,7 @@ func VerifyHeaderPutObject(res *http.Response) error {
 }
 
 // Test a PUT object request with no special headers set. This adds one object to each of the test buckets.
-func mainPutObjectNoHeader(config ServerConfig, message string) error {
+func mainPutObject(config ServerConfig, message string) error {
 	// TODO: create tests designed to fail.
 	for _, object := range objects {
 		bucket := testBuckets[0]
@@ -158,26 +156,25 @@ func mainPutObjectNoHeader(config ServerConfig, message string) error {
 		scanBar(message)
 		// PUT each object in each available bucket.
 		// Generate a new PUT object HTTP req.
-		req, err := NewPutObjectReq(config, bucket.Name, object.Key, object.Body)
+		req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response.
-		if err := PutObjectVerify(res, "200 OK"); err != nil {
+		if err := putObjectVerify(res, "200 OK"); err != nil {
 			return err
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
 	return nil
-
 }

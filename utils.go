@@ -42,8 +42,8 @@ func xmlDecoder(body io.Reader, v interface{}) error {
 	return d.Decode(v)
 }
 
-// ExecRequest - Executes an HTTP request creating an HTTP response.
-func ExecRequest(req *http.Request, client *http.Client) (*http.Response, error) {
+// execRequest - Executes an HTTP request creating an HTTP response.
+func execRequest(req *http.Request, client *http.Client) (*http.Response, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,5 @@
 /*
- * Minio S3Verify Library for Amazon S3 Compatible Cloud Storage (C) 2016 Minio, Inc.
+ * Minio S3verify Library for Amazon S3 Compatible Cloud Storage (C) 2016 Minio, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,63 +27,61 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var PutObjectCopyReq = &http.Request{
-	Header: map[string][]string{
-	// X-Amz-Content-Sha256 will be set dynamically.
-	// x-amz-copy-source will be set dynamically.
-	},
-	Method: "PUT",
-}
-
-// NewPutObjectCopyReq - Create a new HTTP request for PUT object with copy-
-func NewPutObjectCopyReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string, objectData []byte) (*http.Request, error) {
+// newCopyObjectReq - Create a new HTTP request for PUT object with copy-
+func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string) (*http.Request, error) {
+	var copyObjectReq = &http.Request{
+		Header: map[string][]string{
+		// X-Amz-Content-Sha256 will be set dynamically.
+		// x-amz-copy-source will be set dynamically.
+		},
+		Method: "PUT",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
 	// Fill request URL.
-	PutObjectCopyReq.URL = targetURL
-
-	// Compute md5Sum and sha256Sum from the input data.
-	reader := bytes.NewReader(objectData)
+	copyObjectReq.URL = targetURL
+	// Body will be set by the server so don't upload any body here.
+	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return nil, err
 	}
 	// Fill request headers.
 	// Content-MD5 should never be set for CopyObject API.
-	PutObjectCopyReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	PutObjectCopyReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 
-	PutObjectCopyReq = signv4.SignV4(*PutObjectCopyReq, config.Access, config.Secret, config.Region)
+	copyObjectReq = signv4.SignV4(*copyObjectReq, config.Access, config.Secret, config.Region)
 
-	return PutObjectCopyReq, nil
+	return copyObjectReq, nil
 }
 
-//
-func PutObjectCopyVerify(res *http.Response, expectedStatus string) error {
-	if err := VerifyHeaderPutObjectCopy(res); err != nil {
+// copyObjectVerify - Verify that the response returned matches what is expected.
+func copyObjectVerify(res *http.Response, expectedStatus string) error {
+	if err := verifyHeaderCopyObject(res); err != nil {
 		return err
 	}
-	if err := VerifyBodyPutObjectCopy(res); err != nil {
+	if err := verifyBodyCopyObject(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusPutObjectCopy(res, expectedStatus); err != nil {
+	if err := verifyStatusCopyObject(res, expectedStatus); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyHeadersPutObjectCopy - Verify that the header returned matches what is expected.
-func VerifyHeaderPutObjectCopy(res *http.Response) error {
+// verifyHeaderscopyObject - verify that the header returned matches what is expected.
+func verifyHeaderCopyObject(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyBodyPutObjectCopy - Verify that the body returned is empty.
-func VerifyBodyPutObjectCopy(res *http.Response) error {
+// verifyBodycopyObject - verify that the body returned is empty.
+func verifyBodyCopyObject(res *http.Response) error {
 	copyObjRes := copyObjectResult{}
 	decoder := xml.NewDecoder(res.Body)
 	err := decoder.Decode(&copyObjRes)
@@ -93,8 +91,8 @@ func VerifyBodyPutObjectCopy(res *http.Response) error {
 	return nil
 }
 
-// VerifyStatusPutObjectCopy - Verify that the status returned matches what is expected.
-func VerifyStatusPutObjectCopy(res *http.Response, expectedStatus string) error {
+// verifyStatusCopyObject - verify that the status returned matches what is expected.
+func verifyStatusCopyObject(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -103,15 +101,13 @@ func VerifyStatusPutObjectCopy(res *http.Response, expectedStatus string) error 
 }
 
 // Test a PUT object request with the copy header set.
-func mainPutObjectCopy(config ServerConfig, message string) error {
+func mainCopyObject(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// TODO: create tests designed to fail.
 	sourceBucketName := testBuckets[0].Name
 	destBucketName := testBuckets[1].Name
 	sourceObject := objects[0]
-	// Copy object copies data on the server, there is no thing to be set for the body.
-	body := []byte("")
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key,
 	}
@@ -119,24 +115,23 @@ func mainPutObjectCopy(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := NewPutObjectCopyReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, body)
+	req, err := newCopyObjectReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key)
 	if err != nil {
 		return err
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := ExecRequest(req, config.Client)
+	res, err := execRequest(req, config.Client)
 	if err != nil {
 		return err
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err = PutObjectCopyVerify(res, "200 OK"); err != nil {
+	if err = copyObjectVerify(res, "200 OK"); err != nil {
 		return err
 	}
-
 	// Spin scanBar
 	scanBar(message)
 	return nil

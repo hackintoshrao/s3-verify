@@ -1,5 +1,5 @@
 /*
- * Minio S3Verify Library for Amazon S3 Compatible Cloud Storage (C) 2016 Minio, Inc.
+ * Minio S3verify Library for Amazon S3 Compatible Cloud Storage (C) 2016 Minio, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,15 +30,6 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-// MakeBucketReq - hardcode the static portions of a new Make Bucket request.
-var MakeBucketReq = &http.Request{
-	Header: map[string][]string{
-		"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-	},
-	Method: "PUT",
-	Body:   nil, // No Body sent for Make Bucket requests.(Need to verify)
-}
-
 var testBuckets = []BucketInfo{
 	BucketInfo{
 		Name: "s3verify-put-bucket-test",
@@ -48,13 +39,23 @@ var testBuckets = []BucketInfo{
 	},
 }
 
-// NewMakeBucketReq - Create a new Make bucket request.
-func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+// newPutBucketReq - Create a new Make bucket request.
+func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+
+	// putBucketReq - hardcode the static portions of a new Make Bucket request.
+	var putBucketReq = &http.Request{
+		Header: map[string][]string{
+			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
+		},
+		Method: "PUT",
+		Body:   nil, // No Body sent for Make Bucket requests.(Need to verify)
+	}
+
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
 	if err != nil {
 		return nil, err
 	}
-	MakeBucketReq.URL = targetURL
+	putBucketReq.URL = targetURL
 	if config.Region != "us-east-1" { // Must set the request elements for non us-east-1 regions.
 		bucketConfig := createBucketConfiguration{}
 		bucketConfig.Location = config.Region
@@ -64,7 +65,7 @@ func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 		}
 		// TODO: use hash function here.
 		bucketConfigBuffer := bytes.NewReader(bucketConfigBytes)
-		MakeBucketReq.ContentLength = int64(bucketConfigBuffer.Size())
+		putBucketReq.ContentLength = int64(bucketConfigBuffer.Size())
 		// Reset X-Amz-Content-Sha256
 		var hashSHA256 hash.Hash
 		// Create a reader from the data.
@@ -76,32 +77,32 @@ func NewMakeBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 		// Move back to beginning of data.
 		bucketConfigBuffer.Seek(0, 0)
 		// Set the body.
-		MakeBucketReq.Body = ioutil.NopCloser(bucketConfigBuffer)
+		putBucketReq.Body = ioutil.NopCloser(bucketConfigBuffer)
 		// Finalize the SHA calculation.
 		sha256Sum := hashSHA256.Sum(nil)
 		// Fill request headers and URL.
-		MakeBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+		putBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	}
-	MakeBucketReq = signv4.SignV4(*MakeBucketReq, config.Access, config.Secret, config.Region)
-	return MakeBucketReq, nil
+	putBucketReq = signv4.SignV4(*putBucketReq, config.Access, config.Secret, config.Region)
+	return putBucketReq, nil
 }
 
-// VerifyResponseMakeBucket - Check the response Body, Header, Status for AWS S3 compliance.
-func VerifyResponseMakeBucket(res *http.Response, bucketName string) error {
-	if err := VerifyStatusMakeBucket(res); err != nil {
+// verifyResponsePutBucket - Check the response Body, Header, Status for AWS S3 compliance.
+func verifyResponsePutBucket(res *http.Response, bucketName string) error {
+	if err := verifyStatusPutBucket(res); err != nil {
 		return err
 	}
-	if err := VerifyHeaderMakeBucket(res, bucketName); err != nil {
+	if err := verifyHeaderPutBucket(res, bucketName); err != nil {
 		return err
 	}
-	if err := VerifyBodyMakeBucket(res); err != nil {
+	if err := verifyBodyPutBucket(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyStatusMakeBucket - Check the response status for AWS S3 compliance.
-func VerifyStatusMakeBucket(res *http.Response) error {
+// verifyStatusPutBucket - Check the response status for AWS S3 compliance.
+func verifyStatusPutBucket(res *http.Response) error {
 	if res.StatusCode != http.StatusOK {
 		err := fmt.Errorf("Unexpected Response Status Code: %v", res.StatusCode)
 		return err
@@ -109,13 +110,13 @@ func VerifyStatusMakeBucket(res *http.Response) error {
 	return nil
 }
 
-// VerifyBodyMakeBucket - Check the response body for AWS S3 compliance.
-func VerifyBodyMakeBucket(res *http.Response) error {
+// verifyBodyPutBucket - Check the response body for AWS S3 compliance.
+func verifyBodyPutBucket(res *http.Response) error {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
-	// There is no body returned by a Make bucket request.
+	// There is no body returned by a Put Bucket request.
 	if string(body) != "" {
 		err := fmt.Errorf("Unexpected Body: %v", string(body))
 		return err
@@ -123,8 +124,8 @@ func VerifyBodyMakeBucket(res *http.Response) error {
 	return nil
 }
 
-// VerifyHeaderMakeBucket - Check the response header for AWS S3 compliance.
-func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
+// verifyHeaderPutBucket - Check the response header for AWS S3 compliance.
+func verifyHeaderPutBucket(res *http.Response, bucketName string) error {
 	location := res.Header["Location"][0]
 	if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
 		// TODO: wait for Minio server to fix endpoint detection.
@@ -137,8 +138,8 @@ func VerifyHeaderMakeBucket(res *http.Response, bucketName string) error {
 	return nil
 }
 
-// Test the MakeBucket API when no extra headers are set. This creates three new buckets and leaves them for the next tests to use.
-func mainMakeBucketNoHeader(config ServerConfig, message string) error {
+// Test the PutBucket API when no extra headers are set. This creates three new buckets and leaves them for the next tests to use.
+func mainPutBucket(config ServerConfig, message string) error {
 	// Spin the scanBar
 	scanBar(message)
 	for _, bucket := range testBuckets { // Test the creation of 3 new buckets. All valid for now. TODO: test invalid names/input.
@@ -146,7 +147,7 @@ func mainMakeBucketNoHeader(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Create a new Make bucket request.
-		req, err := NewMakeBucketReq(config, bucket.Name)
+		req, err := newPutBucketReq(config, bucket.Name)
 		if err != nil {
 			return err
 		}
@@ -154,7 +155,7 @@ func mainMakeBucketNoHeader(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Execute the request.
-		res, err := ExecRequest(req, config.Client)
+		res, err := execRequest(req, config.Client)
 		if err != nil {
 			return err
 		}
@@ -162,7 +163,7 @@ func mainMakeBucketNoHeader(config ServerConfig, message string) error {
 		scanBar(message)
 
 		// Check the responses Body, Status, Header.
-		if err := VerifyResponseMakeBucket(res, bucket.Name); err != nil {
+		if err := verifyResponsePutBucket(res, bucket.Name); err != nil {
 			return err
 		}
 		// Spin the scanBar

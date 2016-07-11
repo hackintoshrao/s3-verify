@@ -23,69 +23,67 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
 
 	"github.com/minio/s3verify/signv4"
 )
 
-var PutObjectCopyIfMatchReq = &http.Request{
-	Header: map[string][]string{
-	// X-Amz-Content-Sha256 will be set dynamically.
-	// x-amz-copy-source will be set dynamically.
-	// x-amz-copy-source-if-match will be set dynamically.
-	},
-	Method: "PUT",
-}
-
-// NewPutObjectCopyIfMatchReq - Create a new HTTP request for a PUT copy object.
-func NewPutObjectCopyIfMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string, objectData []byte) (*http.Request, error) {
+// newCopyObjectIfMatchReq - Create a new HTTP request for a PUT copy object.
+func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (*http.Request, error) {
+	var copyObjectIfMatchReq = &http.Request{
+		Header: map[string][]string{
+		// X-Amz-Content-Sha256 will be set dynamically.
+		// x-amz-copy-source will be set dynamically.
+		// x-amz-copy-source-if-match will be set dynamically.
+		},
+		Method: "PUT",
+	}
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region)
 	if err != nil {
 		return nil, err
 	}
-	PutObjectCopyIfMatchReq.URL = targetURL
-	// Compute the md5sum and sha256sum from the data to be uploaded.
-	reader := bytes.NewReader(objectData)
+	copyObjectIfMatchReq.URL = targetURL
+	// The body will be set by the server so calculate SHA from an empty body.
+	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return nil, err
 	}
 	// Fill in the request header.
-	PutObjectCopyIfMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectIfMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	// Content-MD5 should not be set for CopyObject request.
 	// Content-Length should not be set for CopyObject request.
-	PutObjectCopyIfMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	PutObjectCopyIfMatchReq.Header.Set("x-amz-copy-source-if-match", ETag)
+	copyObjectIfMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectIfMatchReq.Header.Set("x-amz-copy-source-if-match", ETag)
 
-	PutObjectCopyIfMatchReq = signv4.SignV4(*PutObjectCopyIfMatchReq, config.Access, config.Secret, config.Region)
-	return PutObjectCopyIfMatchReq, nil
+	copyObjectIfMatchReq = signv4.SignV4(*copyObjectIfMatchReq, config.Access, config.Secret, config.Region)
+	return copyObjectIfMatchReq, nil
 }
 
-// PutObjectCopyIfMatchVerify - Verify that the response returned matches what is expected.
-func PutObjectCopyIfMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := VerifyBodyPutObjectCopyIfMatch(res, expectedError); err != nil {
+// copyObjectIfMatchVerify - Verify that the response returned matches what is expected.
+func copyObjectIfMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
+	if err := verifyBodyCopyObjectIfMatch(res, expectedError); err != nil {
 		return err
 	}
-	if err := VerifyHeaderPutObjectCopyIfMatch(res); err != nil {
+	if err := verifyHeaderCopyObjectIfMatch(res); err != nil {
 		return err
 	}
-	if err := VerifyStatusPutObjectCopyIfMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusCopyObjectIfMatch(res, expectedStatus); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyHeaderPutObjectCopyIfMatch - Verify that the header returned matches what is expected.
-func VerifyHeaderPutObjectCopyIfMatch(res *http.Response) error {
+// verifyHeaderCopyObjectIfMatch - Verify that the header returned matches what is expected.
+func verifyHeaderCopyObjectIfMatch(res *http.Response) error {
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
 	}
 	return nil
 }
 
-// VerifyBodyPutObjectCopyIfMatch - Verify that the body returned matches what is expected.jK;
-func VerifyBodyPutObjectCopyIfMatch(res *http.Response, expectedError ErrorResponse) error {
-	if !reflect.DeepEqual(expectedError, ErrorResponse{}) { // Error is expected. Verify error returned matches.
+// verifyBodyCopyObjectIfMatch - Verify that the body returned matches what is expected.jK;
+func verifyBodyCopyObjectIfMatch(res *http.Response, expectedError ErrorResponse) error {
+	if expectedError.Message != "" { // Error is expected. Verify error returned matches.
 		errResponse := ErrorResponse{}
 		err := xmlDecoder(res.Body, &errResponse)
 		if err != nil {
@@ -111,8 +109,8 @@ func VerifyBodyPutObjectCopyIfMatch(res *http.Response, expectedError ErrorRespo
 	return nil
 }
 
-// VerifyStatusPutObjectCopyIfMatch - Verify that the status returned matches what is expected.
-func VerifyStatusPutObjectCopyIfMatch(res *http.Response, expectedStatus string) error {
+// verifyStatusCopyObjectIfMatch - Verify that the status returned matches what is expected.
+func verifyStatusCopyObjectIfMatch(res *http.Response, expectedStatus string) error {
 	if res.Status != expectedStatus {
 		err := fmt.Errorf("Unexpected Status Recieved: wanted %v, got %v", expectedStatus, res.Status)
 		return err
@@ -121,7 +119,7 @@ func VerifyStatusPutObjectCopyIfMatch(res *http.Response, expectedStatus string)
 }
 
 // Test the PUT Object Copy with If-Match header is set.
-func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
+func mainCopyObjectIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Create bad ETag.
@@ -130,8 +128,6 @@ func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
 	sourceBucketName := testBuckets[0].Name
 	destBucketName := testBuckets[1].Name
 	sourceObject := objects[0]
-	// Copy object copies data on the server, there is no thing to be set for the body.
-	body := []byte("")
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-match",
 	}
@@ -143,32 +139,32 @@ func mainPutObjectCopyIfMatch(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new valid PUT object copy request.
-	req, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag, body)
+	req, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
 		return err
 	}
 	// Execute the response.
-	res, err := ExecRequest(req, config.Client)
+	res, err := execRequest(req, config.Client)
 	if err != nil {
 		return err
 	}
 	// Verify the response.
-	if err := PutObjectCopyIfMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
+	if err := copyObjectIfMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
 		return err
 	}
 
 	// Create a new invalid PUT object copy request.
-	badReq, err := NewPutObjectCopyIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag, body)
+	badReq, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag)
 	if err != nil {
 		return err
 	}
 	// Execute the request.
-	badRes, err := ExecRequest(badReq, config.Client)
+	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
 		return err
 	}
 	// Verify the request failed as expected.
-	if err := PutObjectCopyIfMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
+	if err := copyObjectIfMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
 		return err
 	}
 	return nil
