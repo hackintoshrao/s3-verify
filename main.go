@@ -112,12 +112,16 @@ func registerApp() *cli.App {
 // callAllAPIS parse context extract flags and then call all.
 func callAllAPIs(ctx *cli.Context) {
 	if ctx.GlobalString("access") != "" && ctx.GlobalString("secret") != "" && ctx.GlobalString("url") != "" { // Necessary variables passed, run all tests.
-		numTests := 0
+		// Test that the given endpoint is reachable with a simple GET request.
 		config := newServerConfig(ctx)
+		if err := verifyHostReachable(config.Endpoint, config.Region); err != nil { // If the provided endpoint is unreachable error out instantly.
+			console.Fatalln(err)
+		}
+		numTests := 0
+		curTest := 1
 		for _, APItests := range allTests {
 			numTests += len(APItests)
 		}
-		curTest := 1
 		for i, APItests := range allTests {
 			for j, test := range APItests {
 				message := fmt.Sprintf("[%d/%d] "+allMessages[i][j], curTest, numTests)

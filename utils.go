@@ -26,6 +26,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,26 @@ const (
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting into 63 bits.
 )
+
+// verifyHostReachable - Execute a simple get request against the provided endpoint to make sure its reachable.
+func verifyHostReachable(endpoint, region string) error {
+	targetURL, err := makeTargetURL(endpoint, "", "", region)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{
+		// Only give server 3 seconds to complete the request.
+		Timeout: 3000 * time.Millisecond,
+	}
+	req := &http.Request{
+		Method: "GET",
+		URL:    targetURL,
+	}
+	if _, err := client.Do(req); err != nil {
+		return err
+	}
+	return nil
+}
 
 // xmlDecoder provide decoded value in xml.
 func xmlDecoder(body io.Reader, v interface{}) error {
@@ -46,6 +67,14 @@ func xmlDecoder(body io.Reader, v interface{}) error {
 func execRequest(req *http.Request, client *http.Client) (*http.Response, error) {
 	resp, err := client.Do(req)
 	if err != nil {
+		urlErr, ok := err.(*url.Error)
+		if ok && strings.Contains(urlErr.Err.Error(), "EOF") {
+			return nil, &url.Error{
+				Op:  urlErr.Op,
+				URL: urlErr.URL,
+				Err: fmt.Errorf("Connection closed by foreign host %s. Retry again.", urlErr.URL),
+			}
+		}
 		return nil, err
 	}
 	return resp, nil

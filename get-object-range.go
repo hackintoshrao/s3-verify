@@ -55,8 +55,8 @@ func mainGetObjectRange(config ServerConfig, message string) error {
 	bucket := testBuckets[0]
 	rand.Seed(time.Now().UnixNano())
 	for _, object := range objects {
-		startRange := rand.Int63n(object.Size + 1)
-		endRange := rand.Int63n(int64(2+object.Size-startRange)) + startRange
+		startRange := rand.Int63n(object.Size)
+		endRange := rand.Int63n(int64(object.Size-startRange)) + startRange
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object range request...testing range.
