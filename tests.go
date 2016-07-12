@@ -90,6 +90,8 @@ var (
 	copyObjectMessages = []string{
 		"CopyObject:",
 		"CopyObject (If-Match):",
+		"CopyObject (If-None-Match):",
+		"CopyObject (If-Modified-Since):",
 	}
 
 	// Declare all tests run for the CopyObject API.
@@ -97,6 +99,8 @@ var (
 	copyObjectTests = []APItest{
 		mainCopyObject,
 		mainCopyObjectIfMatch,
+		mainCopyObjectIfNoneMatch,
+		mainCopyObjectIfModifiedSince,
 	}
 
 	// Messages to be printed during the RemoveBucket tests.
