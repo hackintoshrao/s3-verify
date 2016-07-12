@@ -48,4 +48,8 @@ var globalFlags = []cli.Flag{
 		Name:  "verbose, v",
 		Usage: "Enable verbose output.",
 	},
+	cli.BoolFlag{
+		Name:  "extended",
+		Usage: "Enable testing of extra S3 APIs.",
+	},
 }

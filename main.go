@@ -63,34 +63,6 @@ EXAMPLES:
 // Define all mainXXX tests to be of this form.
 type APItest func(ServerConfig, string) error
 
-// Slice of all defined tests.
-// When a new API is added for testing make sure to add it here.
-var (
-	allTests = [][]APItest{
-		putBucketTests,
-		putObjectTests,
-		headObjectTests,
-		copyObjectTests,
-		getObjectTests,
-		listBucketsTests,
-		removeObjectTests,
-		removeBucketTests}
-)
-
-// Slice of all defined messages.
-// When a new API is added for testing make sure to add its messages here.
-var (
-	allMessages = [][]string{
-		putBucketMessages,
-		putObjectMessages,
-		headObjectMessages,
-		copyObjectMessages,
-		getObjectMessages,
-		listBucketsMessages,
-		removeObjectMessages,
-		removeBucketMessages}
-)
-
 func commandNotFound(ctx *cli.Context, command string) {
 	msg := fmt.Sprintf("'%s' is not a s3verify command. See 's3verify --help'.", command)
 	console.PrintC(msg)
@@ -119,26 +91,50 @@ func callAllAPIs(ctx *cli.Context) {
 		}
 		numTests := 0
 		curTest := 1
-		for _, APItests := range allTests {
-			numTests += len(APItests)
-		}
-		for i, APItests := range allTests {
-			for j, test := range APItests {
-				message := fmt.Sprintf("[%d/%d] "+allMessages[i][j], curTest, numTests)
-				padding := messageWidth - len([]rune(message))
-				if err := test(*config, message); err != nil {
-					// Print an error message.
-					console.Eraseline()
-					// TODO: investigate better error message handling.
-					console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
+		if ctx.GlobalBool("extended") {
+			for _, APItests := range extendedTests {
+				numTests += len(APItests)
+			}
+			for i, APItests := range extendedTests {
+				for j, test := range APItests {
+					message := fmt.Sprintf("[%d/%d] "+extendedMessages[i][j], curTest, numTests)
+					padding := messageWidth - len([]rune(message))
+					if err := test(*config, message); err != nil {
+						// Print an error message.
+						console.Eraseline()
+						// TODO: investigate better error message handling.
+						console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
 
-				} else {
-					// Erase the old progress bar.
-					console.Eraseline()
-					// Update test as complete.
-					console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+					} else {
+						// Erase the old progress bar.
+						console.Eraseline()
+						// Update test as complete.
+						console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+					}
+					curTest++
 				}
-				curTest++
+			}
+		} else {
+			for _, APItests := range basicTests {
+				numTests += len(APItests)
+			}
+			for i, APItests := range basicTests {
+				for j, test := range APItests {
+					message := fmt.Sprintf("[%d/%d] "+basicMessages[i][j], curTest, numTests)
+					padding := messageWidth - len([]rune(message))
+					if err := test(*config, message); err != nil {
+						// Print an error message.
+						console.Eraseline()
+						// TODO: investigate better error message handling.
+						console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
+					} else {
+						// Erase the old progress bar.
+						console.Eraseline()
+						// Update test as complete.
+						console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
+					}
+					curTest++
+				}
 			}
 		}
 	} else {

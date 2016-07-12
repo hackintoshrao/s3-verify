@@ -17,20 +17,157 @@
 package main
 
 var (
-	// Messages printed during the running of the GetObject tests.
-	// When a new test for GetObject is added make sure it is added here.
-	getObjectMessages = []string{
-		"GetObject:",
-		"GetObject (Range):",
-		"GetObject (If-Match):",
-		"GetObject (If-None-Match):",
-		"GetObject (If-Modified-Since):",
-		"GetObject (If-Unmodified-Since):",
+	// basicTests holds all tests that MUST pass for a server
+	// to claim compatibility with AWS S3 Signature V4.
+	basicTests = [][]APItest{
+		putBucketTestsBasic,
+		putObjectTestsBasic,
+		headObjectTestsBasic,
+		copyObjectTestsBasic,
+		getObjectTestsBasic,
+		listBucketsTestsBasic,
+		removeObjectTestsBasic,
+		removeBucketTestsBasic,
+	}
+	// basicMessages holds all messages that belong to tests
+	// that MUST pass for a server to claim AWS S3 sign v4 compatability.
+	basicMessages = [][]string{
+		putBucketMessagesBasic,
+		putObjectMessagesBasic,
+		headObjectMessagesBasic,
+		copyObjectMessagesBasic,
+		getObjectMessagesBasic,
+		listBucketsMessagesBasic,
+		removeObjectMessagesBasic,
+		removeBucketMessagesBasic,
+	}
+	// extendedTests holds all the basic tests that MUST pass
+	// as well as some tests for features that are not necessary
+	// for compatibility.
+	extendedTests = [][]APItest{
+		putBucketTestsExtended,
+		putObjectTestsExtended,
+		headObjectTestsExtended,
+		copyObjectTestsExtended,
+		getObjectTestsExtended,
+		listBucketsTestsExtended,
+		removeObjectTestsExtended,
+		removeBucketTestsExtended,
+	}
+	// extendedMessages holds all the messages that belong to
+	// both the basic tests as well as those that test features that
+	// are not necessary for compatibility.
+	extendedMessages = [][]string{
+		putBucketMessagesExtended,
+		putObjectMessagesExtended,
+		headObjectMessagesExtended,
+		copyObjectMessagesExtended,
+		getObjectMessagesExtended,
+		listBucketsMessagesExtended,
+		removeObjectMessagesExtended,
+		removeBucketMessagesExtended,
+	}
+)
+
+// Tests must be run in the following order
+// PutBucket,
+// PutObject,
+// HeadObject,
+// CopyObject,
+// GetObject,
+// ListBuckets,
+// RemoveObject,
+// RemoveBucket,
+
+// Tests and messages for PutBucket API,
+// make sure future tests/messages are added here.
+var (
+	putBucketTestsBasic = []APItest{
+		mainPutBucket,
+	}
+	putBucketMessagesBasic = []string{
+		"PutBucket:",
+	}
+	// PutBucket API has no real extended tests
+	putBucketTestsExtended = []APItest{
+		mainPutBucket,
+	}
+	putBucketMessagesExtended = []string{
+		"PutBucket:",
+	}
+)
+
+// Tests and messages for PutObject API,
+// make sure future tests/messages are added here.
+var (
+	putObjectTestsBasic = []APItest{
+		mainPutObject,
+	}
+	putObjectMessagesBasic = []string{
+		"PutObject",
+	}
+	// For now PutObject API only has basic tests
+	// in the future there will be extended tests added.
+	putObjectTestsExtended = []APItest{
+		mainPutObject,
+	}
+	putObjectMessagesExtended = []string{
+		"PutObject:",
+	}
+)
+
+// Tests and messages for HeadObject API,
+// make sure future tests/messages are added here.
+var (
+	headObjectTestsBasic = []APItest{
+		mainHeadObject,
+	}
+	headObjectMessagesBasic = []string{
+		"HeadObject:",
+	}
+	// For now HeadObject API only has a basic test
+	// in the future there will be extended tests added.
+	headObjectTestsExtended = []APItest{
+		mainHeadObject,
+	}
+	headObjectMessagesExtended = []string{
+		"HeadObject:",
+	}
+)
+
+// Tests and messages for CopyObject API,
+// make sure future tests/messages are added here.
+var (
+	copyObjectTestsBasic = []APItest{
+		mainCopyObject,
+	}
+	copyObjectMessagesBasic = []string{
+		"CopyObject:",
+	}
+	copyObjectTestsExtended = []APItest{
+		// When extended tests are run also run the basic.
+		mainCopyObject,
+		mainCopyObjectIfMatch,
+		mainCopyObjectIfNoneMatch,
 	}
 
-	// Declare all tests run for the GetObject API.
-	// When a new test for GetObject is added make sure its added here.
-	getObjectTests = []APItest{
+	copyObjectMessagesExtended = []string{
+		"CopyObject:",
+		"CopyObject (If-Match):",
+		"CopyObject (If-None-Match):",
+	}
+)
+
+// Tests and messages for GetObject API,
+// make sure future tests/messages are added here.
+var (
+	getObjectTestsBasic = []APItest{
+		mainGetObject,
+	}
+	getObjectMessagesBasic = []string{
+		"GetObject:",
+	}
+	getObjectTestsExtended = []APItest{
 		mainGetObject,
 		mainGetObjectRange,
 		mainGetObjectIfMatch,
@@ -38,94 +175,71 @@ var (
 		mainGetObjectIfModifiedSince,
 		mainGetObjectIfUnModifiedSince,
 	}
-
-	// Messages printed during the running of the HeadObject tests.
-	// When a new test for HeadObject is added make sure its message is added here.
-	headObjectMessages = []string{
-		"HeadObject:",
+	getObjectMessagesExtended = []string{
+		"GetObject:",
+		"GetObject (Range):",
+		"GetObject (If-Match):",
+		"GetObject (If-None-Match):",
+		"GetObject (If-Modified-Since):",
+		"GetObject (If-Unmodified-Since):",
 	}
+)
 
-	// Declare all tests run for the HeadObject API.
-	// When a new test for HeadObject is added make sure its added here.
-	headObjectTests = []APItest{
-		mainHeadObject,
+// Tests and messages for ListBuckets API,
+// make sure future tests/messages are added here.
+var (
+	listBucketsTestsBasic = []APItest{
+		mainListBucketsExist,
+		// TODO: add test for listing non-existent buckets.
 	}
-	// Messages printed during the running of the ListBuckets tests.
-	// When a new test for ListBuckets is added make sure its message is added here.
-	listBucketsMessages = []string{
-		"ListBuckets:",
+	listBucketsMessagesBasic = []string{
+		"ListBuckets (Buckets Exist):",
 	}
-
-	// Declare all tests run for the ListBuckets API.
-	// When a new test for ListBuckets is added make sure its added here.
-	listBucketsTests = []APItest{
+	listBucketsTestsExtended = []APItest{
 		mainListBucketsExist,
 	}
-
-	// Messages printed during the running of the PutBucket tests.
-	// When a new test for PutBucket is added make sure to add its message here.
-	putBucketMessages = []string{
-		"MakeBucket (Bucket DNE):",
+	listBucketsMessagesExtended = []string{
+		"ListBuckets (Buckets Exist):",
 	}
+)
 
-	// Declare all tests run for the PutBucket API.
-	// When a new test for PutBucket is added make sure its added here.
-	putBucketTests = []APItest{
-		mainPutBucket,
+// Tests and messages for RemoveObject API,
+// make sure future tests/messages are added here.
+var (
+	removeObjectTestsBasic = []APItest{
+		mainRemoveObjectExists,
+		// TODO: add test for removeing non-existent object
 	}
+	removeObjectMessagesBasic = []string{
+		"RemoveObject (Object Exists):",
+	}
+	removeObjectTestsExtended = []APItest{
+		mainRemoveObjectExists,
+		// TODO: add test for removeing non-existent object
+	}
+	removeObjectMessagesExtended = []string{
+		"RemoveObject (Object Exists):",
+	}
+)
 
-	// Messages to be printed during the PutObject tests.
-	// When a new test for PutObject is added make sure its message is added here.
-	putObjectMessages = []string{
-		"PutObject:",
-	}
-	// Declare all tests run for the PutObject API.
-	// When a new test for PutObject is added make sure its added here.
-	putObjectTests = []APItest{
-		mainPutObject,
-	}
-
-	// Messages to be printed during the CopyObject tests.
-	// When a new test for CopyObject is added make sure its message is added here.
-	copyObjectMessages = []string{
-		"CopyObject:",
-		"CopyObject (If-Match):",
-		"CopyObject (If-None-Match):",
-		"CopyObject (If-Modified-Since):",
-	}
-
-	// Declare all tests run for the CopyObject API.
-	// When a new test for CopyObject is added make sure its added here.
-	copyObjectTests = []APItest{
-		mainCopyObject,
-		mainCopyObjectIfMatch,
-		mainCopyObjectIfNoneMatch,
-		mainCopyObjectIfModifiedSince,
-	}
-
-	// Messages to be printed during the RemoveBucket tests.
-	// When a new test for RemoveBucket is added make sure its message is added here.
-	removeBucketMessages = []string{
-		"RemoveBucket (Bucket Exists):",
-		"RemoveBucket (Bucket DNE):",
-	}
-
-	// Declare all tests run for the RemoveBucket API.
-	// When a new test for RemoveBucket is added make sure its added here.
-	removeBucketTests = []APItest{
+// Tests and messages for RemoveBucket API,
+// make sure future tests/messages are added here.
+var (
+	removeBucketTestsBasic = []APItest{
+		// Both of these are defined as basic tests.
 		mainRemoveBucketExists,
 		mainRemoveBucketDNE,
 	}
-
-	// Messages to be printed during the RemoveObject tests.
-	// When a new test for RemoveObject is added make sure its message is added here.
-	removeObjectMessages = []string{
-		"RemoveObject (Object Exists):",
+	removeBucketMessagesBasic = []string{
+		"RemoveBucket (Bucket Exists):",
+		"RemoveBucket (Bucket DNE):",
 	}
-
-	// Declare all tests run for the RemoveObject API.
-	// When a new test for RemoveObject is added make sure its added here.
-	removeObjectTests = []APItest{
-		mainRemoveObjectExists,
+	removeBucketTestsExtended = []APItest{
+		mainRemoveBucketExists,
+		mainRemoveBucketDNE,
+	}
+	removeBucketMessagesExtended = []string{
+		"RemoveBucket (Bucket Exists):",
+		"RemoveBucket (Bucket DNE):",
 	}
 )
