@@ -22,14 +22,14 @@ import (
 )
 
 var (
-	globalDebug = false
+	globalVerbose = false
 )
 
 // Separate out context.
-func setGlobals(debug bool) {
-	globalDebug = debug
+func setGlobals(verbose bool) {
+	globalVerbose = verbose
 
-	if globalDebug {
+	if globalVerbose {
 		// Allow printing of traces.
 		console.DebugPrint = true
 	}
@@ -37,7 +37,7 @@ func setGlobals(debug bool) {
 
 // Set any global flags here.
 func setGlobalsFromContext(ctx *cli.Context) error {
-	debug := ctx.Bool("debug") || ctx.GlobalBool("debug")
-	setGlobals(debug)
+	verbose := ctx.Bool("verbose") || ctx.GlobalBool("verbose")
+	setGlobals(verbose)
 	return nil
 }

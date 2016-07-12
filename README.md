@@ -40,7 +40,7 @@ $ s3verify [FLAGS]
     --url       -u      Allows user to input the host URL of the server they wish to test.
     --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' with
                         AWS servers or automatic cleanup of test buckets and objects will fail. Defaults to 'us-east-1'.
-    --debug     -d      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
+    --verbose     -v      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
 ```
 
 ## EXAMPLES

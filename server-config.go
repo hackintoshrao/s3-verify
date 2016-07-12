@@ -41,7 +41,8 @@ func newServerConfig(ctx *cli.Context) *ServerConfig {
 		Region:   ctx.String("region"),
 		Client:   &http.Client{},
 	}
-	if ctx.Bool("debug") || ctx.GlobalBool("debug") {
+	if ctx.Bool("verbose") || ctx.GlobalBool("verbose") {
+
 		// Set up new tracer.
 		serverCfg.Client.Transport = httptracer.GetNewTraceTransport(newTraceV4(), http.DefaultTransport)
 	}

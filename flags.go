@@ -45,7 +45,7 @@ var globalFlags = []cli.Flag{
 		EnvVar: "S3_URL",
 	},
 	cli.BoolFlag{
-		Name:  "debug, d",
-		Usage: "Enable debugging output.",
+		Name:  "verbose, v",
+		Usage: "Enable verbose output.",
 	},
 }
