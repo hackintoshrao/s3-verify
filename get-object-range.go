@@ -52,7 +52,7 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 
 // Test a GET object request with a range header set.
 func mainGetObjectRange(config ServerConfig, message string) error {
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	rand.Seed(time.Now().UnixNano())
 	for _, object := range objects {
 		startRange := rand.Int63n(object.Size)

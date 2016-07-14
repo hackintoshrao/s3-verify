@@ -151,7 +151,7 @@ func verifyHeaderPutObject(res *http.Response) error {
 func mainPutObject(config ServerConfig, message string) error {
 	// TODO: create tests designed to fail.
 	for _, object := range objects {
-		bucket := testBuckets[0]
+		bucket := validBuckets[0]
 		// Spin scanBar
 		scanBar(message)
 		// PUT each object in each available bucket.

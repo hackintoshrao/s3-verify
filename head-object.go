@@ -99,7 +99,7 @@ func verifyHeaderHeadObject(res *http.Response) error {
 func mainHeadObject(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Create a new HEAD object with no headers.
 		req, err := newHeadObjectReq(config, bucket.Name, object.Key)

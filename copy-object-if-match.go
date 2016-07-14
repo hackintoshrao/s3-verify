@@ -125,8 +125,8 @@ func mainCopyObjectIfMatch(config ServerConfig, message string) error {
 	// Create bad ETag.
 	badETag := "1234567890"
 
-	sourceBucketName := testBuckets[0].Name
-	destBucketName := testBuckets[1].Name
+	sourceBucketName := validBuckets[0].Name
+	destBucketName := validBuckets[1].Name
 	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-match",

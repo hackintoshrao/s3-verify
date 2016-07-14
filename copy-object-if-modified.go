@@ -124,8 +124,8 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, message string) error {
 	if err != nil {
 		return err
 	}
-	sourceBucketName := testBuckets[0].Name
-	destBucketName := testBuckets[1].Name
+	sourceBucketName := validBuckets[0].Name
+	destBucketName := validBuckets[1].Name
 	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-modified-since",

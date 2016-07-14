@@ -123,7 +123,7 @@ func verifyHeaderUploadPart(res *http.Response) error {
 func mainUploadPart(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create some random data at most 5MB to upload via multipart operations.
 	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)

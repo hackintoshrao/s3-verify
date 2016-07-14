@@ -101,7 +101,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, message string) error {
 	if err != nil {
 		return err
 	}
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)

@@ -113,7 +113,7 @@ func verifyHeaderListParts(res *http.Response) error {
 func mainListParts(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a handcrafted ListObjectsPartsResult
 	expectedList := listObjectPartsResult{

@@ -18,37 +18,63 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"hash"
-	"io"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/minio/s3verify/signv4"
 )
 
-var testBuckets = []BucketInfo{
-	BucketInfo{
-		Name: "s3verify-put-bucket-test",
-	},
-	BucketInfo{
-		Name: "s3verify-put-bucket-test1",
-	},
-}
+var (
+	testBuckets = [][]BucketInfo{
+		validBuckets,
+		invalidBuckets,
+	}
+	validBuckets = []BucketInfo{
+		BucketInfo{
+			Name: "s3verify-put-bucket-test",
+		},
+		BucketInfo{
+			Name: "s3verify-put-bucket-copy-test",
+		},
+	}
+	// See http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html for all bucket naming restrictions.
+	invalidBuckets = []BucketInfo{
+		BucketInfo{
+			Name: "s3", // Bucket names must be at least 3 chars long.
+		},
+		BucketInfo{
+			Name: "babcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwzyz", // Bucket names must be less than 63 chars long. This is only on regions other than us-east-1.
+		},
+		BucketInfo{
+			Name: "S3verify", // Bucket names must start with a lowercase letter or a number.
+		},
+		BucketInfo{
+			Name: "192.168.5.4", // Bucket names must not be formatted as an IP address.
+		},
+		BucketInfo{
+			Name: "s3..verify", // Bucket names can not have adjacent periods in them.
+		},
+		BucketInfo{
+			Name: ".s3verify", // Bucket names can not start with periods.
+		},
+		BucketInfo{
+			Name: "s3verify.", // Bucket names can not end with periods.
+		},
+	}
+)
 
 // newPutBucketReq - Create a new Make bucket request.
 func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
-
 	// putBucketReq - hardcode the static portions of a new Make Bucket request.
 	var putBucketReq = &http.Request{
 		Header: map[string][]string{
 			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
 		},
 		Method: "PUT",
-		Body:   nil, // No Body sent for Make Bucket requests.(Need to verify)
+		// Body: will be set if the region is different from us-east-1.
 	}
 
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
@@ -63,23 +89,14 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 		if err != nil {
 			return nil, err
 		}
-		// TODO: use hash function here.
 		bucketConfigBuffer := bytes.NewReader(bucketConfigBytes)
-		putBucketReq.ContentLength = int64(bucketConfigBuffer.Size())
-		// Reset X-Amz-Content-Sha256
-		var hashSHA256 hash.Hash
-		// Create a reader from the data.
-		hashSHA256 = sha256.New()
-		_, err = io.Copy(hashSHA256, bucketConfigBuffer)
+		_, sha256Sum, contentLength, err := computeHash(bucketConfigBuffer)
 		if err != nil {
 			return nil, err
 		}
-		// Move back to beginning of data.
-		bucketConfigBuffer.Seek(0, 0)
 		// Set the body.
 		putBucketReq.Body = ioutil.NopCloser(bucketConfigBuffer)
-		// Finalize the SHA calculation.
-		sha256Sum := hashSHA256.Sum(nil)
+		putBucketReq.ContentLength = contentLength
 		// Fill request headers and URL.
 		putBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	}
@@ -87,50 +104,65 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 	return putBucketReq, nil
 }
 
-// verifyResponsePutBucket - Check the response Body, Header, Status for AWS S3 compliance.
-func verifyResponsePutBucket(res *http.Response, bucketName string) error {
-	if err := verifyStatusPutBucket(res); err != nil {
+// putBucketVerify - Check the response Body, Header, Status for AWS S3 compliance.
+func putBucketVerify(res *http.Response, bucketName, expectedStatus string, expectedError ErrorResponse) error {
+	if err := verifyStatusPutBucket(res, expectedStatus); err != nil {
 		return err
 	}
-	if err := verifyHeaderPutBucket(res, bucketName); err != nil {
+	if err := verifyHeaderPutBucket(res, bucketName, expectedStatus); err != nil {
 		return err
 	}
-	if err := verifyBodyPutBucket(res); err != nil {
+	if err := verifyBodyPutBucket(res, expectedError); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusPutBucket - Check the response status for AWS S3 compliance.
-func verifyStatusPutBucket(res *http.Response) error {
-	if res.StatusCode != http.StatusOK {
-		err := fmt.Errorf("Unexpected Response Status Code: %v", res.StatusCode)
+func verifyStatusPutBucket(res *http.Response, expectedStatus string) error {
+	if res.Status != expectedStatus {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.StatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyPutBucket - Check the response body for AWS S3 compliance.
-func verifyBodyPutBucket(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	// There is no body returned by a Put Bucket request.
-	if string(body) != "" {
-		err := fmt.Errorf("Unexpected Body: %v", string(body))
-		return err
+func verifyBodyPutBucket(res *http.Response, expectedError ErrorResponse) error {
+	if expectedError.Message != "" {
+		resError := ErrorResponse{}
+		err := xmlDecoder(res.Body, &resError)
+		if err != nil {
+			return err
+		}
+		if resError.Message != expectedError.Message {
+			err := fmt.Errorf("Unexpected Error Message: wanted %v, got %v", expectedError.Message, resError.Message)
+			return err
+		}
+		return nil
+	} else {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		// There is no body returned by a Put Bucket request.
+		if string(body) != "" {
+			err := fmt.Errorf("Unexpected Body: %v", string(body))
+			return err
+		}
 	}
 	return nil
 }
 
 // verifyHeaderPutBucket - Check the response header for AWS S3 compliance.
-func verifyHeaderPutBucket(res *http.Response, bucketName string) error {
-	location := res.Header["Location"][0]
-	if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
-		// TODO: wait for Minio server to fix endpoint detection.
-		err := fmt.Errorf("Unexpected Location: got %v", location)
-		return err
+func verifyHeaderPutBucket(res *http.Response, bucketName, expectedStatus string) error {
+	if expectedStatus == "200 OK" {
+		location := res.Header["Location"][0]
+		if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
+			// TODO: wait for Minio server to fix endpoint detection.
+			err := fmt.Errorf("Unexpected Location: got %v", location)
+			return err
+		}
 	}
 	if err := verifyStandardHeaders(res); err != nil {
 		return err
@@ -142,10 +174,10 @@ func verifyHeaderPutBucket(res *http.Response, bucketName string) error {
 func mainPutBucket(config ServerConfig, message string) error {
 	// Spin the scanBar
 	scanBar(message)
-	for _, bucket := range testBuckets { // Test the creation of 3 new buckets. All valid for now. TODO: test invalid names/input.
+	// Test that valid names are PUT correctly.
+	for _, bucket := range validBuckets {
 		// Spin the scanBar
 		scanBar(message)
-
 		// Create a new Make bucket request.
 		req, err := newPutBucketReq(config, bucket.Name)
 		if err != nil {
@@ -153,7 +185,6 @@ func mainPutBucket(config ServerConfig, message string) error {
 		}
 		// Spin the scanBar
 		scanBar(message)
-
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
@@ -161,14 +192,40 @@ func mainPutBucket(config ServerConfig, message string) error {
 		}
 		// Spin the scanBar
 		scanBar(message)
-
 		// Check the responses Body, Status, Header.
-		if err := verifyResponsePutBucket(res, bucket.Name); err != nil {
+		if err := putBucketVerify(res, bucket.Name, "200 OK", ErrorResponse{}); err != nil {
 			return err
 		}
 		// Spin the scanBar
 		scanBar(message)
 	}
-
+	expectedError := ErrorResponse{
+		Message: "The specified bucket is not valid.",
+	}
+	// Test that all invalid names fail correctly.
+	for _, bucket := range invalidBuckets {
+		// Spin scanBar
+		scanBar(message)
+		// Create a new PUT bucket request.
+		req, err := newPutBucketReq(config, bucket.Name)
+		if err != nil {
+			return err
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := execRequest(req, config.Client)
+		if err != nil {
+			return err
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Verify that the request failed as predicted.
+		if err := putBucketVerify(res, bucket.Name, "400 Bad Request", expectedError); err != nil {
+			return err
+		}
+		// Spin scanBar
+		scanBar(message)
+	}
 	return nil
 }

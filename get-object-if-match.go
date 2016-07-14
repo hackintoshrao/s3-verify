@@ -112,7 +112,7 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
 
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Test with If-Match Header set.
 		// Spin scanBar

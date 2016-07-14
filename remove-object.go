@@ -84,7 +84,7 @@ func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 }
 
 func mainRemoveObjectExists(config ServerConfig, message string) error {
-	for _, bucket := range testBuckets {
+	for _, bucket := range validBuckets {
 		for _, object := range objects {
 			// Spin scanBar
 			scanBar(message)

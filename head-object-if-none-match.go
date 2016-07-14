@@ -101,7 +101,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, message string) error {
 	scanBar(message)
 	// Create an ETag that won't match any already created.
 	validETag := "1234567890"
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := objects[0]
 	// Create a new request for a HEAD object with if-none-match header set.
 	req, err := newHeadObjectIfNoneMatchReq(config, bucket.Name, object.Key, validETag)

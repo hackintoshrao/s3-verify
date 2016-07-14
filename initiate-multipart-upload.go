@@ -120,7 +120,7 @@ func mainInitiateMultipartUpload(config ServerConfig, message string) error {
 	// Spin scanBar.
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a new InitiateMultiPartUpload request.
 	req, err := newInitiateMultipartUploadReq(config, bucket.Name, object.Key)

@@ -100,7 +100,7 @@ func verifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
 
 // Test the RemoveBucket API when the bucket exists.
 func mainRemoveBucketExists(config ServerConfig, message string) error {
-	for _, bucket := range testBuckets {
+	for _, bucket := range validBuckets {
 		// Spin the scanBar
 		scanBar(message)
 

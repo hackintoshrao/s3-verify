@@ -97,7 +97,7 @@ func verifyStatusGetObject(res *http.Response, expectedStatus string) error {
 // Test a GET object request with no special headers set.
 func mainGetObject(config ServerConfig, message string) error {
 	// TODO: should errors be returned to the top level or printed here.
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)

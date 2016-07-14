@@ -115,8 +115,8 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, message string) error {
 	// Create unmatchable ETag.
 	goodETag := "1234567890"
 
-	sourceBucketName := testBuckets[0].Name
-	destBucketName := testBuckets[1].Name
+	sourceBucketName := validBuckets[0].Name
+	destBucketName := validBuckets[1].Name
 	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-none-match",

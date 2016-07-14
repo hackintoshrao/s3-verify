@@ -110,7 +110,7 @@ func verifyHeaderCompleteMultipartUpload(res *http.Response) error {
 func mainCompleteMultipartUpload(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a new completeMultipartUpload request.
 	req, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUpload)

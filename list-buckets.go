@@ -141,7 +141,7 @@ func mainListBucketsExist(config ServerConfig, message string) error {
 			ID:          "",
 		},
 		Buckets: buckets{
-			Bucket: testBuckets,
+			Bucket: validBuckets,
 		},
 	}
 

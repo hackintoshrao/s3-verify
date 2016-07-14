@@ -103,7 +103,7 @@ func mainHeadObjectIfMatch(config ServerConfig, message string) error {
 	scanBar(message)
 	// Create a bad ETag.
 	invalidETag := "1234567890"
-	bucket := testBuckets[0]
+	bucket := validBuckets[0]
 	object := objects[0]
 	// Create a new valid request for HEAD object with if-match header set.
 	req, err := newHeadObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)

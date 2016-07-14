@@ -105,8 +105,8 @@ func mainCopyObject(config ServerConfig, message string) error {
 	// Spin scanBar
 	scanBar(message)
 	// TODO: create tests designed to fail.
-	sourceBucketName := testBuckets[0].Name
-	destBucketName := testBuckets[1].Name
+	sourceBucketName := validBuckets[0].Name
+	destBucketName := validBuckets[1].Name
 	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key,
