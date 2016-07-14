@@ -38,7 +38,7 @@ func newGetObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName 
 		Body:   nil, // There is no body for GET requests.
 		Method: "GET",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

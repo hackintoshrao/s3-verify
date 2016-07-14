@@ -37,7 +37,7 @@ func newHeadObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag s
 		Body:   nil, // No body is sent with HEAD requests.
 		Method: "HEAD",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

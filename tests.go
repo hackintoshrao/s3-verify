@@ -22,6 +22,7 @@ var (
 	basicTests = [][]APItest{
 		putBucketTestsBasic,
 		putObjectTestsBasic,
+		multipartTestsBasic,
 		headObjectTestsBasic,
 		copyObjectTestsBasic,
 		getObjectTestsBasic,
@@ -34,6 +35,7 @@ var (
 	basicMessages = [][]string{
 		putBucketMessagesBasic,
 		putObjectMessagesBasic,
+		multipartMessagesBasic,
 		headObjectMessagesBasic,
 		copyObjectMessagesBasic,
 		getObjectMessagesBasic,
@@ -47,6 +49,7 @@ var (
 	extendedTests = [][]APItest{
 		putBucketTestsExtended,
 		putObjectTestsExtended,
+		multipartTestsExtended,
 		headObjectTestsExtended,
 		copyObjectTestsExtended,
 		getObjectTestsExtended,
@@ -60,6 +63,7 @@ var (
 	extendedMessages = [][]string{
 		putBucketMessagesExtended,
 		putObjectMessagesExtended,
+		multipartMessagesExtended,
 		headObjectMessagesExtended,
 		copyObjectMessagesExtended,
 		getObjectMessagesExtended,
@@ -72,6 +76,7 @@ var (
 // Tests must be run in the following order
 // PutBucket,
 // PutObject,
+// Multipart,
 // HeadObject,
 // CopyObject,
 // GetObject,
@@ -104,7 +109,7 @@ var (
 		mainPutObject,
 	}
 	putObjectMessagesBasic = []string{
-		"PutObject",
+		"PutObject:",
 	}
 	// For now PutObject API only has basic tests
 	// in the future there will be extended tests added.
@@ -113,6 +118,35 @@ var (
 	}
 	putObjectMessagesExtended = []string{
 		"PutObject:",
+	}
+)
+
+// Tests and messages for Multipart API,
+// make sure future tests/messages are added here.
+var (
+	multipartTestsBasic = []APItest{
+		mainInitiateMultipartUpload,
+		mainUploadPart,
+		mainListParts,
+		mainCompleteMultipartUpload,
+	}
+	multipartMessagesBasic = []string{
+		"InitiateMultipartUpload:",
+		"UploadPart:",
+		"ListParts:",
+		"CompleteMultipartUpload:",
+	}
+	multipartTestsExtended = []APItest{
+		mainInitiateMultipartUpload,
+		mainUploadPart,
+		mainListParts,
+		mainCompleteMultipartUpload,
+	}
+	multipartMessagesExtended = []string{
+		"InitiateMultipartUpload:",
+		"UploadPart:",
+		"ListParts:",
+		"CompleteMultipartUpload:",
 	}
 )
 

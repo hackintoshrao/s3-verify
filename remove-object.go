@@ -36,7 +36,7 @@ func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*ht
 		Body:   nil, // There is no body for DELETE requests.
 		Method: "DELETE",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +110,30 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			scanBar(message)
 		}
 		for _, object := range copyObjects {
+			// Spin scanBar
+			scanBar(message)
+			// Create a new request.
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+			// Verify the response.
+			if err := removeObjectVerify(res, "200 OK"); err != nil {
+				return err
+			}
+			// Spin scanBar
+			scanBar(message)
+		}
+		for _, object := range multipartObjects {
 			// Spin scanBar
 			scanBar(message)
 			// Create a new request.

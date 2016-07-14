@@ -39,7 +39,7 @@ func newRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, 
 	}
 
 	// Set the DELETE req URL.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

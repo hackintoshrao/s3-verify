@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cheggaaa/pb"
 	"github.com/minio/mc/pkg/console"
-	"github.com/minio/pb"
 )
 
 // Set up global cursor channel.

@@ -39,7 +39,7 @@ const (
 
 // verifyHostReachable - Execute a simple get request against the provided endpoint to make sure its reachable.
 func verifyHostReachable(endpoint, region string) error {
-	targetURL, err := makeTargetURL(endpoint, "", "", region)
+	targetURL, err := makeTargetURL(endpoint, "", "", region, nil)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func isAmazonEndpoint(endpointURL *url.URL) bool {
 }
 
 // Generate a new URL from the user provided endpoint.
-func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, error) {
+func makeTargetURL(endpoint, bucketName, objectName, region string, queryValues url.Values) (*url.URL, error) {
 	targetURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -121,6 +121,9 @@ func makeTargetURL(endpoint, bucketName, objectName, region string) (*url.URL, e
 	targetURL.Path = "/"
 	if bucketName != "" {
 		targetURL.Path = "/" + bucketName + "/" + objectName // Use path style requests only.
+	}
+	if len(queryValues) > 0 { // If there are query values include them.
+		targetURL.RawQuery = queryValues.Encode()
 	}
 	return targetURL, nil
 }

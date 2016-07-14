@@ -37,7 +37,7 @@ func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObject
 		},
 		Method: "PUT",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

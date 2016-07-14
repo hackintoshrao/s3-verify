@@ -51,7 +51,7 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 		Body:   nil, // No Body sent for Make Bucket requests.(Need to verify)
 	}
 
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

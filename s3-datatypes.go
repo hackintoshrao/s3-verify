@@ -16,7 +16,10 @@
 
 package main
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"time"
+)
 
 // copyObjectResult container for copy object response.
 type copyObjectResult struct {
@@ -33,6 +36,12 @@ type listAllMyBucketsResult struct {
 
 type buckets struct {
 	Bucket []BucketInfo
+}
+
+// initiator container for who initiated multipart upload
+type initiator struct {
+	ID          string
+	DisplayName string
 }
 
 // owner container for bucket owner information.
@@ -82,4 +91,69 @@ type listBucketResult struct {
 type createBucketConfiguration struct {
 	XMLName  xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ CreateBucketConfiguration" json:"-"`
 	Location string   `xml:"LocationConstraint"`
+}
+
+// initiateMultipartUploadResult container for InitiateMultipartUpload
+// response.
+type initiateMultipartUploadResult struct {
+	Bucket   string
+	Key      string
+	UploadID string `xml:"UploadId"`
+}
+
+type objectPart struct {
+	// Part number identifies the part.
+	PartNumber int
+
+	// Date and time the part was uploaded.
+	LastModified time.Time
+
+	// Entity tag returned when the part was uploaded, usually
+	// md5sum of the part.
+	ETag string
+
+	// Size of the uploaded part data.
+	Size int64
+}
+
+// completeMultipartUploadResult container for completed multipart
+// upload response.
+type completeMultipartUploadResult struct {
+	Location string
+	Bucket   string
+	Key      string
+	ETag     string
+}
+
+// completePart sub container lists individual part numbers and their md5sum,
+// part of completeMultipartUpload.
+type completePart struct {
+	XMLName xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ Part" json:"-"`
+
+	// Part number identifies the part.
+	PartNumber int
+	ETag       string
+}
+
+// completeMultipartUpload container for completing multipart upload.
+type completeMultipartUpload struct {
+	XMLName xml.Name       `xml:"http://s3.amazonaws.com/doc/2006-03-0/ CompleteMultipartUpload" json:"-"`
+	Parts   []completePart `xml:"Part"`
+}
+
+// listObjectPartsResult container for ListObjectParts response.
+type listObjectPartsResult struct {
+	Bucket               string
+	Key                  string
+	UploadID             string
+	Initiator            initiator
+	Owner                owner
+	StorageClass         string
+	PartNumberMarker     int
+	NextPartNumberMarker int
+	MaxParts             int
+	IsTruncated          bool
+	ObjectParts          []objectPart `xml:"Part"`
+
+	EncodingType string
 }

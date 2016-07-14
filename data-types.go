@@ -50,5 +50,6 @@ type ObjectInfo struct {
 	// Error
 	Err error `json:"-"`
 
-	Body []byte // Data held by the object.
+	Body     []byte // Data held by the object.
+	UploadID string // To be set only for multipart uploaded objects.
 }

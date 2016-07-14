@@ -39,7 +39,7 @@ func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sour
 		},
 		Method: "PUT",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}

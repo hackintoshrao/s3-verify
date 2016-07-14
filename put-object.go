@@ -80,7 +80,7 @@ func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 		// Body:
 		Method: "PUT",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region)
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
