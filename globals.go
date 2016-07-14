@@ -22,7 +22,8 @@ import (
 )
 
 var (
-	globalVerbose = false
+	globalVerbose       = false
+	globalDefaultRegion = "us-east-1"
 )
 
 // Separate out context.

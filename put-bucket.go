@@ -82,7 +82,7 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 		return nil, err
 	}
 	putBucketReq.URL = targetURL
-	if config.Region != "us-east-1" { // Must set the request elements for non us-east-1 regions.
+	if config.Region != globalDefaultRegion { // Must set the request elements for non us-east-1 regions.
 		bucketConfig := createBucketConfiguration{}
 		bucketConfig.Location = config.Region
 		bucketConfigBytes, err := xml.Marshal(bucketConfig)
