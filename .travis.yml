@@ -3,7 +3,7 @@ language: go
 
 os:
 - linux
-- osx
+  #- osx
 
 env:
 - ARCH=x84_64

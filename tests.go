@@ -129,9 +129,13 @@ var (
 	// in the future there will be extended tests added.
 	headObjectTestsExtended = []APItest{
 		mainHeadObject,
+		mainHeadObjectIfMatch,
+		mainHeadObjectIfNoneMatch,
 	}
 	headObjectMessagesExtended = []string{
 		"HeadObject:",
+		"HeadObject (If-Match):",
+		"HeadObject (If-None-Match):",
 	}
 )
 
