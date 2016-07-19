@@ -104,8 +104,8 @@ func callAllAPIs(ctx *cli.Context) {
 					test.Test(*config, testCount, criticalMessage)
 				} else { // Do not exit the test on error if it is not critical.
 					test.Test(*config, testCount, normalMessage)
-					testCount++
 				}
+				testCount++
 			}
 
 		}
