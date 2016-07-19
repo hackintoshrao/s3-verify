@@ -45,8 +45,6 @@ func fixateScanBar(text string, width int) string {
 	return text
 }
 
-// TODO: create global totalTest count var.
-
 // Progress bar function report objects being scaned.
 type scanBarFunc func(string)
 

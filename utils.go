@@ -28,6 +28,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/minio/mc/pkg/console"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
@@ -36,6 +38,32 @@ const (
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting into 63 bits.
 )
+
+// printMessage - Print test pass/fail messages with errors.
+func printMessage(message string, err error, critical bool) {
+	// Erase the old progress line.
+	console.Eraseline()
+	if err != nil {
+		message += strings.Repeat(" ", messageWidth-len([]rune(message))) + "[FAIL]\n" + err.Error()
+		if critical { // If the test is deemed critical error out immediately if it failed.
+			console.Fatalln(message)
+		}
+		console.Println(message)
+	} else {
+		message += strings.Repeat(" ", messageWidth-len([]rune(message))) + "[OK]"
+		console.Println(message)
+	}
+}
+
+// criticalMessage - Error out of testing if the test failed.
+func criticalMessage(message string, err error) {
+	printMessage(message, err, true)
+}
+
+// normalMessage - Do not error out if the test failed.
+func normalMessage(message string, err error) {
+	printMessage(message, err, false)
+}
 
 // verifyHostReachable - Execute a simple get request against the provided endpoint to make sure its reachable.
 func verifyHostReachable(endpoint, region string) error {

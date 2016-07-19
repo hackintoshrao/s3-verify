@@ -96,7 +96,8 @@ func verifyHeaderHeadObjectIfNoneMatch(res *http.Response) error {
 }
 
 // mainHeadObjectIfNoneMatch - Entry point for the HEAD object with if-none-match header set test.
-func mainHeadObjectIfNoneMatch(config ServerConfig, message string) error {
+func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] HeadObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create an ETag that won't match any already created.
@@ -106,42 +107,49 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, message string) error {
 	// Create a new request for a HEAD object with if-none-match header set.
 	req, err := newHeadObjectIfNoneMatchReq(config, bucket.Name, object.Key, validETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfNoneMatchVerify(res, "200 OK"); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for a HEAD object with if-none-match header set.
 	badReq, err := newHeadObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfNoneMatchVerify(badRes, "304 Not Modified"); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
-	return nil
+	printFunc(message, nil)
+	return
 }

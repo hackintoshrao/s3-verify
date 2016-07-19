@@ -116,7 +116,8 @@ func verifyHeaderInitiateMultipartUpload(res *http.Response) error {
 }
 
 // mainInitiateMultipartUpload - Entry point for the initiate multipart upload test.
-func mainInitiateMultipartUpload(config ServerConfig, message string) error {
+func mainInitiateMultipartUpload(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] Multipart (Initiate-Upload):", curTest, globalTotalNumTest)
 	// Spin scanBar.
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
@@ -125,23 +126,27 @@ func mainInitiateMultipartUpload(config ServerConfig, message string) error {
 	// Create a new InitiateMultiPartUpload request.
 	req, err := newInitiateMultipartUploadReq(config, bucket.Name, object.Key)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response and get the uploadID.
 	uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Set the uploadID for the object.
 	object.UploadID = uploadID
-	return nil
+	printFunc(message, err)
+	return
 }

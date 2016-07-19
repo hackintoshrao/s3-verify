@@ -83,7 +83,8 @@ func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
-func mainRemoveObjectExists(config ServerConfig, message string) error {
+func mainRemoveObjectExists(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
 	for _, bucket := range validBuckets {
 		for _, object := range objects {
 			// Spin scanBar
@@ -91,20 +92,23 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
@@ -115,20 +119,23 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
@@ -139,24 +146,28 @@ func mainRemoveObjectExists(config ServerConfig, message string) error {
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				return err
+				printFunc(message, err)
+				return
 			}
 			// Spin scanBar
 			scanBar(message)
 		}
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

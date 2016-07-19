@@ -98,7 +98,8 @@ func verifyHeaderHeadObjectIfMatch(res *http.Response) error {
 }
 
 // mainHeadObjectIfMatch - Entry point for the HEAD object with if-match header set test.
-func mainHeadObjectIfMatch(config ServerConfig, message string) error {
+func mainHeadObjectIfMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad ETag.
@@ -108,42 +109,49 @@ func mainHeadObjectIfMatch(config ServerConfig, message string) error {
 	// Create a new valid request for HEAD object with if-match header set.
 	req, err := newHeadObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfMatchVerify(res, "200 OK"); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for HEAD object with if-match header set.
 	badReq, err := newHeadObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the invalid request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request sends back the right error.
 	if err := headObjectIfMatchVerify(badRes, "412 Precondition Failed"); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
-	return nil
+	printFunc(message, nil)
+	return
 }

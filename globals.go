@@ -24,12 +24,13 @@ import (
 var (
 	globalVerbose       = false
 	globalDefaultRegion = "us-east-1"
+	globalTotalNumTest  = 0
 )
 
 // Separate out context.
-func setGlobals(verbose bool) {
+func setGlobals(verbose bool, numTests int) {
+	globalTotalNumTest = numTests
 	globalVerbose = verbose
-
 	if globalVerbose {
 		// Allow printing of traces.
 		console.DebugPrint = true
@@ -39,6 +40,15 @@ func setGlobals(verbose bool) {
 // Set any global flags here.
 func setGlobalsFromContext(ctx *cli.Context) error {
 	verbose := ctx.Bool("verbose") || ctx.GlobalBool("verbose")
-	setGlobals(verbose)
+	numTests := 0
+	for _, test := range apiTests {
+		if !test.Extended {
+			numTests++
+		}
+	}
+	if ctx.Bool("extended") || ctx.GlobalBool("extended") {
+		numTests = len(apiTests)
+	}
+	setGlobals(verbose, numTests)
 	return nil
 }

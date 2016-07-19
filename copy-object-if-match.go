@@ -119,7 +119,8 @@ func verifyStatusCopyObjectIfMatch(res *http.Response, expectedStatus string) er
 }
 
 // Test the PUT Object Copy with If-Match header is set.
-func mainCopyObjectIfMatch(config ServerConfig, message string) error {
+func mainCopyObjectIfMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Match)", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create bad ETag.
@@ -141,31 +142,38 @@ func mainCopyObjectIfMatch(config ServerConfig, message string) error {
 	// Create a new valid PUT object copy request.
 	req, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Execute the response.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Verify the response.
 	if err := copyObjectIfMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 
 	// Create a new invalid PUT object copy request.
 	badReq, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Execute the request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Verify the request failed as expected.
 	if err := copyObjectIfMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

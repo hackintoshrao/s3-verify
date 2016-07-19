@@ -95,11 +95,13 @@ func verifyHeaderGetObjectIfModifiedSince(res *http.Response) error {
 }
 
 // Test the compatibility of the GET object API when using the If-Modified-Since header.
-func mainGetObjectIfModifiedSince(config ServerConfig, message string) error {
+func mainGetObjectIfModifiedSince(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] GetObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	// Set a date in the past.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	bucket := validBuckets[0]
 	for _, object := range objects {
@@ -108,43 +110,50 @@ func mainGetObjectIfModifiedSince(config ServerConfig, message string) error {
 		// Create new GET object request.
 		req, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Perform the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response...these checks do not check the headers yet.
 		if err := verifyGetObjectIfModifiedSince(res, []byte(""), "304 Not Modified"); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Create an acceptable request.
 		goodReq, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, object.Key, pastDate)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the response that should give back a body.
 		goodRes, err := execRequest(goodReq, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the past date gives back the data.
 		if err := verifyGetObjectIfModifiedSince(goodRes, object.Body, "200 OK"); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
@@ -61,7 +60,11 @@ EXAMPLES:
 `
 
 // Define all mainXXX tests to be of this form.
-type APItest func(ServerConfig, string) error
+type APItest struct {
+	Test     func(ServerConfig, int, func(string, error))
+	Extended bool // Extended tests will only be invoked at the users request.
+	Critical bool // Tests marked critical must pass before more tests can be run.
+}
 
 func commandNotFound(ctx *cli.Context, command string) {
 	msg := fmt.Sprintf("'%s' is not a s3verify command. See 's3verify --help'.", command)
@@ -89,53 +92,22 @@ func callAllAPIs(ctx *cli.Context) {
 		if err := verifyHostReachable(config.Endpoint, config.Region); err != nil { // If the provided endpoint is unreachable error out instantly.
 			console.Fatalln(err)
 		}
-		numTests := 0
-		curTest := 1
-		if ctx.GlobalBool("extended") {
-			for _, APItests := range extendedTests {
-				numTests += len(APItests)
+		testCount := 1
+		for _, test := range apiTests {
+			if test.Extended {
+				if ctx.GlobalBool("extended") { // Only run extended tests if explicitly invoked by user.
+					test.Test(*config, testCount, normalMessage) // By definition an extended test cannot be critical.
+					testCount++
+				}
+			} else {
+				if test.Critical { // Error out immediately if a critical test fails.
+					test.Test(*config, testCount, criticalMessage)
+				} else { // Do not exit the test on error if it is not critical.
+					test.Test(*config, testCount, normalMessage)
+					testCount++
+				}
 			}
-			for i, APItests := range extendedTests {
-				for j, test := range APItests {
-					message := fmt.Sprintf("[%d/%d] "+extendedMessages[i][j], curTest, numTests)
-					padding := messageWidth - len([]rune(message))
-					if err := test(*config, message); err != nil {
-						// Print an error message.
-						console.Eraseline()
-						// TODO: investigate better error message handling.
-						console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
 
-					} else {
-						// Erase the old progress bar.
-						console.Eraseline()
-						// Update test as complete.
-						console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
-					}
-					curTest++
-				}
-			}
-		} else {
-			for _, APItests := range basicTests {
-				numTests += len(APItests)
-			}
-			for i, APItests := range basicTests {
-				for j, test := range APItests {
-					message := fmt.Sprintf("[%d/%d] "+basicMessages[i][j], curTest, numTests)
-					padding := messageWidth - len([]rune(message))
-					if err := test(*config, message); err != nil {
-						// Print an error message.
-						console.Eraseline()
-						// TODO: investigate better error message handling.
-						console.Errorln(message + strings.Repeat(" ", padding) + "[FAIL: " + err.Error() + "]\n")
-					} else {
-						// Erase the old progress bar.
-						console.Eraseline()
-						// Update test as complete.
-						console.PrintC(message + strings.Repeat(" ", padding) + "[OK]\n")
-					}
-					curTest++
-				}
-			}
 		}
 	} else {
 		cli.ShowAppHelp(ctx)

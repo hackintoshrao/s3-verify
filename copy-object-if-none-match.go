@@ -109,7 +109,8 @@ func verifyHeaderCopyObjectIfNoneMatch(res *http.Response) error {
 }
 
 // Test the CopyObject API with the if-none-match header set.
-func mainCopyObjectIfNoneMatch(config ServerConfig, message string) error {
+func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] CopyObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create unmatchable ETag.
@@ -130,30 +131,37 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, message string) error {
 	// Create a successful copy request.
 	req, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, goodETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Execute the response.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Verify the response.
 	if err = copyObjectIfNoneMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Create a bad copy request.
 	badReq, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Execute the response.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Verify the response errors out as it should.
 	if err = copyObjectIfNoneMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

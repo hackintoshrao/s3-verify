@@ -96,7 +96,8 @@ func verifyHeaderHeadObject(res *http.Response) error {
 }
 
 // Test the HeadObject API with no header set.
-func mainHeadObject(config ServerConfig, message string) error {
+func mainHeadObject(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] HeadObject:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
@@ -104,20 +105,23 @@ func mainHeadObject(config ServerConfig, message string) error {
 		// Create a new HEAD object with no headers.
 		req, err := newHeadObjectReq(config, bucket.Name, object.Key)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 
 		// Verify the response.
 		if err := headObjectVerify(res, "200 OK"); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// If the verification is good then set the ETag, Size, and LastModified.
 		// Remove the odd double quotes from ETag in the beginning and end.
@@ -126,16 +130,19 @@ func mainHeadObject(config ServerConfig, message string) error {
 		object.ETag = ETag
 		date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		object.LastModified = date
 		size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		object.Size = size
 		// Spin scanBar
 		scanBar(message)
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

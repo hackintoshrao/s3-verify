@@ -99,7 +99,8 @@ func verifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
 }
 
 // Test the RemoveBucket API when the bucket exists.
-func mainRemoveBucketExists(config ServerConfig, message string) error {
+func mainRemoveBucketExists(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] RemoveBucket (Bucket Exists):", curTest, globalTotalNumTest)
 	for _, bucket := range validBuckets {
 		// Spin the scanBar
 		scanBar(message)
@@ -107,7 +108,8 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 		// Generate the new DELETE bucket request.
 		req, err := newRemoveBucketReq(config, bucket.Name)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin the scanBar
 		scanBar(message)
@@ -115,22 +117,26 @@ func mainRemoveBucketExists(config ServerConfig, message string) error {
 		// Perform the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin the scanBar
 		scanBar(message)
 
 		if err = removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin the scanBar
 		scanBar(message)
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }
 
 // Test the RemoveBucket API when the bucket does not exist.
-func mainRemoveBucketDNE(config ServerConfig, message string) error {
+func mainRemoveBucketDNE(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] RemoveBucket (Bucket DNE):", curTest, globalTotalNumTest)
 	// Generate a random bucketName.
 	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "")
 	// Hardcode the expected error response.
@@ -145,21 +151,25 @@ func mainRemoveBucketDNE(config ServerConfig, message string) error {
 	// Generate a new DELETE bucket request for a bucket that does not exist.
 	req, err := newRemoveBucketReq(config, bucketName)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	if err = removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
-	return nil
+	printFunc(message, nil)
+	return
 }

@@ -16,63 +16,6 @@
 
 package main
 
-var (
-	// basicTests holds all tests that MUST pass for a server
-	// to claim compatibility with AWS S3 Signature V4.
-	basicTests = [][]APItest{
-		putBucketTestsBasic,
-		putObjectTestsBasic,
-		multipartTestsBasic,
-		headObjectTestsBasic,
-		copyObjectTestsBasic,
-		getObjectTestsBasic,
-		listBucketsTestsBasic,
-		removeObjectTestsBasic,
-		removeBucketTestsBasic,
-	}
-	// basicMessages holds all messages that belong to tests
-	// that MUST pass for a server to claim AWS S3 sign v4 compatability.
-	basicMessages = [][]string{
-		putBucketMessagesBasic,
-		putObjectMessagesBasic,
-		multipartMessagesBasic,
-		headObjectMessagesBasic,
-		copyObjectMessagesBasic,
-		getObjectMessagesBasic,
-		listBucketsMessagesBasic,
-		removeObjectMessagesBasic,
-		removeBucketMessagesBasic,
-	}
-	// extendedTests holds all the basic tests that MUST pass
-	// as well as some tests for features that are not necessary
-	// for compatibility.
-	extendedTests = [][]APItest{
-		putBucketTestsExtended,
-		putObjectTestsExtended,
-		multipartTestsExtended,
-		headObjectTestsExtended,
-		copyObjectTestsExtended,
-		getObjectTestsExtended,
-		listBucketsTestsExtended,
-		removeObjectTestsExtended,
-		removeBucketTestsExtended,
-	}
-	// extendedMessages holds all the messages that belong to
-	// both the basic tests as well as those that test features that
-	// are not necessary for compatibility.
-	extendedMessages = [][]string{
-		putBucketMessagesExtended,
-		putObjectMessagesExtended,
-		multipartMessagesExtended,
-		headObjectMessagesExtended,
-		copyObjectMessagesExtended,
-		getObjectMessagesExtended,
-		listBucketsMessagesExtended,
-		removeObjectMessagesExtended,
-		removeBucketMessagesExtended,
-	}
-)
-
 // Tests must be run in the following order
 // PutBucket,
 // PutObject,
@@ -83,201 +26,137 @@ var (
 // ListBuckets,
 // RemoveObject,
 // RemoveBucket,
+var apiTests = []APItest{
+	// Test for PutBucket API.
+	APItest{
+		Test:     mainPutBucket,
+		Extended: false, // PUT bucket tests must be run even without extended flags being set.
+		Critical: true,  // PUT bucket tests must pass before other tests can be run.
+	},
 
-// Tests and messages for PutBucket API,
-// make sure future tests/messages are added here.
-var (
-	putBucketTestsBasic = []APItest{
-		mainPutBucket,
-	}
-	putBucketMessagesBasic = []string{
-		"PutBucket:",
-	}
-	// PutBucket API has no real extended tests
-	putBucketTestsExtended = []APItest{
-		mainPutBucket,
-	}
-	putBucketMessagesExtended = []string{
-		"PutBucket:",
-	}
-)
+	// Test for PutObject API.
+	APItest{
+		Test:     mainPutObject,
+		Extended: false, // PUT object tests must be run even witout extended flags being set.
+		Critical: true,  // PUT object tests must pass before other tests can be run.
+	},
 
-// Tests and messages for PutObject API,
-// make sure future tests/messages are added here.
-var (
-	putObjectTestsBasic = []APItest{
-		mainPutObject,
-	}
-	putObjectMessagesBasic = []string{
-		"PutObject:",
-	}
-	// For now PutObject API only has basic tests
-	// in the future there will be extended tests added.
-	putObjectTestsExtended = []APItest{
-		mainPutObject,
-	}
-	putObjectMessagesExtended = []string{
-		"PutObject:",
-	}
-)
+	// Tests for Multipart API.
+	APItest{
+		Test:     mainInitiateMultipartUpload,
+		Extended: false, // Initiate Multipart test must be run even without extended flags being set.
+		Critical: true,  // Initiate Multipart test must pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainUploadPart,
+		Extended: false, // Upload Part test must be run even without extended flag being set.
+		Critical: true,  // Upload Part test must pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainListParts,
+		Extended: false, // List Part test must be run even without extended flag being set.
+		Critical: false, // List Part test can fail without affecting other tests.
+	},
+	APItest{
+		Test:     mainCompleteMultipartUpload,
+		Extended: false, // Complete Multipart test must be run even without extended flag being set.
+		Critical: true,  // Complete Multipart test can fail without affecting other tests.
+	},
 
-// Tests and messages for Multipart API,
-// make sure future tests/messages are added here.
-var (
-	multipartTestsBasic = []APItest{
-		mainInitiateMultipartUpload,
-		mainUploadPart,
-		mainListParts,
-		mainCompleteMultipartUpload,
-	}
-	multipartMessagesBasic = []string{
-		"InitiateMultipartUpload:",
-		"UploadPart:",
-		"ListParts:",
-		"CompleteMultipartUpload:",
-	}
-	multipartTestsExtended = []APItest{
-		mainInitiateMultipartUpload,
-		mainUploadPart,
-		mainListParts,
-		mainCompleteMultipartUpload,
-	}
-	multipartMessagesExtended = []string{
-		"InitiateMultipartUpload:",
-		"UploadPart:",
-		"ListParts:",
-		"CompleteMultipartUpload:",
-	}
-)
+	// Tests for HeadObject API.
+	APItest{
+		Test:     mainHeadObject,
+		Extended: false, // Head Object test must be run even without extended flags being set.
+		Critical: true,  // Head Object test must pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainHeadObjectIfMatch,
+		Extended: true,  // Head Object (If-Match) test does not need to be run unless explicitly asked for.
+		Critical: false, // Head Object (If-Match) does not need to pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainHeadObjectIfNoneMatch,
+		Extended: true,  // Head Object (If-None-Match) test does not need to be run unless explicitly asked for.
+		Critical: false, // Head Object (If-None-Match) test does not need pass before other tests can be run.
+	},
 
-// Tests and messages for HeadObject API,
-// make sure future tests/messages are added here.
-var (
-	headObjectTestsBasic = []APItest{
-		mainHeadObject,
-	}
-	headObjectMessagesBasic = []string{
-		"HeadObject:",
-	}
-	// For now HeadObject API only has a basic test
-	// in the future there will be extended tests added.
-	headObjectTestsExtended = []APItest{
-		mainHeadObject,
-		mainHeadObjectIfMatch,
-		mainHeadObjectIfNoneMatch,
-	}
-	headObjectMessagesExtended = []string{
-		"HeadObject:",
-		"HeadObject (If-Match):",
-		"HeadObject (If-None-Match):",
-	}
-)
+	// Tests for CopyObject.
+	APItest{
+		Test:     mainCopyObject,
+		Extended: false, // Copy Object test must be run even without extended flags being set.
+		Critical: false, // Copy Object test can fail and not effect other tests.
+	},
+	APItest{
+		Test:     mainCopyObjectIfMatch,
+		Extended: true,  // Copy Object (If-Match) test does not need to be run unless explicitly asked for.
+		Critical: false, // Copy Object (If-Match) test can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainCopyObjectIfNoneMatch,
+		Extended: true,  // Copy Object (If-None-Match) test does not need to be run unless explicitly asked for.
+		Critical: false, // Copy Object (If-Match) test can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainCopyObjectIfModifiedSince,
+		Extended: true,  // Copy Object (If-Modified-Since) test does not need to be run.
+		Critical: false, // Copy Object (If-Modified-Since) can fail and not affect other tests.
+	},
 
-// Tests and messages for CopyObject API,
-// make sure future tests/messages are added here.
-var (
-	copyObjectTestsBasic = []APItest{
-		mainCopyObject,
-	}
-	copyObjectMessagesBasic = []string{
-		"CopyObject:",
-	}
-	copyObjectTestsExtended = []APItest{
-		// When extended tests are run also run the basic.
-		mainCopyObject,
-		mainCopyObjectIfMatch,
-		mainCopyObjectIfNoneMatch,
-	}
+	// Tests for GetObject API.
+	APItest{
+		Test:     mainGetObject,
+		Extended: false, // Get Object test must be run.
+		Critical: false, // Get Object can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainGetObjectIfMatch,
+		Extended: true,  // Get Object (If-Match) does not need to be run.
+		Critical: false, // Get Object (If-Match) can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainGetObjectIfNoneMatch,
+		Extended: true,  // Get Object (If-None-Match) does not need to be run.
+		Critical: false, // Get Object (If-None-Match) can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainGetObjectIfModifiedSince,
+		Extended: true,  // Get Object (If-Modified-Since) does not need to be run.
+		Critical: false, // Get Object (If-Modified-Since) can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainGetObjectIfUnModifiedSince,
+		Extended: true,  // Get Object (If-Unmodified-Since) does not need to be run.
+		Critical: false, // Get Object (If-Unmodified-Since) can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainGetObjectRange,
+		Extended: true,  // Get Object (Range) does not need to be run.
+		Critical: false, // Get Object (Range) can fail and not affect other tests.
+	},
 
-	copyObjectMessagesExtended = []string{
-		"CopyObject:",
-		"CopyObject (If-Match):",
-		"CopyObject (If-None-Match):",
-	}
-)
+	// Tests for ListBuckets API.
+	APItest{
+		Test:     mainListBucketsExist,
+		Extended: false, // List Buckets test must be run.
+		Critical: false, // List Buckets test can fail and not affect other tests.
+	},
 
-// Tests and messages for GetObject API,
-// make sure future tests/messages are added here.
-var (
-	getObjectTestsBasic = []APItest{
-		mainGetObject,
-	}
-	getObjectMessagesBasic = []string{
-		"GetObject:",
-	}
-	getObjectTestsExtended = []APItest{
-		mainGetObject,
-		mainGetObjectRange,
-		mainGetObjectIfMatch,
-		mainGetObjectIfNoneMatch,
-		mainGetObjectIfModifiedSince,
-		mainGetObjectIfUnModifiedSince,
-	}
-	getObjectMessagesExtended = []string{
-		"GetObject:",
-		"GetObject (Range):",
-		"GetObject (If-Match):",
-		"GetObject (If-None-Match):",
-		"GetObject (If-Modified-Since):",
-		"GetObject (If-Unmodified-Since):",
-	}
-)
+	// Test for RemoveObject API.
+	APItest{
+		Test:     mainRemoveObjectExists,
+		Extended: false, // Remove Object test must be run.
+		Critical: true,  // Remove Object test must pass for future tests.
+	},
 
-// Tests and messages for ListBuckets API,
-// make sure future tests/messages are added here.
-var (
-	listBucketsTestsBasic = []APItest{
-		mainListBucketsExist,
-		// TODO: add test for listing non-existent buckets.
-	}
-	listBucketsMessagesBasic = []string{
-		"ListBuckets (Buckets Exist):",
-	}
-	listBucketsTestsExtended = []APItest{
-		mainListBucketsExist,
-	}
-	listBucketsMessagesExtended = []string{
-		"ListBuckets (Buckets Exist):",
-	}
-)
-
-// Tests and messages for RemoveObject API,
-// make sure future tests/messages are added here.
-var (
-	removeObjectTestsBasic = []APItest{
-		mainRemoveObjectExists,
-		// TODO: add test for removeing non-existent object
-	}
-	removeObjectMessagesBasic = []string{
-		"RemoveObject (Object Exists):",
-	}
-	removeObjectTestsExtended = []APItest{
-		mainRemoveObjectExists,
-		// TODO: add test for removeing non-existent object
-	}
-	removeObjectMessagesExtended = []string{
-		"RemoveObject (Object Exists):",
-	}
-)
-
-// Tests and messages for RemoveBucket API,
-// make sure future tests/messages are added here.
-var (
-	removeBucketTestsBasic = []APItest{
-		// Both of these are defined as basic tests.
-		mainRemoveBucketExists,
-		mainRemoveBucketDNE,
-	}
-	removeBucketMessagesBasic = []string{
-		"RemoveBucket (Bucket Exists):",
-		"RemoveBucket (Bucket DNE):",
-	}
-	removeBucketTestsExtended = []APItest{
-		mainRemoveBucketExists,
-		mainRemoveBucketDNE,
-	}
-	removeBucketMessagesExtended = []string{
-		"RemoveBucket (Bucket Exists):",
-		"RemoveBucket (Bucket DNE):",
-	}
-)
+	// Tests for RemoveBucket API.
+	APItest{
+		Test:     mainRemoveBucketDNE,
+		Extended: false, // Remove Bucket test DNE must be run.
+		Critical: false, // Remove Bucket DNE test can fail and not affect other tests.
+	},
+	APItest{
+		Test:     mainRemoveBucketExists,
+		Extended: false, // Remove Bucket test Exists must be run.
+		Critical: false, // Remove Bucket test Exists can fail and not affect other tests.
+	},
+}

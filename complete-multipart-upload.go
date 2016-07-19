@@ -106,8 +106,9 @@ func verifyHeaderCompleteMultipartUpload(res *http.Response) error {
 	return nil
 }
 
-//
-func mainCompleteMultipartUpload(config ServerConfig, message string) error {
+// mainCompleteMultipartUpload - Entry point for the Complete Multipart Upload API test.
+func mainCompleteMultipartUpload(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] Multipart (Complete-Upload):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
@@ -115,22 +116,26 @@ func mainCompleteMultipartUpload(config ServerConfig, message string) error {
 	// Create a new completeMultipartUpload request.
 	req, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUpload)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := completeMultipartUploadVerify(res, "200 OK"); err != nil {
-		return err
+		printFunc(message, err)
+		return
 	}
 	// Spin scanBar
 	scanBar(message)
-	return nil
+	printFunc(message, nil)
+	return
 }

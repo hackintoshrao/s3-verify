@@ -93,7 +93,8 @@ func verifyBodyGetObjectIfNoneMatch(res *http.Response, expectedBody []byte) err
 }
 
 // Test the compatibility of the GetObject API when using the If-None-Match header.
-func mainGetObjectIfNoneMatch(config ServerConfig, message string) error {
+func mainGetObjectIfNoneMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] GetObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
 	bucket := validBuckets[0]
@@ -104,43 +105,50 @@ func mainGetObjectIfNoneMatch(config ServerConfig, message string) error {
 		// Create new GET object If-None-Match request.
 		req, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response...these checks do not check the headers yet.
 		if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Create a bad GET object If-None-Match request with invalid ETag.
 		badReq, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, invalidETag)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		badRes, err := execRequest(badReq, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response returns the object since ETag != invalidETag
 		if err := getObjectIfNoneMatchVerify(badRes, object.Body, "200 OK"); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }

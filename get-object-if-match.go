@@ -107,7 +107,8 @@ func verifyStatusGetObjectIfMatch(res *http.Response, expectedStatus string) err
 }
 
 // Test the compatibility of the GET object API when using the If-Match header.
-func mainGetObjectIfMatch(config ServerConfig, message string) error {
+func mainGetObjectIfMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+	message := fmt.Sprintf("[%02d/%d] GetObject (If-Match):", curTest, globalTotalNumTest)
 	// Run the test on every object in every bucket.
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
@@ -120,44 +121,51 @@ func mainGetObjectIfMatch(config ServerConfig, message string) error {
 		// Create new GET object If-Match request.
 		req, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response...these checks do not check the headers yet.
 		if err := getObjectIfMatchVerify(res, object.Body, "200 OK", false); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Create a bad GET object If-Match request.
 		badReq, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		badRes, err := execRequest(badReq, config.Client)
 		if err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the request fails as expected.
 		if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
-			return err
+			printFunc(message, err)
+			return
 		}
 		// Spin scanBar
 		scanBar(message)
 
 	}
-	return nil
+	printFunc(message, nil)
+	return
 }
