@@ -40,29 +40,16 @@ const (
 )
 
 // printMessage - Print test pass/fail messages with errors.
-func printMessage(message string, err error, critical bool) {
+func printMessage(message string, err error) {
 	// Erase the old progress line.
 	console.Eraseline()
 	if err != nil {
 		message += strings.Repeat(" ", messageWidth-len([]rune(message))) + "[FAIL]\n" + err.Error()
-		if critical { // If the test is deemed critical error out immediately if it failed.
-			console.Fatalln(message)
-		}
 		console.Println(message)
 	} else {
 		message += strings.Repeat(" ", messageWidth-len([]rune(message))) + "[OK]"
 		console.Println(message)
 	}
-}
-
-// criticalMessage - Error out of testing if the test failed.
-func criticalMessage(message string, err error) {
-	printMessage(message, err, true)
-}
-
-// normalMessage - Do not error out if the test failed.
-func normalMessage(message string, err error) {
-	printMessage(message, err, false)
 }
 
 // verifyHostReachable - Execute a simple get request against the provided endpoint to make sure its reachable.

@@ -148,7 +148,7 @@ func verifyHeaderPutObject(res *http.Response) error {
 }
 
 // Test a PUT object request with no special headers set. This adds one object to each of the test buckets.
-func mainPutObject(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainPutObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutObject:", curTest, globalTotalNumTest)
 	// TODO: create tests designed to fail.
 	for _, object := range objects {
@@ -159,27 +159,27 @@ func mainPutObject(config ServerConfig, curTest int, printFunc func(string, erro
 		// Generate a new PUT object HTTP req.
 		req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response.
 		if err := putObjectVerify(res, "200 OK"); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

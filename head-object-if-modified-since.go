@@ -101,62 +101,62 @@ func verifyHeaderHeadObjectIfModifiedSince(res *http.Response) error {
 }
 
 // mainHeadObjectIfModifiedSince - Entry point for the HEAD object with if-modified-since header set.
-func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	bucket := validBuckets[0]
 	object := objects[0]
 	lastModified, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
 	req, err := newHeadObjectIfModifiedSinceReq(config, bucket.Name, object.Key, lastModified)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfModifiedSinceVerify(res, "200 OK"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
 	badReq, err := newHeadObjectIfModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified.Add(time.Hour*2))
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the bad request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the bad request failed as expected.
 	if err := headObjectIfModifiedSinceVerify(badRes, "304 Not Modified"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

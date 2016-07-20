@@ -110,13 +110,13 @@ func verifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
 }
 
 // Test the GET object API with the If-Unmodified-Since header set.
-func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	// Set up past date.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	bucket := validBuckets[0]
 	for _, object := range objects {
@@ -125,51 +125,51 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int, printFunc 
 		// Form a request with a pastDate to make sure the object is not returned.
 		req, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, pastDate)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the response returns an error.
 		if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Form a request with a date in the past.
 		curReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute current request.
 		curRes, err := execRequest(curReq, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the lastModified date in a request returns the object.
 		if err := verifyGetObjectIfUnModifiedSince(curRes, object.Body, "200 OK", false); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

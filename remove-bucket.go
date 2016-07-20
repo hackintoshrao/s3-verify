@@ -99,7 +99,7 @@ func verifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
 }
 
 // Test the RemoveBucket API when the bucket exists.
-func mainRemoveBucketExists(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] RemoveBucket (Bucket Exists):", curTest, globalTotalNumTest)
 	for _, bucket := range validBuckets {
 		// Spin the scanBar
@@ -108,8 +108,8 @@ func mainRemoveBucketExists(config ServerConfig, curTest int, printFunc func(str
 		// Generate the new DELETE bucket request.
 		req, err := newRemoveBucketReq(config, bucket.Name)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
@@ -117,25 +117,25 @@ func mainRemoveBucketExists(config ServerConfig, curTest int, printFunc func(str
 		// Perform the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
 
 		if err = removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }
 
 // Test the RemoveBucket API when the bucket does not exist.
-func mainRemoveBucketDNE(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] RemoveBucket (Bucket DNE):", curTest, globalTotalNumTest)
 	// Generate a random bucketName.
 	bucketName := randString(60, rand.NewSource(time.Now().UnixNano()), "")
@@ -151,25 +151,25 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int, printFunc func(string
 	// Generate a new DELETE bucket request for a bucket that does not exist.
 	req, err := newRemoveBucketReq(config, bucketName)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	if err = removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

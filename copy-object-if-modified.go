@@ -116,15 +116,15 @@ func verifyHeaderCopyObjectIfModifiedSince(res *http.Response) error {
 	return nil
 }
 
-func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Set a date in the past.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	sourceBucketName := validBuckets[0].Name
 	destBucketName := validBuckets[1].Name
@@ -142,49 +142,49 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int, printFunc f
 	// Create a new request with a valid date.
 	req, err := newCopyObjectIfModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response is valid.
 	if err := copyObjectIfModifiedSinceVerify(res, "200 OK", ErrorResponse{}); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request with an invalid date.
 	badReq, err := newCopyObjectIfModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, time.Now().UTC().Add(2*time.Hour))
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the bad request fails the right way.
 	if err := copyObjectIfModifiedSinceVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, err)
-	return
+	printMessage(message, err)
+	return true
 }

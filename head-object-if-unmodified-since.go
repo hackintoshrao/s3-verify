@@ -101,7 +101,7 @@ func verifyHeaderHeadObjectIfUnModifiedSince(res *http.Response) error {
 }
 
 //
-func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	scanBar(message)
 	bucket := validBuckets[0]
@@ -109,55 +109,56 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, printFunc
 	// Create a date in the past to use.
 	lastModified, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Create a new request.
 	req, err := newHeadObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request succeeds as expected.
 	if err := headObjectIfUnModifiedSinceVerify(res, "200 OK"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
 	badReq, err := newHeadObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, lastModified)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Perform the bad request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response failed.
 	if err := headObjectIfUnModifiedSinceVerify(badRes, "412 Precondition Failed"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, nil)
-	return
+	// Test passed.
+	printMessage(message, nil)
+	return true
 }

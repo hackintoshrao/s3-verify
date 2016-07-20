@@ -101,7 +101,7 @@ func verifyStatusCopyObject(res *http.Response, expectedStatus string) error {
 }
 
 // Test a PUT object request with the copy header set.
-func mainCopyObject(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainCopyObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -118,26 +118,26 @@ func mainCopyObject(config ServerConfig, curTest int, printFunc func(string, err
 	// Create a new request.
 	req, err := newCopyObjectReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err = copyObjectVerify(res, "200 OK"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

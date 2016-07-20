@@ -171,7 +171,7 @@ func verifyHeaderPutBucket(res *http.Response, bucketName, expectedStatus string
 }
 
 // Test the PutBucket API when no extra headers are set. This creates three new buckets and leaves them for the next tests to use.
-func mainPutBucket(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainPutBucket(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutBucket:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
@@ -182,23 +182,23 @@ func mainPutBucket(config ServerConfig, curTest int, printFunc func(string, erro
 		// Create a new Make bucket request.
 		req, err := newPutBucketReq(config, bucket.Name)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
 		// Check the responses Body, Status, Header.
 		if err := putBucketVerify(res, bucket.Name, "200 OK", ErrorResponse{}); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin the scanBar
 		scanBar(message)
@@ -213,27 +213,27 @@ func mainPutBucket(config ServerConfig, curTest int, printFunc func(string, erro
 		// Create a new PUT bucket request.
 		req, err := newPutBucketReq(config, bucket.Name)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the request failed as predicted.
 		if err := putBucketVerify(res, bucket.Name, "400 Bad Request", expectedError); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

@@ -83,7 +83,7 @@ func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
-func mainRemoveObjectExists(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
 	for _, bucket := range validBuckets {
 		for _, object := range objects {
@@ -92,23 +92,23 @@ func mainRemoveObjectExists(config ServerConfig, curTest int, printFunc func(str
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
@@ -119,23 +119,23 @@ func mainRemoveObjectExists(config ServerConfig, curTest int, printFunc func(str
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
@@ -146,28 +146,28 @@ func mainRemoveObjectExists(config ServerConfig, curTest int, printFunc func(str
 			// Create a new request.
 			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Execute the request.
 			res, err := execRequest(req, config.Client)
 			if err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 			// Verify the response.
 			if err := removeObjectVerify(res, "200 OK"); err != nil {
-				printFunc(message, err)
-				return
+				printMessage(message, err)
+				return false
 			}
 			// Spin scanBar
 			scanBar(message)
 		}
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

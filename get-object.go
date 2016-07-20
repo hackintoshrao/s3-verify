@@ -95,7 +95,7 @@ func verifyStatusGetObject(res *http.Response, expectedStatus string) error {
 }
 
 // Test a GET object request with no special headers set.
-func mainGetObject(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainGetObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject:", curTest, globalTotalNumTest)
 	// TODO: should errors be returned to the top level or printed here.
 	bucket := validBuckets[0]
@@ -105,8 +105,8 @@ func mainGetObject(config ServerConfig, curTest int, printFunc func(string, erro
 		// Create new GET object request.
 		req, err := newGetObjectReq(config, bucket.Name, object.Key)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
@@ -114,19 +114,19 @@ func mainGetObject(config ServerConfig, curTest int, printFunc func(string, erro
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Verify the response.
 		if err := getObjectVerify(res, object.Body, "200 OK"); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

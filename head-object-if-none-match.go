@@ -96,7 +96,7 @@ func verifyHeaderHeadObjectIfNoneMatch(res *http.Response) error {
 }
 
 // mainHeadObjectIfNoneMatch - Entry point for the HEAD object with if-none-match header set test.
-func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -107,49 +107,49 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int, printFunc func(
 	// Create a new request for a HEAD object with if-none-match header set.
 	req, err := newHeadObjectIfNoneMatchReq(config, bucket.Name, object.Key, validETag)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfNoneMatchVerify(res, "200 OK"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for a HEAD object with if-none-match header set.
 	badReq, err := newHeadObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	badRes, err := execRequest(badReq, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := headObjectIfNoneMatchVerify(badRes, "304 Not Modified"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

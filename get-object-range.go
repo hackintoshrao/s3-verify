@@ -52,7 +52,7 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 }
 
 // Test a GET object request with a range header set.
-func mainGetObjectRange(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainGetObjectRange(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (Range):", curTest, globalTotalNumTest)
 	bucket := validBuckets[0]
 	rand.Seed(time.Now().UnixNano())
@@ -64,28 +64,28 @@ func mainGetObjectRange(config ServerConfig, curTest int, printFunc func(string,
 		// Create new GET object range request...testing range.
 		req, err := newGetObjectRangeReq(config, bucket.Name, object.Key, startRange, endRange)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
 		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 		bufRange := object.Body[startRange : endRange+1]
 		// Verify the response...these checks do not check the headers yet.
 		if err := getObjectVerify(res, bufRange, "206 Partial Content"); err != nil {
-			printFunc(message, err)
-			return
+			printMessage(message, err)
+			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
-	printFunc(message, nil)
-	return
+	printMessage(message, nil)
+	return true
 }

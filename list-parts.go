@@ -110,7 +110,7 @@ func verifyHeaderListParts(res *http.Response) error {
 }
 
 // mainListParts - Entry point for the ListParts API test.
-func mainListParts(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainListParts(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (List-Parts):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -126,26 +126,26 @@ func mainListParts(config ServerConfig, curTest int, printFunc func(string, erro
 	// Create a new ListParts request.
 	req, err := newListPartsReq(config, bucket.Name, object.Key, object.UploadID)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := listPartsVerify(res, "200 OK", expectedList); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
-	printFunc(message, err)
-	return
+	printMessage(message, err)
+	return true
 }

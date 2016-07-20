@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
@@ -61,7 +62,7 @@ EXAMPLES:
 
 // Define all mainXXX tests to be of this form.
 type APItest struct {
-	Test     func(ServerConfig, int, func(string, error))
+	Test     func(ServerConfig, int) bool
 	Extended bool // Extended tests will only be invoked at the users request.
 	Critical bool // Tests marked critical must pass before more tests can be run.
 }
@@ -94,16 +95,16 @@ func callAllAPIs(ctx *cli.Context) {
 		}
 		testCount := 1
 		for _, test := range apiTests {
-			if test.Extended {
+			if test.Extended { // By definition an extended test cannot be critical.
 				if ctx.GlobalBool("extended") { // Only run extended tests if explicitly invoked by user.
-					test.Test(*config, testCount, normalMessage) // By definition an extended test cannot be critical.
+					test.Test(*config, testCount)
 					testCount++
 				}
 			} else {
-				if test.Critical { // Error out immediately if a critical test fails.
-					test.Test(*config, testCount, criticalMessage)
-				} else { // Do not exit the test on error if it is not critical.
-					test.Test(*config, testCount, normalMessage)
+				if !test.Test(*config, testCount) {
+					if test.Critical { // Error out immediately for critical tests.
+						os.Exit(1)
+					}
 				}
 				testCount++
 			}

@@ -132,7 +132,7 @@ func verifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult)
 }
 
 // Test the ListBuckets API with no added parameters.
-func mainListBucketsExist(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] ListBuckets:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
@@ -149,8 +149,8 @@ func mainListBucketsExist(config ServerConfig, curTest int, printFunc func(strin
 	// Generate new List Buckets request.
 	req, err := newListBucketsReq(config)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin the scanBar
 	scanBar(message)
@@ -158,19 +158,19 @@ func mainListBucketsExist(config ServerConfig, curTest int, printFunc func(strin
 	// Generate the server response.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin the scanBar
 	scanBar(message)
 
 	// Check for S3 Compatibility
 	if err := listBucketsVerify(res, expected); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin the scanBar
 	scanBar(message)
-	printFunc(message, err)
-	return
+	printMessage(message, err)
+	return true
 }

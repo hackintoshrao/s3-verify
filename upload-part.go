@@ -120,7 +120,7 @@ func verifyHeaderUploadPart(res *http.Response) error {
 }
 
 // mainUploadPart - Entry point for the upload part test.
-func mainUploadPart(config ServerConfig, curTest int, printFunc func(string, error)) {
+func mainUploadPart(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Upload-Part):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -130,8 +130,8 @@ func mainUploadPart(config ServerConfig, curTest int, printFunc func(string, err
 	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
 	_, err := io.ReadFull(crand.Reader, objectData)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	part1.PartNumber = 1                // First part uploaded
 	part1.Size = int64(len(objectData)) // Upload all of the data in one part.
@@ -140,23 +140,23 @@ func mainUploadPart(config ServerConfig, curTest int, printFunc func(string, err
 	// Create a new multipart upload part request.
 	req, err := newUploadPartReq(config, bucket.Name, object.Key, object.UploadID, 1, objectData)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
 	res, err := execRequest(req, config.Client)
 	if err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
 	if err := uploadPartVerify(res, "200 OK"); err != nil {
-		printFunc(message, err)
-		return
+		printMessage(message, err)
+		return false
 	}
 	// Spin scanBar
 	scanBar(message)
@@ -168,6 +168,6 @@ func mainUploadPart(config ServerConfig, curTest int, printFunc func(string, err
 	complPart.PartNumber = part1.PartNumber
 	// Save the completed part into the complMultiPartUpload struct.
 	complMultipartUpload.Parts = append(complMultipartUpload.Parts, complPart)
-	printFunc(message, err)
-	return
+	printMessage(message, err)
+	return true
 }
