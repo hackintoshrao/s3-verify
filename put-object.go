@@ -27,41 +27,34 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var (
+var objects = []*ObjectInfo{
 	// First object to test PUT on.
-	putObj1 = &ObjectInfo{
+	&ObjectInfo{
 		Key: "s3verify-put-object-test1",
 		// LastModified: to be set dynamically,
 		// Size: to be set dynamically,
 		// ETag: to be set dynamically,
 		ContentType: "application/octet-stream",
 		Body:        []byte("Nemo enim ipsam voluptatem, quia voluptas sit, aspernature aut odit aut fugit,"),
-	}
+	},
 	// Second object to test PUT on.
-	putObj2 = &ObjectInfo{
+	&ObjectInfo{
 		Key: "s3verify-put-object-test2",
 		// LastModified: to be set dynamically,
 		// Size: to be set dynamically,
 		// ETag: to be set dynamically,
 		ContentType: "application/octet-stream",
 		Body:        []byte("sed quia consequuntur magni dolores eos, qui ratione voluptatem sequi nescuint,"),
-	}
+	},
 	// Third object to test PUT on.
-	putObj3 = &ObjectInfo{
+	&ObjectInfo{
 		Key: "s3verify-put-object-test3",
 		// LastModified: to be set dynamically,
 		// Size: to be set dynamically,
 		// ETag: to be set dynamically,
 		ContentType: "application/octet-stream",
 		Body:        []byte("neque porro quisquam est, qui dolorem ipsum, quia dolor sit amet, consectetur,"),
-	}
-)
-
-// Store all regularly PUT objects.
-var objects = []*ObjectInfo{
-	putObj1,
-	putObj2,
-	putObj3,
+	},
 }
 
 // Store all objects that were copied.

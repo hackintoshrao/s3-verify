@@ -90,6 +90,13 @@ var apiTests = []APItest{
 		Critical: false, // This test does not need to pass before others are run.
 	},
 
+	// Tests for ListObjects V1 API.
+	APItest{
+		Test:     mainListObjectsV1,
+		Extended: false, // This test must be run even without the extended flag being set.
+		Critical: false, // This test does not need to pass before others are run.
+	},
+
 	// Tests for CopyObject.
 	APItest{
 		Test:     mainCopyObject,
