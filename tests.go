@@ -79,6 +79,16 @@ var apiTests = []APItest{
 		Extended: true,  // Head Object (If-None-Match) test does not need to be run unless explicitly asked for.
 		Critical: false, // Head Object (If-None-Match) test does not need pass before other tests can be run.
 	},
+	APItest{
+		Test:     mainHeadObjectIfUnModifiedSince,
+		Extended: true,  // Head Object (If-Unmodified-Since) test does not need to be run unless explicitly asked for.
+		Critical: false, // Head Object (If-Unmodified-Since) test does not need to pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainHeadObjectIfModifiedSince,
+		Extended: true,  // Head Object (If-Modified-Since) test does not need to be run unless explicitly asked for.
+		Critical: false, // This test does not need to pass before others are run.
+	},
 
 	// Tests for CopyObject.
 	APItest{
