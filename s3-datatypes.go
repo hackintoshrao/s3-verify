@@ -87,6 +87,35 @@ type listBucketResult struct {
 	Prefix     string
 }
 
+// listBucketV2Result container for ListObjects V2 response.
+type listBucketV2Result struct {
+	// A response can contain CommonPrefixes only if you have
+	// specified a delimiter.
+	CommonPrefixes []commonPrefix
+	// Metadata about each object returned.
+	Contents  []ObjectInfo
+	Delimiter string
+
+	// Encoding type used to encode object keys in the response.
+	EncodingType string
+
+	// A flag that indicates whether or not ListObjects returned all of the results
+	// that satisfied the search criteria.
+	IsTruncated bool
+	MaxKeys     int64
+	Name        string
+
+	// Hold the token that will be sent in the next request to fetch the next group of keys
+	NextContinuationToken string
+
+	ContinuationToken string
+	Prefix            string
+
+	// FetchOwner and StartAfter are currently not used
+	FetchOwner string
+	StartAfter string
+}
+
 // createBucketConfiguration container for bucket configuration.
 type createBucketConfiguration struct {
 	XMLName  xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ CreateBucketConfiguration" json:"-"`
