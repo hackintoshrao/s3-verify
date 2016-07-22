@@ -34,10 +34,10 @@ var (
 	}
 	validBuckets = []BucketInfo{
 		BucketInfo{
-			Name: "s3verify-put-bucket-test",
+			Name: "s3verify-put-bucket-test11",
 		},
 		BucketInfo{
-			Name: "s3verify-put-bucket-copy-test",
+			Name: "s3verify-put-bucket-copy-test11",
 		},
 	}
 	// See http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html for all bucket naming restrictions.

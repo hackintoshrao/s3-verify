@@ -26,22 +26,21 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-var (
+// Holds all the objects to be uploaded by a multipart request.
+var multipartObjects = []*ObjectInfo{
 	// An object that will have more than 5MB of data to be uploaded as part of a multipart upload.
-	multipartObj1 = &ObjectInfo{
-		Key: "s3verify-multipart-object",
-		// LastModified: to be set dynamically,
-		// Size: to be set dynamically,
-		// ETag: to be set dynamically,
+	&ObjectInfo{
+		Key:         "s3verify-multipart-object",
 		ContentType: "application/octet-stream",
 		// Body: to be set dynamically,
 		// UploadID: to be set dynamically,
-	}
-)
-
-// Holds all the objects to be uploaded by a multipart request.
-var multipartObjects = []*ObjectInfo{
-	multipartObj1,
+	},
+	&ObjectInfo{
+		Key:         "s3verify-multipart-abort",
+		ContentType: "application/octet-stream",
+		// Body: to be set dynamically,
+		// UploadID: to be set dynamically,
+	},
 }
 
 func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
@@ -122,31 +121,32 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
 	bucket := validBuckets[0]
-	object := multipartObjects[0]
-	// Create a new InitiateMultiPartUpload request.
-	req, err := newInitiateMultipartUploadReq(config, bucket.Name, object.Key)
-	if err != nil {
-		printMessage(message, err)
-		return false
+	for _, object := range multipartObjects {
+		// Create a new InitiateMultiPartUpload request.
+		req, err := newInitiateMultipartUploadReq(config, bucket.Name, object.Key)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := execRequest(req, config.Client)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Verify the response and get the uploadID.
+		uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Set the uploadID for the object.
+		object.UploadID = uploadID
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := execRequest(req, config.Client)
-	if err != nil {
-		printMessage(message, err)
-		return false
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response and get the uploadID.
-	uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
-	if err != nil {
-		printMessage(message, err)
-		return false
-	}
-	// Set the uploadID for the object.
-	object.UploadID = uploadID
-	printMessage(message, err)
+	printMessage(message, nil)
 	return true
 }

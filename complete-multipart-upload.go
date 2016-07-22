@@ -114,7 +114,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a new completeMultipartUpload request.
-	req, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUpload)
+	req, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUploads[0])
 	if err != nil {
 		printMessage(message, err)
 		return false

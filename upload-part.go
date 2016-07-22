@@ -34,10 +34,17 @@ import (
 )
 
 // One part of a multipart upload.
-var part1 = &objectPart{}
+var object1Part = &objectPart{}
 
 // Complete multipart upload.
-var complMultipartUpload = &completeMultipartUpload{}
+var complMultipartUploads = []*completeMultipartUpload{
+	&completeMultipartUpload{
+	// To be filled out by the test.
+	},
+	&completeMultipartUpload{
+	// To be filled out by the test.
+	},
+}
 
 // newUploadPartReq - Create a new HTTP request for an upload part request.
 func newUploadPartReq(config ServerConfig, bucketName, objectName, uploadID string, partNumber int, partData []byte) (*http.Request, error) {
@@ -125,7 +132,6 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
-	object := multipartObjects[0]
 	// Create some random data at most 5MB to upload via multipart operations.
 	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
 	_, err := io.ReadFull(crand.Reader, objectData)
@@ -133,41 +139,43 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
-	part1.PartNumber = 1                // First part uploaded
-	part1.Size = int64(len(objectData)) // Upload all of the data in one part.
+	object1Part.PartNumber = 1                // First part uploaded
+	object1Part.Size = int64(len(objectData)) // Upload all of the data in one part.
 	// Spin scanBar
 	scanBar(message)
-	// Create a new multipart upload part request.
-	req, err := newUploadPartReq(config, bucket.Name, object.Key, object.UploadID, 1, objectData)
-	if err != nil {
-		printMessage(message, err)
-		return false
+	for i, object := range multipartObjects {
+		// Create a new multipart upload part request.
+		req, err := newUploadPartReq(config, bucket.Name, object.Key, object.UploadID, 1, objectData)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		res, err := execRequest(req, config.Client)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Verify the response.
+		if err := uploadPartVerify(res, "200 OK"); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Update the ETag of the part.
+		object1Part.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
+		object1Part.ETag = strings.TrimSuffix(object1Part.ETag, "\"")
+		var complPart completePart
+		complPart.ETag = object1Part.ETag
+		complPart.PartNumber = object1Part.PartNumber
+		// Save the completed part into the complMultiPartUpload struct.
+		complMultipartUploads[i].Parts = append(complMultipartUploads[i].Parts, complPart)
 	}
-	// Spin scanBar
-	scanBar(message)
-	// Execute the request.
-	res, err := execRequest(req, config.Client)
-	if err != nil {
-		printMessage(message, err)
-		return false
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Verify the response.
-	if err := uploadPartVerify(res, "200 OK"); err != nil {
-		printMessage(message, err)
-		return false
-	}
-	// Spin scanBar
-	scanBar(message)
-	// Update the ETag of the part.
-	part1.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
-	part1.ETag = strings.TrimSuffix(part1.ETag, "\"")
-	var complPart completePart
-	complPart.ETag = part1.ETag
-	complPart.PartNumber = part1.PartNumber
-	// Save the completed part into the complMultiPartUpload struct.
-	complMultipartUpload.Parts = append(complMultipartUpload.Parts, complPart)
-	printMessage(message, err)
+	printMessage(message, nil)
 	return true
 }

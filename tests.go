@@ -62,6 +62,11 @@ var apiTests = []APItest{
 		Extended: false, // Complete Multipart test must be run even without extended flag being set.
 		Critical: true,  // Complete Multipart test can fail without affecting other tests.
 	},
+	APItest{
+		Test:     mainAbortMultipartUpload,
+		Extended: false, // Abort Multipart test must be run even without extended flag being set.
+		Critical: false, // Abort Multipart test can fail without affecting other tests.
+	},
 
 	// Tests for HeadObject API.
 	APItest{
