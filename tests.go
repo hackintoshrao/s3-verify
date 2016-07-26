@@ -20,6 +20,7 @@ package main
 // PutBucket,
 // PutObject,
 // Multipart,
+// HeadBucket,
 // HeadObject,
 // CopyObject,
 // GetObject,
@@ -66,6 +67,13 @@ var apiTests = []APItest{
 		Test:     mainAbortMultipartUpload,
 		Extended: false, // Abort Multipart test must be run even without extended flag being set.
 		Critical: false, // Abort Multipart test can fail without affecting other tests.
+	},
+
+	// Tests for the HeadBucket API.
+	APItest{
+		Test:     mainHeadBucket,
+		Extended: false, // This test must be run even without the extended flag being set.
+		Critical: false, // This test can fail without affecting other tests.
 	},
 
 	// Tests for HeadObject API.
