@@ -15,6 +15,7 @@ Currently s3verify is only available to be downloaded from source.
 Currently S3 Verify is under heavy development and is subject to breaking changes. Currently we support five different API checks:
 * PUT Bucket (putbucket)
 * PUT Object (putobject)
+* MULTIPART Object
 * HEAD Object (headobject)
 * COPY Object (copyobject)
 * GET Object (getobject)
@@ -41,10 +42,31 @@ $ s3verify [FLAGS]
     --region    -r      Allows user to change the region of the AWS host they are using. Please do not use 'us-east-1' with
                         AWS servers or automatic cleanup of test buckets and objects will fail. Defaults to 'us-east-1'.
     --verbose     -v      [Under development] Currently allows user to trace the HTTP requests and responses sent by s3verify.
+    --extended          Allows user to decide whether to test only basic S3 compliance or to test full API compliance.
 ```
 
-## EXAMPLES
-Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) with respect to the MakeBucket, PutObject, RemoveBucket, ListBuckets, HeadObject, CopyObject, and GetObject APIs.
+### Environment Variables
+``s3verify`` also supports the following global variables as a replacement for flags. In fact it is recommended that on multiuser systems that env. 
+variables be used for security reasons.  
+The following env. variables can be used to replace their corresponding flags.
 ```
-$ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io
+    S3_ACCESS can be set to YOUR_ACCESS_KEY and replaces --access -a.
+    S3_SECRET can be set to YOUR_SECRET_KEY and replaces --secret -s.
+    S3_REGION can be set to the region of the AWS host and replaces --region -r.
+    S3_URL can be set to the host URL of the server users wish to test and replaces --url -u.
+```
+## EXAMPLES
+Use s3verify to check the AWS S3 V4 compatibility of the Minio test server (https://play.minio.io:9000) 
+```
+$ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io:9000 
+```
+
+Use s3verify to check the AWS S3 V4 compatability of the Minio test server with all APIs.
+```
+$ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECERT_KEY https://play.minio.io:9000 --extended
+```
+
+If a test fails you can use the verbose flag (--verbose) to check the request and response formed by the test to see where it failed.
+```
+$ s3verify -a YOUR_ACCESS_KEY -s YOUR_SECRET_KEY https://play.minio.io:9000 --verbose
 ```
