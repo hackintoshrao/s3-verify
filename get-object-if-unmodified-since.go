@@ -112,64 +112,78 @@ func verifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
 // Test the GET object API with the If-Unmodified-Since header set.
 func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
+	// Spin scanBar
+	scanBar(message)
 	// Set up past date.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
 		printMessage(message, err)
 		return false
 	}
+	errCh := make(chan error, 1)
 	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)
-		// Form a request with a pastDate to make sure the object is not returned.
-		req, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, pastDate)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+		go func(objectKey string, objectLastModified time.Time, objectBody []byte) {
+			// Form a request with a pastDate to make sure the object is not returned.
+			req, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, pastDate)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify that the response returns an error.
+			if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
+				errCh <- err
+				return
+			}
+			// Form a request with a date in the past.
+			curReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute current request.
+			curRes, err := execRequest(curReq, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify that the lastModified date in a request returns the object.
+			if err := verifyGetObjectIfUnModifiedSince(curRes, objectBody, "200 OK", false); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.LastModified, object.Body)
 		// Spin scanBar
 		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify that the response returns an error.
-		if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Form a request with a date in the past.
-		curReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute current request.
-		curRes, err := execRequest(curReq, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify that the lastModified date in a request returns the object.
-		if err := verifyGetObjectIfUnModifiedSince(curRes, object.Body, "200 OK", false); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-
 	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		err, ok := <-errCh
+		if !ok {
+			return false
+		}
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

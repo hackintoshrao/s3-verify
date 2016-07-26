@@ -98,57 +98,72 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
 	bucket := validBuckets[0]
+	// Spin scanBar
+	scanBar(message)
+	errCh := make(chan error, 1)
 	for _, object := range objects {
+		// Spin scanBar
+		scanBar(message)
 		// Test with If-None-Match Header set.
+		go func(objectKey, objectETag string, objectBody []byte) {
+			// Create new GET object If-None-Match request.
+			req, err := newGetObjectIfNoneMatchReq(config, bucket.Name, objectKey, objectETag)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response...these checks do not check the headers yet.
+			if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
+				errCh <- err
+				return
+			}
+			// Create a bad GET object If-None-Match request with invalid ETag.
+			badReq, err := newGetObjectIfNoneMatchReq(config, bucket.Name, objectKey, invalidETag)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			badRes, err := execRequest(badReq, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response returns the object since ETag != invalidETag
+			if err := getObjectIfNoneMatchVerify(badRes, objectBody, "200 OK"); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.ETag, object.Body)
 		// Spin scanBar
 		scanBar(message)
-		// Create new GET object If-None-Match request.
-		req, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, object.ETag)
+	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		err, ok := <-errCh
+		if !ok {
+			return false
+		}
 		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the response...these checks do not check the headers yet.
-		if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Create a bad GET object If-None-Match request with invalid ETag.
-		badReq, err := newGetObjectIfNoneMatchReq(config, bucket.Name, object.Key, invalidETag)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the request.
-		badRes, err := execRequest(badReq, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the response returns the object since ETag != invalidETag
-		if err := getObjectIfNoneMatchVerify(badRes, object.Body, "200 OK"); err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

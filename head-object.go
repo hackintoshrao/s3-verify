@@ -95,54 +95,87 @@ func verifyHeaderHeadObject(res *http.Response) error {
 	return nil
 }
 
-// Test the HeadObject API with no header set.
+// mainHeadObject - Entry point for the HeadObject API test with no header set.
 func mainHeadObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
-	for _, object := range objects {
-		// Create a new HEAD object with no headers.
-		req, err := newHeadObjectReq(config, bucket.Name, object.Key)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+	objInfoCh := make(chan objectInfoChannel, 1)
+	for i, object := range objects {
 		// Spin scanBar
 		scanBar(message)
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-
-		// Verify the response.
-		if err := headObjectVerify(res, "200 OK"); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// If the verification is good then set the ETag, Size, and LastModified.
-		// Remove the odd double quotes from ETag in the beginning and end.
-		ETag := strings.TrimPrefix(res.Header.Get("ETag"), "\"")
-		ETag = strings.TrimSuffix(ETag, "\"")
-		object.ETag = ETag
-		date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		object.LastModified = date
-		size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		object.Size = size
+		go func(objectKey string, cur int) {
+			// Create a new HEAD object with no headers.
+			req, err := newHeadObjectReq(config, bucket.Name, objectKey)
+			if err != nil {
+				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
+				return
+			}
+			// Verify the response.
+			if err := headObjectVerify(res, "200 OK"); err != nil {
+				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
+				return
+			}
+			// If the verification is valid then set the ETag, Size, and LastModified.
+			// Remove the odd double quotes from ETag in the beginning and end.
+			eTag := strings.TrimPrefix(res.Header.Get("ETag"), "\"")
+			eTag = strings.TrimSuffix(eTag, "\"")
+			date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
+			if err != nil {
+				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
+				return
+			}
+			size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
+			if err != nil {
+				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
+				return
+			}
+			objInfoCh <- objectInfoChannel{ // Send back the valid data through the channel to be set.
+				objInfo: ObjectInfo{
+					Key:          objectKey,
+					Size:         size,
+					ETag:         eTag,
+					LastModified: date,
+				},
+				index: cur,
+				err:   nil,
+			}
+		}(object.Key, i)
 		// Spin scanBar
 		scanBar(message)
 	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		objInfoErr, ok := <-objInfoCh
+		if !ok {
+			return false
+		}
+		if objInfoErr.err != nil {
+			printMessage(message, objInfoErr.err)
+			return false
+		}
+		// Retrieve the object returned by the specific goroutine.
+		object := objects[objInfoErr.index]
+		// Set the objects metadata if the test did not fail.
+		object.Size = objInfoErr.objInfo.Size
+		object.ETag = objInfoErr.objInfo.ETag
+		object.LastModified = objInfoErr.objInfo.LastModified
+		// Spin scanBar
+		scanBar(message)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

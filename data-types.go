@@ -53,3 +53,24 @@ type ObjectInfo struct {
 	Body     []byte // Data held by the object.
 	UploadID string // To be set only for multipart uploaded objects.
 }
+
+// objectInfoChannel a channel for concurrent object level operations.
+type objectInfoChannel struct {
+	objInfo ObjectInfo
+	err     error
+	index   int
+}
+
+// partChannel a channel for concurrent multipart upload part operations.
+type partChannel struct {
+	objPart objectPart
+	err     error
+	index   int
+}
+
+// multiUploadInitChannel a channel for concurrent multipart initiate upload operations.
+type multiUploadInitChannel struct {
+	uploadID string
+	err      error
+	index    int
+}

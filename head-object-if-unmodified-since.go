@@ -100,7 +100,7 @@ func verifyHeaderHeadObjectIfUnModifiedSince(res *http.Response) error {
 	return nil
 }
 
-//
+// mainHeadObjectIfUnModifiedSince - Entry point for the HEAD object with if-unmodified-since header set test.
 func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	scanBar(message)

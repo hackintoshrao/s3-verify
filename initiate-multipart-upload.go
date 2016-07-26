@@ -121,32 +121,75 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
 	bucket := validBuckets[0]
-	for _, object := range multipartObjects {
-		// Create a new InitiateMultiPartUpload request.
-		req, err := newInitiateMultipartUploadReq(config, bucket.Name, object.Key)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+	multiUploadInitCh := make(chan multiUploadInitChannel, 1)
+	for i, object := range multipartObjects {
 		// Spin scanBar
 		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+		go func(objectKey string, cur int) {
+			// Create a new InitiateMultiPartUpload request.
+			req, err := newInitiateMultipartUploadReq(config, bucket.Name, objectKey)
+			if err != nil {
+				multiUploadInitCh <- multiUploadInitChannel{
+					index:    cur,
+					err:      err,
+					uploadID: "",
+				}
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				multiUploadInitCh <- multiUploadInitChannel{
+					index:    cur,
+					err:      err,
+					uploadID: "",
+				}
+				return
+			}
+			// Verify the response and get the uploadID.
+			uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
+			if err != nil {
+				multiUploadInitCh <- multiUploadInitChannel{
+					index:    cur,
+					err:      err,
+					uploadID: "",
+				}
+				return
+			}
+			// Save the current initiate and uploadID.
+			multiUploadInitCh <- multiUploadInitChannel{
+				index:    cur,
+				err:      nil,
+				uploadID: uploadID,
+			}
+		}(object.Key, i)
 		// Spin scanBar
 		scanBar(message)
-		// Verify the response and get the uploadID.
-		uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Set the uploadID for the object.
-		object.UploadID = uploadID
 	}
+	count := len(multipartObjects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		uploadInfo, ok := <-multiUploadInitCh
+		if !ok {
+			return false
+		}
+		// If the initiate failed exit.
+		if uploadInfo.err != nil {
+			printMessage(message, uploadInfo.err)
+			return false
+		}
+		// Retrieve the specific uploadID that was started.
+		object := multipartObjects[uploadInfo.index]
+		// Set the uploadId of the uploaded object.
+		object.UploadID = uploadInfo.uploadID
+		// Spin scanBar
+		scanBar(message)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

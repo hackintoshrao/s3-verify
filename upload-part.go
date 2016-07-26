@@ -33,8 +33,8 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-// One part of a multipart upload.
-var object1Part = &objectPart{}
+// Store parts to be listed.
+var objectParts = []objectPart{}
 
 // Complete multipart upload.
 var complMultipartUploads = []*completeMultipartUpload{
@@ -132,50 +132,95 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
-	// Create some random data at most 5MB to upload via multipart operations.
-	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
-	_, err := io.ReadFull(crand.Reader, objectData)
-	if err != nil {
-		printMessage(message, err)
-		return false
-	}
-	object1Part.PartNumber = 1                // First part uploaded
-	object1Part.Size = int64(len(objectData)) // Upload all of the data in one part.
+
+	partCh := make(chan partChannel, 1)
 	// Spin scanBar
 	scanBar(message)
-	for i, object := range multipartObjects {
-		// Create a new multipart upload part request.
-		req, err := newUploadPartReq(config, bucket.Name, object.Key, object.UploadID, 1, objectData)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+	// TODO: upload more than one part for at least one object.
+	for i, object := range multipartObjects { // Upload 1 5MB or smaller part per object.
 		// Spin scanBar
 		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+		go func(objectKey, objectUploadID string, cur int) {
+			part := objectPart{}
+			// Create some random data at most 5MB to upload via multipart operations.
+			objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
+			part.PartNumber = 1
+			part.Size = int64(len(objectData))
+			_, err := io.ReadFull(crand.Reader, objectData)
+			if err != nil {
+				partCh <- partChannel{
+					index:   cur,
+					objPart: part,
+					err:     err,
+				}
+				return
+			}
+			// Create a new multipart upload part request.
+			req, err := newUploadPartReq(config, bucket.Name, objectKey, objectUploadID, 1, objectData)
+			if err != nil {
+				partCh <- partChannel{
+					index:   cur,
+					objPart: part,
+					err:     err,
+				}
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				partCh <- partChannel{
+					index:   cur,
+					objPart: part,
+					err:     err,
+				}
+				return
+			}
+			// Verify the response.
+			if err := uploadPartVerify(res, "200 OK"); err != nil {
+				partCh <- partChannel{
+					index:   cur,
+					objPart: part,
+					err:     err,
+				}
+				return
+			}
+			// Update the ETag of the part.
+			part.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
+			part.ETag = strings.TrimSuffix(part.ETag, "\"")
+			// Send back the part to be completed.
+			partCh <- partChannel{
+				index:   cur,
+				objPart: part,
+				err:     nil,
+			}
+		}(object.Key, object.UploadID, i)
 		// Spin scanBar
 		scanBar(message)
-		// Verify the response.
-		if err := uploadPartVerify(res, "200 OK"); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Update the ETag of the part.
-		object1Part.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
-		object1Part.ETag = strings.TrimSuffix(object1Part.ETag, "\"")
-		var complPart completePart
-		complPart.ETag = object1Part.ETag
-		complPart.PartNumber = object1Part.PartNumber
-		// Save the completed part into the complMultiPartUpload struct.
-		complMultipartUploads[i].Parts = append(complMultipartUploads[i].Parts, complPart)
 	}
+	count := len(multipartObjects)
+	for count > 0 {
+		count--
+		partChRes, ok := <-partCh
+		if !ok {
+			return false
+		}
+		if partChRes.err != nil {
+			printMessage(message, partChRes.err)
+			return false
+		}
+		objectPart := partChRes.objPart
+		// Store the parts to be listed in the list-multipart-uploads test.
+		objectParts = append(objectParts, objectPart)
+		// Test cleared store the uploaded parts to be completed/aborted.
+		var complPart completePart
+		complPart.ETag = objectPart.ETag
+		complPart.PartNumber = objectPart.PartNumber
+		// Save the completed part into the complMultiPartUpload struct.
+		complMultipartUploads[partChRes.index].Parts = append(complMultipartUploads[partChRes.index].Parts, complPart)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

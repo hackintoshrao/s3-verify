@@ -22,40 +22,16 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/minio/s3verify/signv4"
 )
 
-var objects = []*ObjectInfo{
-	// First object to test PUT on.
-	&ObjectInfo{
-		Key: "s3verify-put-object-test1",
-		// LastModified: to be set dynamically,
-		// Size: to be set dynamically,
-		// ETag: to be set dynamically,
-		ContentType: "application/octet-stream",
-		Body:        []byte("Nemo enim ipsam voluptatem, quia voluptas sit, aspernature aut odit aut fugit,"),
-	},
-	// Second object to test PUT on.
-	&ObjectInfo{
-		Key: "s3verify-put-object-test2",
-		// LastModified: to be set dynamically,
-		// Size: to be set dynamically,
-		// ETag: to be set dynamically,
-		ContentType: "application/octet-stream",
-		Body:        []byte("sed quia consequuntur magni dolores eos, qui ratione voluptatem sequi nescuint,"),
-	},
-	// Third object to test PUT on.
-	&ObjectInfo{
-		Key: "s3verify-put-object-test3",
-		// LastModified: to be set dynamically,
-		// Size: to be set dynamically,
-		// ETag: to be set dynamically,
-		ContentType: "application/octet-stream",
-		Body:        []byte("neque porro quisquam est, qui dolorem ipsum, quia dolor sit amet, consectetur,"),
-	},
-}
+// Store all objects that are uploaded through standard PUT operations.
+var objects = make([]*ObjectInfo, 500)
 
 // Store all objects that were copied.
 var copyObjects = []*ObjectInfo{}
@@ -144,35 +120,64 @@ func verifyHeaderPutObject(res *http.Response) error {
 func mainPutObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutObject:", curTest, globalTotalNumTest)
 	// TODO: create tests designed to fail.
-	for _, object := range objects {
-		bucket := validBuckets[0]
+	bucket := validBuckets[0]
+	// Spin scanBar
+	scanBar(message)
+	errCh := make(chan error, 1)
+	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
+	for i := 0; i < 500; i++ {
 		// Spin scanBar
 		scanBar(message)
-		// PUT each object in each available bucket.
-		// Generate a new PUT object HTTP req.
-		req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
-		if err != nil {
-			printMessage(message, err)
+		go func(cur int) {
+			object := &ObjectInfo{}
+			object.Key = "s3verify-put-parallel" + strconv.Itoa(cur)
+			// Create 60 bytes worth of random data for each object.
+			body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+			object.Body = []byte(body)
+			// Create a new request.
+			req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response.
+			if err := putObjectVerify(res, "200 OK"); err != nil {
+				errCh <- err
+				return
+			}
+			// Add the new object to the list of objects.
+			objects[cur] = object
+			errCh <- nil
+		}(i)
+		// Spin scanBar
+		scanBar(message)
+	}
+	count := 500
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		// Read from the error channel as each test finishes.
+		err, ok := <-errCh
+		if !ok {
 			return false
 		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the response.
-		if err := putObjectVerify(res, "200 OK"); err != nil {
-			printMessage(message, err)
+			printMessage(message, err) // Error out if the test fails.
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

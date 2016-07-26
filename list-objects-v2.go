@@ -119,13 +119,13 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucketName := validBuckets[0].Name
+	objectInfo := []ObjectInfo{}
+	for _, object := range objects {
+		objectInfo = append(objectInfo, *object)
+	}
 	expectedList := listBucketV2Result{
-		Name: bucketName, // List only from the first bucket created because that is the bucket holding the objects.
-		Contents: []ObjectInfo{ // Expect all three objects add by the PUT object test.
-			*objects[0],
-			*objects[1],
-			*objects[2],
-		},
+		Name:     bucketName, // List only from the first bucket created because that is the bucket holding the objects.
+		Contents: objectInfo,
 	}
 	// Create a new request.
 	req, err := newListObjectsV2Req(config, bucketName)

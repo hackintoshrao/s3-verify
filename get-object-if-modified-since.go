@@ -103,57 +103,71 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	// Spin scanBar
+	scanBar(message)
+	errCh := make(chan error, 1)
 	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)
-		// Create new GET object request.
-		req, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
+		go func(objectKey string, objectLastModified time.Time, objectBody []byte) {
+			// Create new GET object request.
+			req, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Perform the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response...these checks do not check the headers yet.
+			if err := verifyGetObjectIfModifiedSince(res, []byte(""), "304 Not Modified"); err != nil {
+				errCh <- err
+				return
+			}
+			// Create an acceptable request.
+			goodReq, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, objectKey, pastDate)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the response that should give back a body.
+			goodRes, err := execRequest(goodReq, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify that the past date gives back the data.
+			if err := verifyGetObjectIfModifiedSince(goodRes, objectBody, "200 OK"); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.LastModified, object.Body)
+
+	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		err, ok := <-errCh
+		if !ok {
+			return false
+		}
 		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Perform the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the response...these checks do not check the headers yet.
-		if err := verifyGetObjectIfModifiedSince(res, []byte(""), "304 Not Modified"); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Create an acceptable request.
-		goodReq, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, object.Key, pastDate)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the response that should give back a body.
-		goodRes, err := execRequest(goodReq, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify that the past date gives back the data.
-		if err := verifyGetObjectIfModifiedSince(goodRes, object.Body, "200 OK"); err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

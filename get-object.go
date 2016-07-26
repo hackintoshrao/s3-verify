@@ -97,36 +97,56 @@ func verifyStatusGetObject(res *http.Response, expectedStatus string) error {
 // Test a GET object request with no special headers set.
 func mainGetObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject:", curTest, globalTotalNumTest)
-	// TODO: should errors be returned to the top level or printed here.
+	errCh := make(chan error, 1)
 	bucket := validBuckets[0]
+	// Spin scanBar
+	scanBar(message)
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)
-		// Create new GET object request.
-		req, err := newGetObjectReq(config, bucket.Name, object.Key)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+		go func(objectKey string, objectBody []byte) {
+			// Create new GET object request.
+			req, err := newGetObjectReq(config, bucket.Name, objectKey)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response.
+			if err := getObjectVerify(res, objectBody, "200 OK"); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.Body)
 		// Spin scanBar
 		scanBar(message)
-
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+	}
+	count := len(objects)
+	for count > 0 {
+		count--
 		// Spin scanBar
 		scanBar(message)
-		// Verify the response.
-		if err := getObjectVerify(res, object.Body, "200 OK"); err != nil {
+		// Check the error channel.
+		err, ok := <-errCh
+		if !ok {
+			return false
+		}
+		if err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

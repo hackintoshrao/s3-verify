@@ -83,30 +83,48 @@ func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 	return nil
 }
 
+// mainRemoveObjectExists - Entry point for the RemoveObject API test when object exists.
 func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
+	errCh := make(chan error, 1)
+	// Spin scanBar
+	scanBar(message)
 	for _, bucket := range validBuckets {
 		for _, object := range objects {
 			// Spin scanBar
 			scanBar(message)
-			// Create a new request.
-			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
-			if err != nil {
-				printMessage(message, err)
-				return false
-			}
+			go func(bucketName, objectKey string) {
+				// Create a new request.
+				req, err := newRemoveObjectReq(config, bucketName, objectKey)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Execute the request.
+				res, err := execRequest(req, config.Client)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Verify the response.
+				if err := removeObjectVerify(res, "200 OK"); err != nil {
+					errCh <- err
+					return
+				}
+				errCh <- nil
+			}(bucket.Name, object.Key)
 			// Spin scanBar
 			scanBar(message)
-			// Execute the request.
-			res, err := execRequest(req, config.Client)
-			if err != nil {
-				printMessage(message, err)
+
+		}
+		count := len(objects)
+		for count > 0 {
+			count--
+			err, ok := <-errCh
+			if !ok {
 				return false
 			}
-			// Spin scanBar
-			scanBar(message)
-			// Verify the response.
-			if err := removeObjectVerify(res, "200 OK"); err != nil {
+			if err != nil {
 				printMessage(message, err)
 				return false
 			}
@@ -116,24 +134,39 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 		for _, object := range copyObjects {
 			// Spin scanBar
 			scanBar(message)
-			// Create a new request.
-			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
-			if err != nil {
-				printMessage(message, err)
-				return false
-			}
+			go func(bucketName, objectKey string) {
+				// Create a new request.
+				req, err := newRemoveObjectReq(config, bucketName, objectKey)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Execute the request.
+				res, err := execRequest(req, config.Client)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Verify the response.
+				if err := removeObjectVerify(res, "200 OK"); err != nil {
+					errCh <- err
+					return
+				}
+				errCh <- nil
+			}(bucket.Name, object.Key)
 			// Spin scanBar
 			scanBar(message)
-			// Execute the request.
-			res, err := execRequest(req, config.Client)
-			if err != nil {
-				printMessage(message, err)
-				return false
-			}
+		}
+		count = len(copyObjects)
+		for count > 0 {
+			count--
 			// Spin scanBar
 			scanBar(message)
-			// Verify the response.
-			if err := removeObjectVerify(res, "200 OK"); err != nil {
+			err, ok := <-errCh
+			if !ok {
+				return false
+			}
+			if err != nil {
 				printMessage(message, err)
 				return false
 			}
@@ -143,24 +176,39 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 		for _, object := range multipartObjects {
 			// Spin scanBar
 			scanBar(message)
-			// Create a new request.
-			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
-			if err != nil {
-				printMessage(message, err)
-				return false
-			}
+			go func(bucketName, objectKey string) {
+				// Create a new request.
+				req, err := newRemoveObjectReq(config, bucketName, objectKey)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Execute the request.
+				res, err := execRequest(req, config.Client)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				// Verify the response.
+				if err := removeObjectVerify(res, "200 OK"); err != nil {
+					errCh <- err
+					return
+				}
+				errCh <- nil
+			}(bucket.Name, object.Key)
 			// Spin scanBar
 			scanBar(message)
-			// Execute the request.
-			res, err := execRequest(req, config.Client)
-			if err != nil {
-				printMessage(message, err)
-				return false
-			}
+		}
+		count = len(multipartObjects)
+		for count > 0 {
+			count--
 			// Spin scanBar
 			scanBar(message)
-			// Verify the response.
-			if err := removeObjectVerify(res, "200 OK"); err != nil {
+			err, ok := <-errCh
+			if !ok {
+				return false
+			}
+			if err != nil {
 				printMessage(message, err)
 				return false
 			}
@@ -168,6 +216,9 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 			scanBar(message)
 		}
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

@@ -121,7 +121,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 		Bucket:      bucket.Name,
 		Key:         object.Key,
 		UploadID:    object.UploadID,
-		ObjectParts: []objectPart{*object1Part},
+		ObjectParts: objectParts,
 	}
 	// Create a new ListParts request.
 	req, err := newListPartsReq(config, bucket.Name, object.Key, object.UploadID)
@@ -146,6 +146,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
+	// Test passed.
 	printMessage(message, err)
 	return true
 }

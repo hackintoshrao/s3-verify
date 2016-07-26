@@ -116,13 +116,13 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucketName := validBuckets[0].Name
+	objectInfo := []ObjectInfo{}
+	for _, object := range objects {
+		objectInfo = append(objectInfo, *object)
+	}
 	expectedList := listBucketResult{
-		Name: bucketName, // Listing from the first bucket created that houses all objects.
-		Contents: []ObjectInfo{
-			*objects[0],
-			*objects[1],
-			*objects[2],
-		}, // The first bucket created will house all the objects created by the PUT object test.
+		Name:     bucketName, // Listing from the first bucket created that houses all objects.
+		Contents: objectInfo, // The first bucket created will house all the objects created by the PUT object test.
 		// Currently the ListObjects V1 test does not test with extra 'parameters' set:
 		// Prefix
 		// Max-Keys

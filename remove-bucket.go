@@ -123,7 +123,7 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 
-		if err = removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
+		if err := removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -164,7 +164,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
-	if err = removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
+	if err := removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
 		printMessage(message, err)
 		return false
 	}

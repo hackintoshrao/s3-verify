@@ -54,38 +54,59 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 // Test a GET object request with a range header set.
 func mainGetObjectRange(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (Range):", curTest, globalTotalNumTest)
+	// Spin scanBar
+	scanBar(message)
 	bucket := validBuckets[0]
+	errCh := make(chan error, 1)
 	rand.Seed(time.Now().UnixNano())
 	for _, object := range objects {
-		startRange := rand.Int63n(object.Size)
-		endRange := rand.Int63n(int64(object.Size-startRange)) + startRange
 		// Spin scanBar
 		scanBar(message)
-		// Create new GET object range request...testing range.
-		req, err := newGetObjectRangeReq(config, bucket.Name, object.Key, startRange, endRange)
-		if err != nil {
-			printMessage(message, err)
+		go func(objectKey string, objectSize int64, objectBody []byte) {
+			startRange := rand.Int63n(objectSize)
+			endRange := rand.Int63n(int64(objectSize-startRange)) + startRange
+			// Create new GET object range request...testing range.
+			req, err := newGetObjectRangeReq(config, bucket.Name, objectKey, startRange, endRange)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			bufRange := objectBody[startRange : endRange+1]
+			// Verify the response...these checks do not check the headers yet.
+			if err := getObjectVerify(res, bufRange, "206 Partial Content"); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.Size, object.Body)
+		// Spin scanBar
+		scanBar(message)
+
+	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		err, ok := <-errCh
+		if !ok {
 			return false
 		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
 		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		bufRange := object.Body[startRange : endRange+1]
-		// Verify the response...these checks do not check the headers yet.
-		if err := getObjectVerify(res, bufRange, "206 Partial Content"); err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }

@@ -112,60 +112,73 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Run the test on every object in every bucket.
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-
+	errCh := make(chan error, 1)
 	bucket := validBuckets[0]
+	// Spin scanBar
+	scanBar(message)
 	for _, object := range objects {
 		// Test with If-Match Header set.
 		// Spin scanBar
 		scanBar(message)
-		// Create new GET object If-Match request.
-		req, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
+		go func(objectKey, objectETag string, objectBody []byte) {
+			// Create new GET object If-Match request.
+			req, err := newGetObjectIfMatchReq(config, bucket.Name, objectKey, objectETag)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			res, err := execRequest(req, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the response...these checks do not check the headers yet.
+			if err := getObjectIfMatchVerify(res, objectBody, "200 OK", false); err != nil {
+				errCh <- err
+				return
+			}
+			// Create a bad GET object If-Match request.
+			badReq, err := newGetObjectIfMatchReq(config, bucket.Name, objectKey, invalidETag)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Execute the request.
+			badRes, err := execRequest(badReq, config.Client)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify the request fails as expected.
+			if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(object.Key, object.ETag, object.Body)
 		// Spin scanBar
 		scanBar(message)
-		// Execute the request.
-		res, err := execRequest(req, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the response...these checks do not check the headers yet.
-		if err := getObjectIfMatchVerify(res, object.Body, "200 OK", false); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Create a bad GET object If-Match request.
-		badReq, err := newGetObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Execute the request.
-		badRes, err := execRequest(badReq, config.Client)
-		if err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-		// Verify the request fails as expected.
-		if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
-			printMessage(message, err)
-			return false
-		}
-		// Spin scanBar
-		scanBar(message)
-
 	}
+	count := len(objects)
+	for count > 0 {
+		count--
+		// Spin scanBar
+		scanBar(message)
+		err, ok := <-errCh
+		if !ok {
+			return false
+		}
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }
