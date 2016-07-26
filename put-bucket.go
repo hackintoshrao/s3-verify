@@ -22,24 +22,16 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/minio/s3verify/signv4"
 )
 
 var (
-	testBuckets = [][]BucketInfo{
-		validBuckets,
-		invalidBuckets,
-	}
-	validBuckets = []BucketInfo{
-		BucketInfo{
-			Name: "s3verify-put-bucket-test",
-		},
-		BucketInfo{
-			Name: "s3verify-put-bucket-copy-test",
-		},
-	}
+	// Make two random buckets below in the test.
+	validBuckets = make([]BucketInfo, 2)
 	// See http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html for all bucket naming restrictions.
 	invalidBuckets = []BucketInfo{
 		BucketInfo{
@@ -170,17 +162,21 @@ func verifyHeaderPutBucket(res *http.Response, bucketName, expectedStatus string
 	return nil
 }
 
-// Test the PutBucket API when no extra headers are set. This creates three new buckets and leaves them for the next tests to use.
+// Test the PutBucket API when no extra headers are set. This creates two new buckets and leaves them for the next tests to use.
 func mainPutBucket(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutBucket:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
-	// Test that valid names are PUT correctly.
-	for _, bucket := range validBuckets {
+	// Create two new buckets with valid names.
+	for i := 0; i < 2; i++ {
+		validBucket := BucketInfo{
+			Name: randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify"),
+		}
+		validBuckets[i] = validBucket
 		// Spin the scanBar
 		scanBar(message)
 		// Create a new Make bucket request.
-		req, err := newPutBucketReq(config, bucket.Name)
+		req, err := newPutBucketReq(config, validBucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -196,7 +192,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Check the responses Body, Status, Header.
-		if err := putBucketVerify(res, bucket.Name, "200 OK", ErrorResponse{}); err != nil {
+		if err := putBucketVerify(res, validBucket.Name, "200 OK", ErrorResponse{}); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -234,6 +230,9 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
 	printMessage(message, nil)
 	return true
 }
