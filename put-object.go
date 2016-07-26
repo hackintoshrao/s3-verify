@@ -125,7 +125,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	errCh := make(chan error, 1)
 	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
-	for i := 0; i < 500; i++ {
+	for i := 0; i < len(objects); i++ {
 		// Spin scanBar
 		scanBar(message)
 		go func(cur int) {
@@ -158,7 +158,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 	}
-	count := 500
+	count := len(objects)
 	for count > 0 {
 		count--
 		// Spin scanBar

@@ -21,12 +21,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"net/url"
+	"sort"
 
 	"github.com/minio/s3verify/signv4"
 )
 
 // newListObjectsV1Req - Create a new HTTP request for ListObjects V1.
-func newListObjectsV1Req(config ServerConfig, bucketName string) (*http.Request, error) {
+func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[string]string) (*http.Request, error) {
 	// listObjectsV1Req - a new HTTP request for ListObjects V1.
 	var listObjectsV1Req = &http.Request{
 		Header: map[string][]string{
@@ -35,7 +37,11 @@ func newListObjectsV1Req(config ServerConfig, bucketName string) (*http.Request,
 		Body:   nil, // There is no body sent in GET requests.
 		Method: "GET",
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
+	urlValues := make(url.Values)
+	for k, v := range parameters {
+		urlValues.Set(k, v)
+	}
+	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, urlValues)
 	if err != nil {
 		return nil, err
 	}
@@ -95,9 +101,16 @@ func verifyBodyListObjectsV1(res *http.Response, expectedList listBucketResult) 
 			}
 		}
 	}
-	if listedObjects != len(objects) {
-		err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(objects), listedObjects)
-		return err
+	if expectedList.MaxKeys != 0 {
+		if expectedList.MaxKeys != int64(len(receivedList.Contents)+len(receivedList.CommonPrefixes)) {
+			err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", expectedList.MaxKeys, len(receivedList.Contents)+len(receivedList.CommonPrefixes))
+			return err
+		}
+	} else {
+		if len(objects) != listedObjects {
+			err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(objects), listedObjects)
+			return err
+		}
 	}
 	return nil
 }
@@ -116,10 +129,13 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucketName := validBuckets[0].Name
-	objectInfo := []ObjectInfo{}
+	objectInfo := ObjectInfos{}
 	for _, object := range objects {
 		objectInfo = append(objectInfo, *object)
 	}
+	// Order objects by their Key.
+	sort.Sort(objectInfo)
+	// Test for listobjects with no extra parameters.
 	expectedList := listBucketResult{
 		Name:     bucketName, // Listing from the first bucket created that houses all objects.
 		Contents: objectInfo, // The first bucket created will house all the objects created by the PUT object test.
@@ -129,8 +145,18 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 		// Marker
 		// Delimiter
 	}
+	// Test for listobjects with maxkeys parameter set.
+	expectedListMaxKeys := listBucketResult{
+		Name:     bucketName,
+		Contents: objectInfo[:31], // Only return the first 30 objects.
+		MaxKeys:  30,              // Only return the first 30 objects.
+	}
+	// Store the parameters to be set by the request.
+	maxKeysMap := map[string]string{
+		"max-keys": "30", // 30 objects.
+	}
 	// Create a new request.
-	req, err := newListObjectsV1Req(config, bucketName)
+	noParamReq, err := newListObjectsV1Req(config, bucketName, nil) // No extra parameters for the first test.
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -138,7 +164,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client)
+	noParamRes, err := execRequest(noParamReq, config.Client)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -146,7 +172,30 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := listObjectsV1Verify(res, "200 OK", expectedList); err != nil {
+	if err := listObjectsV1Verify(noParamRes, "200 OK", expectedList); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Create a new request with max-keys set to 30.
+	maxKeysReq, err := newListObjectsV1Req(config, bucketName, maxKeysMap) // MaxKeys set to 30.
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	maxKeysRes, err := execRequest(maxKeysReq, config.Client)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Verify the max-keys parameter is respected.
+	if err := listObjectsV1Verify(maxKeysRes, "200 OK", expectedListMaxKeys); err != nil {
 		printMessage(message, err)
 		return false
 	}

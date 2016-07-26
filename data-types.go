@@ -54,6 +54,24 @@ type ObjectInfo struct {
 	UploadID string // To be set only for multipart uploaded objects.
 }
 
+// A container for ObjectInfo structs to allow sorting.
+type ObjectInfos []ObjectInfo
+
+// Return the len of a list of ObjectInfo.
+func (o ObjectInfos) Len() int {
+	return len(o)
+}
+
+// Allow comparisons of ObjectInfo types with their Keys.
+func (o ObjectInfos) Less(i, j int) bool {
+	return o[i].Key < o[j].Key
+}
+
+// Allow swapping of ObjectInfo types.
+func (o ObjectInfos) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
 // objectInfoChannel a channel for concurrent object level operations.
 type objectInfoChannel struct {
 	objInfo ObjectInfo
