@@ -59,6 +59,11 @@ var apiTests = []APItest{
 		Critical: false, // List Part test can fail without affecting other tests.
 	},
 	APItest{
+		Test:     mainListMultipartUploads,
+		Extended: false, // List Multipart Uploads test must be run without extended flag being set.
+		Critical: false, // List Multipart Uploads test can fail without affecting other tests.
+	},
+	APItest{
 		Test:     mainCompleteMultipartUpload,
 		Extended: false, // Complete Multipart test must be run even without extended flag being set.
 		Critical: true,  // Complete Multipart test can fail without affecting other tests.

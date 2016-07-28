@@ -92,3 +92,27 @@ type multiUploadInitChannel struct {
 	err      error
 	index    int
 }
+
+// Container for a Multipart Objects information.
+type ObjectMultipartInfo struct {
+	// Date and time at which the multipart upload was initiated.
+	Initiated time.Time `type:"timestamp" timestampFormat:"iso8601"`
+
+	Initiator initiator
+	Owner     owner
+
+	// The type of storage to use for the object. Defaults to 'STANDARD'.
+	StorageClass string
+
+	// Key of the object for which the multipart upload was initiated.
+	Key string
+
+	// Size in bytes of the object.
+	Size int64
+
+	// Upload ID that identifies the multipart upload.
+	UploadID string `xml:"UploadId"`
+
+	// Error
+	Err error
+}

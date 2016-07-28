@@ -130,6 +130,7 @@ type initiateMultipartUploadResult struct {
 	UploadID string `xml:"UploadId"`
 }
 
+// objectPart container for parts of a multipart upload.
 type objectPart struct {
 	// Part number identifies the part.
 	PartNumber int
@@ -152,6 +153,22 @@ type completeMultipartUploadResult struct {
 	Bucket   string
 	Key      string
 	ETag     string
+}
+
+// listMultipartUploadsResult container for ListMultipartUploads result.
+type listMultipartUploadsResult struct {
+	Bucket         string
+	KeyMarker      string
+	UploadIDMarker string `xml:"UploadIdMarker"`
+	NextKeyMarker  string
+	EncodingType   string
+	MaxUploads     int64
+	IsTruncated    bool
+	Uploads        []ObjectMultipartInfo `xml:"Upload"`
+	Prefix         string
+	Delimiter      string
+	// A response can contain CommonPrefixes only if you specify a delimiter.
+	CommonPrefixes []commonPrefix
 }
 
 // completePart sub container lists individual part numbers and their md5sum,

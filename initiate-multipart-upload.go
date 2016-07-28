@@ -43,6 +43,7 @@ var multipartObjects = []*ObjectInfo{
 	},
 }
 
+// newInitiateMultipartUploadReq - Create a new HTTP request for the initiate-multipart-upload API.
 func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
 	// Initialize url queries.
 	urlValues := make(url.Values)
