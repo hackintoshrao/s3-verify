@@ -120,7 +120,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
@@ -133,7 +133,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
@@ -150,7 +150,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute current request.
-			curRes, err := execRequest(curReq, config.Client)
+			curRes, err := execRequest(curReq, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return

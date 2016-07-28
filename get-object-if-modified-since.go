@@ -105,7 +105,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	bucket := validBuckets[0]
 	for _, object := range objects {
 		// Spin scanBar
@@ -118,7 +118,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Perform the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
@@ -135,7 +135,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the response that should give back a body.
-			goodRes, err := execRequest(goodReq, config.Client)
+			goodRes, err := execRequest(goodReq, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
@@ -147,7 +147,6 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 			}
 			errCh <- nil
 		}(object.Key, object.LastModified, object.Body)
-
 	}
 	count := len(objects)
 	for count > 0 {

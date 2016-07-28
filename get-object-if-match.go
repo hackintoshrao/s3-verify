@@ -112,7 +112,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Run the test on every object in every bucket.
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	bucket := validBuckets[0]
 	// Spin scanBar
 	scanBar(message)
@@ -128,7 +128,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
@@ -145,7 +145,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			badRes, err := execRequest(badReq, config.Client)
+			badRes, err := execRequest(badReq, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return

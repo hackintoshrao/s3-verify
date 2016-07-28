@@ -122,7 +122,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

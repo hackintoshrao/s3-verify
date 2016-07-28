@@ -133,7 +133,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	bucket := validBuckets[0]
 
-	partCh := make(chan partChannel, 1)
+	partCh := make(chan partChannel, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// TODO: upload more than one part for at least one object.
@@ -166,7 +166,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				partCh <- partChannel{
 					index:   cur,

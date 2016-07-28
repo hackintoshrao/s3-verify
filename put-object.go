@@ -123,7 +123,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 	bucket := validBuckets[0]
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
 	for i := 0; i < len(objects); i++ {
 		// Spin scanBar
@@ -141,7 +141,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, object.Key)
 			if err != nil {
 				errCh <- err
 				return
@@ -153,6 +153,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 			}
 			// Add the new object to the list of objects.
 			objects[cur] = object
+			// This upload passed.
 			errCh <- nil
 		}(i)
 		// Spin scanBar

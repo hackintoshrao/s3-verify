@@ -115,7 +115,7 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		scanBar(message)
 
 		// Perform the request.
-		res, err := execRequest(req, config.Client)
+		res, err := execRequest(req, config.Client, bucket.Name, "")
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -157,7 +157,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, bucketName, "")
 	if err != nil {
 		printMessage(message, err)
 		return false

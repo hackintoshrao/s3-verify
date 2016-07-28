@@ -111,7 +111,7 @@ func mainHeadBucket(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, bucketName, "")
 	if err != nil {
 		printMessage(message, err)
 		return false

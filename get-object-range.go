@@ -57,7 +57,7 @@ func mainGetObjectRange(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	rand.Seed(time.Now().UnixNano())
 	for _, object := range objects {
 		// Spin scanBar
@@ -72,7 +72,7 @@ func mainGetObjectRange(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return

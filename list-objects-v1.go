@@ -164,7 +164,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	noParamRes, err := execRequest(noParamReq, config.Client)
+	noParamRes, err := execRequest(noParamReq, config.Client, bucketName, "")
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -187,7 +187,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	maxKeysRes, err := execRequest(maxKeysReq, config.Client)
+	maxKeysRes, err := execRequest(maxKeysReq, config.Client, bucketName, "")
 	if err != nil {
 		printMessage(message, err)
 		return false

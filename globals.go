@@ -17,15 +17,44 @@
 package main
 
 import (
+	"math/rand"
+	"sync"
+	"time"
+
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/console"
 )
 
 var (
-	globalVerbose       = false
-	globalDefaultRegion = "us-east-1"
-	globalTotalNumTest  = 0
+	globalVerbose                    = false
+	globalDefaultRegion              = "us-east-1"
+	globalTotalNumTest               = 0
+	globalRequestPoolSize            = 7 // The maximum number of requests to be sent at once.
+	globalRandom          *rand.Rand = nil
 )
+
+// lockedRandSource provides protected rand source, implements rand.Source interface.
+type lockedRandSource struct {
+	lk  sync.Mutex
+	src rand.Source
+}
+
+// Int63 returns a non-negative pseudo-random 63-bit integer as an
+// int64.
+func (r *lockedRandSource) Int63() (n int64) {
+	r.lk.Lock()
+	n = r.src.Int63()
+	r.lk.Unlock()
+	return
+}
+
+// Seed uses the provided seed value to initialize the generator to a
+// deterministic state.
+func (r *lockedRandSource) Seed(seed int64) {
+	r.lk.Lock()
+	r.src.Seed(seed)
+	r.lk.Unlock()
+}
 
 // Separate out context.
 func setGlobals(verbose bool, numTests int) {
@@ -35,6 +64,7 @@ func setGlobals(verbose bool, numTests int) {
 		// Allow printing of traces.
 		console.DebugPrint = true
 	}
+	globalRandom = rand.New(&lockedRandSource{src: rand.NewSource(time.Now().UTC().UnixNano())})
 }
 
 // Set any global flags here.

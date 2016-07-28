@@ -17,12 +17,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/xml"
 	"fmt"
 	"hash"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -38,6 +40,13 @@ const (
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting into 63 bits.
 )
+
+// List of success status.
+var successStatus = []int{
+	http.StatusOK,
+	http.StatusNoContent,
+	http.StatusPartialContent,
+}
 
 // printMessage - Print test pass/fail messages with errors.
 func printMessage(message string, err error) {
@@ -79,20 +88,66 @@ func xmlDecoder(body io.Reader, v interface{}) error {
 }
 
 // execRequest - Executes an HTTP request creating an HTTP response.
-func execRequest(req *http.Request, client *http.Client) (*http.Response, error) {
-	resp, err := client.Do(req)
-	if err != nil {
-		urlErr, ok := err.(*url.Error)
-		if ok && strings.Contains(urlErr.Err.Error(), "EOF") {
-			return nil, &url.Error{
-				Op:  urlErr.Op,
-				URL: urlErr.URL,
-				Err: fmt.Errorf("Connection closed by foreign host %s. Retry again.", urlErr.URL),
+func execRequest(req *http.Request, client *http.Client, bucketName, objectName string) (resp *http.Response, err error) {
+	var isRetryable bool     // Indicates if request can be retried.
+	var bodySeeker io.Seeker // Extracted seeker from io.Reader.
+	if req.Body != nil {
+		// Check if body is seekable then it is retryable.
+		bodySeeker, isRetryable = req.Body.(io.Seeker)
+	}
+	// Do not need the index.
+	for _ = range newRetryTimer(MaxRetry, time.Second, time.Second*30, MaxJitter, globalRandom) {
+		if isRetryable {
+			// Seek back to beginning for each attempt.
+			if _, err := bodySeeker.Seek(0, 0); err != nil {
+				// If seek failed no need to retry.
+				return resp, err
 			}
 		}
-		return nil, err
+		resp, err = client.Do(req)
+		if err != nil {
+			// For supported network errors verify.
+			if isNetErrorRetryable(err) {
+				continue // Retry.
+			}
+			// For other errors there is no need to retry.
+			return resp, err
+		}
+		// For any known successful http status, return quickly.
+		for _, httpStatus := range successStatus {
+			if httpStatus == resp.StatusCode {
+				return resp, nil
+			}
+		}
+		// Read the body to be saved later.
+		errBodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return resp, err
+		}
+		// Save the body.
+		errBodySeeker := bytes.NewReader(errBodyBytes)
+		resp.Body = ioutil.NopCloser(errBodySeeker)
+
+		// For errors verify if its retryable otherwise fail quickly.
+		errResponse := ToErrorResponse(httpRespToErrorResponse(resp, bucketName, objectName))
+
+		//Verify if error response code is retryable.
+		if isS3CodeRetryable(errResponse.Code) {
+			continue // Retry.
+		}
+		// Verify if http status code is retryable.
+		if isHTTPStatusRetryable(resp.StatusCode) {
+			continue // Retry.
+		}
+
+		// Save the body back again.
+		errBodySeeker.Seek(0, 0) // Seek back to starting point.
+		resp.Body = ioutil.NopCloser(errBodySeeker)
+
+		// For all other cases break out of the retry loop.
+		break
 	}
-	return resp, nil
+	return resp, err
 }
 
 // randString generates random names.

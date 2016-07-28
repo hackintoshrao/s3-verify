@@ -121,7 +121,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -144,7 +144,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the bad request.
-	badRes, err := execRequest(badReq, config.Client)
+	badRes, err := execRequest(badReq, config.Client, bucket.Name, object.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

@@ -146,7 +146,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the response.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -164,7 +164,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the request.
-	badRes, err := execRequest(badReq, config.Client)
+	badRes, err := execRequest(badReq, config.Client, destBucketName, destObject.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

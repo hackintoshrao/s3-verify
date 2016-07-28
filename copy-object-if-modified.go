@@ -148,7 +148,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -171,7 +171,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	badRes, err := execRequest(badReq, config.Client)
+	badRes, err := execRequest(badReq, config.Client, destBucketName, destObject.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

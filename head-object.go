@@ -101,7 +101,7 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucket := validBuckets[0]
-	objInfoCh := make(chan objectInfoChannel, 1)
+	objInfoCh := make(chan objectInfoChannel, globalRequestPoolSize)
 	for i, object := range objects {
 		// Spin scanBar
 		scanBar(message)
@@ -113,7 +113,7 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
 				return

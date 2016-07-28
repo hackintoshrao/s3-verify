@@ -156,7 +156,7 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	scanBar(message)
 
 	// Generate the server response.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, "", "")
 	if err != nil {
 		printMessage(message, err)
 		return false

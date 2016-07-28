@@ -100,7 +100,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	bucket := validBuckets[0]
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	for _, object := range objects {
 		// Spin scanBar
 		scanBar(message)
@@ -113,7 +113,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client)
+			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
@@ -130,7 +130,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			badRes, err := execRequest(badReq, config.Client)
+			badRes, err := execRequest(badReq, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return

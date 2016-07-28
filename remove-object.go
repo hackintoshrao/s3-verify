@@ -86,7 +86,7 @@ func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
 // mainRemoveObjectExists - Entry point for the RemoveObject API test when object exists.
 func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	for _, bucket := range validBuckets {
@@ -101,7 +101,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client)
+				res, err := execRequest(req, config.Client, bucketName, objectKey)
 				if err != nil {
 					errCh <- err
 					return
@@ -142,7 +142,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client)
+				res, err := execRequest(req, config.Client, bucketName, objectKey)
 				if err != nil {
 					errCh <- err
 					return
@@ -184,7 +184,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client)
+				res, err := execRequest(req, config.Client, bucketName, objectKey)
 				if err != nil {
 					errCh <- err
 					return
