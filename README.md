@@ -46,7 +46,7 @@ $ s3verify [FLAGS]
 ```
 
 ### Environment Variables
-``s3verify`` also supports the following global variables as a replacement for flags. In fact it is recommended that on multiuser systems that env. 
+``s3verify`` also supports the following environment variables as a replacement for flags. In fact it is recommended that on multiuser systems that env. 
 variables be used for security reasons.  
 The following env. variables can be used to replace their corresponding flags.
 ```
