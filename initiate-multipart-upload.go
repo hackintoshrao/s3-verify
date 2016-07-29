@@ -122,16 +122,11 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
 	bucket := validBuckets[0]
-	multiUploadInitCh := make(chan multiUploadInitChannel, 1)
-	workCh := make(chan bool, globalRequestPoolSize)
-	for i := 0; i < globalRequestPoolSize; i++ {
-		workCh <- true
-	}
+	multiUploadInitCh := make(chan multiUploadInitChannel, globalRequestPoolSize)
 	for i, object := range multipartObjects {
 		// Spin scanBar
 		scanBar(message)
 		go func(objectKey string, cur int) {
-			<-workCh
 			// Create a new InitiateMultiPartUpload request.
 			req, err := newInitiateMultipartUploadReq(config, bucket.Name, objectKey)
 			if err != nil {
@@ -168,7 +163,6 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 				err:      nil,
 				uploadID: uploadID,
 			}
-			workCh <- true
 		}(object.Key, i)
 		// Spin scanBar
 		scanBar(message)

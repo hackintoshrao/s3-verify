@@ -141,6 +141,11 @@ var apiTests = []APItest{
 		Extended: true,  // Copy Object (If-Modified-Since) test does not need to be run.
 		Critical: false, // Copy Object (If-Modified-Since) can fail and not affect other tests.
 	},
+	APItest{
+		Test:     mainCopyObjectIfUnModifiedSince,
+		Extended: true,  // Copy Object (If-Unmodified-Since) test does not need to be run.
+		Critical: false, // Copy Object (If-Unmodified-Since) can fail and not affect other tests.
+	},
 
 	// Tests for GetObject API.
 	APItest{

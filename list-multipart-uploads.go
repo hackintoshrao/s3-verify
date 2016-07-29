@@ -137,7 +137,7 @@ func mainListMultipartUploads(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client)
+	res, err := execRequest(req, config.Client, bucketName, "")
 	if err != nil {
 		printMessage(message, err)
 		return false
