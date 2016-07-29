@@ -106,6 +106,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					errCh <- err
 					return
 				}
+				defer closeResponse(res)
 				// Verify the response.
 				if err := removeObjectVerify(res, "200 OK"); err != nil {
 					errCh <- err
@@ -147,6 +148,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					errCh <- err
 					return
 				}
+				defer closeResponse(res)
 				// Verify the response.
 				if err := removeObjectVerify(res, "200 OK"); err != nil {
 					errCh <- err
@@ -189,6 +191,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					errCh <- err
 					return
 				}
+				defer closeResponse(res)
 				// Verify the response.
 				if err := removeObjectVerify(res, "200 OK"); err != nil {
 					errCh <- err

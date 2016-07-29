@@ -138,25 +138,27 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify that the response returns an error.
 			if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
 				errCh <- err
 				return
 			}
 			// Form a request with a date in the past.
-			curReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
+			goodReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
 			if err != nil {
 				errCh <- err
 				return
 			}
 			// Execute current request.
-			curRes, err := execRequest(curReq, config.Client, bucket.Name, objectKey)
+			goodRes, err := execRequest(goodReq, config.Client, bucket.Name, objectKey)
 			if err != nil {
 				errCh <- err
 				return
 			}
+			defer closeResponse(goodRes)
 			// Verify that the lastModified date in a request returns the object.
-			if err := verifyGetObjectIfUnModifiedSince(curRes, objectBody, "200 OK", false); err != nil {
+			if err := verifyGetObjectIfUnModifiedSince(goodRes, objectBody, "200 OK", false); err != nil {
 				errCh <- err
 				return
 			}

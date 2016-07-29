@@ -118,6 +118,7 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response.
 			if err := headObjectVerify(res, "200 OK"); err != nil {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}

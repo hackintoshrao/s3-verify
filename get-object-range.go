@@ -77,6 +77,7 @@ func mainGetObjectRange(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			bufRange := objectBody[startRange : endRange+1]
 			// Verify the response...these checks do not check the headers yet.
 			if err := getObjectVerify(res, bufRange, "206 Partial Content"); err != nil {

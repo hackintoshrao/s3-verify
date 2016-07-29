@@ -169,6 +169,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(noParamRes)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
@@ -192,6 +193,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(maxKeysRes)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the max-keys parameter is respected.

@@ -151,6 +151,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Verify the response.
 	if err := copyObjectIfMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
 		printMessage(message, err)
@@ -169,6 +170,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(badRes)
 	// Verify the request failed as expected.
 	if err := copyObjectIfMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
 		printMessage(message, err)

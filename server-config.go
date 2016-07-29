@@ -17,7 +17,9 @@
 package main
 
 import (
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/httptracer"
@@ -39,7 +41,14 @@ func newServerConfig(ctx *cli.Context) *ServerConfig {
 		Secret:   ctx.String("secret"),
 		Endpoint: ctx.String("url"),
 		Region:   ctx.String("region"),
-		Client:   &http.Client{},
+		Client: &http.Client{
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout: 5 * time.Second,
+				}).Dial,
+				TLSHandshakeTimeout: 5 * time.Second,
+			},
+		},
 	}
 	if ctx.Bool("verbose") || ctx.GlobalBool("verbose") {
 

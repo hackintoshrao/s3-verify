@@ -118,6 +118,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response...these checks do not check the headers yet.
 			if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
 				errCh <- err
@@ -135,6 +136,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(badRes)
 			// Verify the response returns the object since ETag != invalidETag
 			if err := getObjectIfNoneMatchVerify(badRes, objectBody, "200 OK"); err != nil {
 				errCh <- err

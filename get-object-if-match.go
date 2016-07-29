@@ -133,6 +133,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response...these checks do not check the headers yet.
 			if err := getObjectIfMatchVerify(res, objectBody, "200 OK", false); err != nil {
 				errCh <- err
@@ -150,6 +151,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(badRes)
 			// Verify the request fails as expected.
 			if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
 				errCh <- err

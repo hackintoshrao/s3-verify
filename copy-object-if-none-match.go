@@ -140,6 +140,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Verify the response.
 	if err = copyObjectIfNoneMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
 		printMessage(message, err)
@@ -157,6 +158,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(badRes)
 	// Verify the response errors out as it should.
 	if err = copyObjectIfNoneMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
 		printMessage(message, err)

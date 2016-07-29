@@ -117,6 +117,7 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response.
 			if err := getObjectVerify(res, objectBody, "200 OK"); err != nil {
 				errCh <- err

@@ -147,6 +147,7 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 				}
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response and get the uploadID.
 			uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
 			if err != nil {

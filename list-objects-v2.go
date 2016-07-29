@@ -141,6 +141,7 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Verify the response.
 	if err := listObjectsV2Verify(res, "200 OK", expectedList); err != nil {
 		printMessage(message, err)

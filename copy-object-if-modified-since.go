@@ -153,6 +153,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response is valid.
@@ -176,6 +177,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(badRes)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the bad request fails the right way.

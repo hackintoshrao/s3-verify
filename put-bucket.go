@@ -189,6 +189,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 			printMessage(message, err)
 			return false
 		}
+		defer closeResponse(res)
 		// Spin the scanBar
 		scanBar(message)
 		// Check the responses Body, Status, Header.
@@ -220,6 +221,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 			printMessage(message, err)
 			return false
 		}
+		defer closeResponse(res)
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the request failed as predicted.

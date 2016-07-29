@@ -87,22 +87,30 @@ func xmlDecoder(body io.Reader, v interface{}) error {
 	return d.Decode(v)
 }
 
-// execRequest - Executes an HTTP request creating an HTTP response.
+// execRequest - Executes an HTTP request creating an HTTP response and implements retry logic for predefined retryable errors.
 func execRequest(req *http.Request, client *http.Client, bucketName, objectName string) (resp *http.Response, err error) {
-	var isRetryable bool     // Indicates if request can be retried.
-	var bodySeeker io.Seeker // Extracted seeker from io.Reader.
+	var isRetryable bool         // Indicates if request can be retried.
+	var bodyReader io.ReadSeeker // io.Seeking for seeking.
 	if req.Body != nil {
-		// Check if body is seekable then it is retryable.
-		bodySeeker, isRetryable = req.Body.(io.Seeker)
+		// FIXME: remove this and reduce ioutil.NopCloser usage elsewhere.
+		buf, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		isRetryable = true
+		bodyReader = bytes.NewReader(buf)
 	}
 	// Do not need the index.
 	for _ = range newRetryTimer(MaxRetry, time.Second, time.Second*30, MaxJitter, globalRandom) {
 		if isRetryable {
 			// Seek back to beginning for each attempt.
-			if _, err := bodySeeker.Seek(0, 0); err != nil {
+			if _, err := bodyReader.Seek(0, 0); err != nil {
 				// If seek failed no need to retry.
 				return resp, err
 			}
+		}
+		if bodyReader != nil {
+			req.Body = ioutil.NopCloser(bodyReader)
 		}
 		resp, err = client.Do(req)
 		if err != nil {
@@ -148,6 +156,26 @@ func execRequest(req *http.Request, client *http.Client, bucketName, objectName 
 		break
 	}
 	return resp, err
+}
+
+// closeResponse close non nil response with any response Body.
+// convenient wrapper to drain any remaining data on response body.
+//
+// Subsequently this allows golang http RoundTripper
+// to re-use the same connection for future requests. (Connection pooling).
+func closeResponse(res *http.Response) {
+	// Callers should close resp.Body when done reading from it.
+	// If resp.Body is not closed, the Client's underlying RoundTripper
+	// (typically Transport) may not be able to re-use a persistent TCP
+	// connection to the server for a subsequent "keep-alive" request.
+	if res != nil && res.Body != nil {
+		// Drain any remaining Body and then close the connection.
+		// Without this closing connection would disallow re-using
+		// the same connection for future uses.
+		// - http://stackoverflow.com/a/17961593/4465767
+		io.Copy(ioutil.Discard, res.Body)
+		res.Body.Close()
+	}
 }
 
 // randString generates random names.

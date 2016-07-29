@@ -120,6 +120,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
@@ -143,6 +144,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(badRes)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request sends back the right error.

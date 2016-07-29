@@ -175,6 +175,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 				}
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response.
 			if err := uploadPartVerify(res, "200 OK"); err != nil {
 				partCh <- partChannel{

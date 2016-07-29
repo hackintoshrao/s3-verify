@@ -123,6 +123,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response...these checks do not check the headers yet.
 			if err := verifyGetObjectIfModifiedSince(res, []byte(""), "304 Not Modified"); err != nil {
 				errCh <- err
@@ -140,6 +141,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(goodRes)
 			// Verify that the past date gives back the data.
 			if err := verifyGetObjectIfModifiedSince(goodRes, objectBody, "200 OK"); err != nil {
 				errCh <- err

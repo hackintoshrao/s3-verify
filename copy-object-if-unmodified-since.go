@@ -157,6 +157,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
@@ -168,7 +169,6 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	copyObjects = append(copyObjects, destObject)
 	// Spin scanBar
 	scanBar(message)
-
 	// Create a new invalid request.
 	badReq, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucket.Name, sourceObject.Key, destBucket.Name, destObject.Key, pastDate)
 	if err != nil {
@@ -183,6 +183,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(badRes)
 	// Spin scanBar
 	scanBar(message)
 	// Verify the bad request fails with the proper error.

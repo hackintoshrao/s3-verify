@@ -104,7 +104,6 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 	for _, bucket := range validBuckets {
 		// Spin the scanBar
 		scanBar(message)
-
 		// Generate the new DELETE bucket request.
 		req, err := newRemoveBucketReq(config, bucket.Name)
 		if err != nil {
@@ -113,16 +112,15 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		}
 		// Spin the scanBar
 		scanBar(message)
-
 		// Perform the request.
 		res, err := execRequest(req, config.Client, bucket.Name, "")
 		if err != nil {
 			printMessage(message, err)
 			return false
 		}
+		defer closeResponse(res)
 		// Spin the scanBar
 		scanBar(message)
-
 		if err := removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
 			printMessage(message, err)
 			return false
@@ -154,7 +152,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
-	// Spin scanBar
+	// spin scanBar
 	scanBar(message)
 	// Perform the request.
 	res, err := execRequest(req, config.Client, bucketName, "")
@@ -162,6 +160,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
 	if err := removeBucketVerify(res, "404 Not Found", errResponse); err != nil {

@@ -128,6 +128,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
 	// Verify that the response went through.

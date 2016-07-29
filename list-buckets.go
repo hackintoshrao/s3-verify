@@ -161,9 +161,9 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Spin the scanBar
 	scanBar(message)
-
 	// Check for S3 Compatibility
 	if err := listBucketsVerify(res, expected); err != nil {
 		printMessage(message, err)

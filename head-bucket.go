@@ -116,6 +116,7 @@ func mainHeadBucket(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	defer closeResponse(res)
 	// Verify the response.
 	if err := headBucketVerify(res, "200 OK"); err != nil {
 		printMessage(message, err)

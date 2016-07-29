@@ -146,6 +146,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 				errCh <- err
 				return
 			}
+			defer closeResponse(res)
 			// Verify the response.
 			if err := putObjectVerify(res, "200 OK"); err != nil {
 				errCh <- err
