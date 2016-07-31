@@ -36,11 +36,14 @@ func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*ht
 		Body:   nil, // There is no body for DELETE requests.
 		Method: "DELETE",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
 	removeObjectReq.URL = targetURL
+	removeObjectReq.Header.Set("User-Agent", appUserAgent)
+
 	removeObjectReq = signv4.SignV4(*removeObjectReq, config.Access, config.Secret, config.Region)
 	return removeObjectReq, nil
 }

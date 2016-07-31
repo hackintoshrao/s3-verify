@@ -43,10 +43,13 @@ func newHeadObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ET
 	}
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
+
 	// Set requests URL and Header.
 	headObjectIfNoneMatchReq.URL = targetURL
 	headObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
 	headObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
+
 	headObjectIfNoneMatchReq = signv4.SignV4(*headObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
 	return headObjectIfNoneMatchReq, nil
 }

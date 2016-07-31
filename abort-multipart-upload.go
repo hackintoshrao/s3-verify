@@ -36,6 +36,7 @@ func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, upl
 		Body:   nil, // No body is provided in DELETE requests.
 		Method: "DELETE",
 	}
+	// Set the req URL and Header.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
@@ -49,6 +50,7 @@ func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, upl
 	}
 	abortMultipartUploadReq.URL = targetURL
 	abortMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	abortMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
 	abortMultipartUploadReq = signv4.SignV4(*abortMultipartUploadReq, config.Access, config.Secret, config.Region)
 
 	return abortMultipartUploadReq, nil

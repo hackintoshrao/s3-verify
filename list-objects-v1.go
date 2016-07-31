@@ -41,6 +41,7 @@ func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[
 	for k, v := range parameters {
 		urlValues.Set(k, v)
 	}
+	// Set the req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, urlValues)
 	if err != nil {
 		return nil, err
@@ -51,9 +52,10 @@ func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[
 		return nil, err
 	}
 	listObjectsV1Req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listObjectsV1Req.Header.Set("User-Agent", appUserAgent)
 	listObjectsV1Req.URL = targetURL
-	listObjectsV1Req = signv4.SignV4(*listObjectsV1Req, config.Access, config.Secret, config.Region)
 
+	listObjectsV1Req = signv4.SignV4(*listObjectsV1Req, config.Access, config.Secret, config.Region)
 	return listObjectsV1Req, nil
 }
 

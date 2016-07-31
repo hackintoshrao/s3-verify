@@ -38,14 +38,15 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 		Body:   nil, // There is no body sent for GET requests.
 		Method: "GET",
 	}
+	// Set the req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
 	// Fill the request URL.
 	getObjectRangeReq.URL = targetURL
-	// Fill the range request.
 	getObjectRangeReq.Header.Set("Range", "bytes="+strconv.FormatInt(startRange, 10)+"-"+strconv.FormatInt(endRange, 10))
+	getObjectRangeReq.Header.Set("User-Agent", appUserAgent)
 	// Sign the request.
 	getObjectRangeReq = signv4.SignV4(*getObjectRangeReq, config.Access, config.Secret, config.Region)
 	return getObjectRangeReq, nil

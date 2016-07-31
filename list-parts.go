@@ -52,6 +52,8 @@ func newListPartsReq(config ServerConfig, bucketName, objectName, uploadID strin
 	// Set the requests URL and Header values.
 	listPartsReq.URL = targetURL
 	listPartsReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listPartsReq.Header.Set("User-Agent", appUserAgent)
+
 	listPartsReq = signv4.SignV4(*listPartsReq, config.Access, config.Secret, config.Region)
 	return listPartsReq, nil
 }

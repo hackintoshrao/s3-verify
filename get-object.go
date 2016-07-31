@@ -37,10 +37,12 @@ func newGetObjectReq(config ServerConfig, bucketName, objectName string) (*http.
 		Body:   nil, // There is no body for GET requests.
 		Method: "GET",
 	}
+	// Set the URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
+	getObjectReq.Header.Set("User-Agent", appUserAgent)
 	// Fill request URL and sign.
 	getObjectReq.URL = targetURL
 	getObjectReq = signv4.SignV4(*getObjectReq, config.Access, config.Secret, config.Region)

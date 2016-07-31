@@ -39,6 +39,7 @@ func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectNa
 		Method: "HEAD",
 	}
 
+	// Set the req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -50,9 +51,10 @@ func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectNa
 	}
 	headObjectIfUnModifiedSinceReq.Header.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
 	headObjectIfUnModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headObjectIfUnModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
 	headObjectIfUnModifiedSinceReq.URL = targetURL
-	headObjectIfUnModifiedSinceReq = signv4.SignV4(*headObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
 
+	headObjectIfUnModifiedSinceReq = signv4.SignV4(*headObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return headObjectIfUnModifiedSinceReq, nil
 }
 

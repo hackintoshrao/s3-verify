@@ -36,11 +36,13 @@ func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETa
 		Body:   nil, // There is no body for GET requests
 		Method: "GET",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
 	getObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
+	getObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
 	// Add the URL and sign
 	getObjectIfNoneMatchReq.URL = targetURL
 	getObjectIfNoneMatchReq = signv4.SignV4(*getObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)

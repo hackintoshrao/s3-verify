@@ -36,6 +36,7 @@ func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceOb
 		},
 		Method: "PUT",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceOb
 	copyObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source-if-none-match", ETag)
+	copyObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
 
 	copyObjectIfNoneMatchReq = signv4.SignV4(*copyObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfNoneMatchReq, nil

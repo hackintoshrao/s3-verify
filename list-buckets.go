@@ -45,6 +45,7 @@ func newListBucketsReq(config ServerConfig) (*http.Request, error) {
 		return nil, err
 	}
 	listBucketsReq.URL = targetURL
+	listBucketsReq.Header.Set("User-Agent", appUserAgent)
 	// Sign the necessary headers.
 	listBucketsReq = signv4.SignV4(*listBucketsReq, config.Access, config.Secret, config.Region)
 	return listBucketsReq, nil

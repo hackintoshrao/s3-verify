@@ -37,6 +37,7 @@ func newHeadObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag s
 		Body:   nil, // No body is sent with HEAD requests.
 		Method: "HEAD",
 	}
+	// Set the req Header and URL.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -46,9 +47,11 @@ func newHeadObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag s
 	if err != nil {
 		return nil, err
 	}
+	headObjectIfMatchReq.Header.Set("User-Agent", appUserAgent)
 	headObjectIfMatchReq.Header.Set("If-Match", ETag)
 	headObjectIfMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	headObjectIfMatchReq.URL = targetURL
+
 	headObjectIfMatchReq = signv4.SignV4(*headObjectIfMatchReq, config.Access, config.Secret, config.Region)
 	return headObjectIfMatchReq, nil
 }

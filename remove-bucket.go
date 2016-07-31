@@ -44,6 +44,7 @@ func newRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, 
 		return nil, err
 	}
 	removeBucketReq.URL = targetURL
+	removeBucketReq.Header.Set("User-Agent", appUserAgent)
 	// Sign the necessary headers.
 	removeBucketReq = signv4.SignV4(*removeBucketReq, config.Access, config.Secret, config.Region)
 	return removeBucketReq, nil

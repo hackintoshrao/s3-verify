@@ -37,6 +37,7 @@ func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObject
 		},
 		Method: "PUT",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -54,6 +55,7 @@ func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObject
 	// Content-Length should not be set for CopyObject request.
 	copyObjectIfMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	copyObjectIfMatchReq.Header.Set("x-amz-copy-source-if-match", ETag)
+	copyObjectIfMatchReq.Header.Set("User-Agent", appUserAgent)
 
 	copyObjectIfMatchReq = signv4.SignV4(*copyObjectIfMatchReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfMatchReq, nil

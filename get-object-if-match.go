@@ -36,11 +36,13 @@ func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag st
 		Body:   nil, // There is no body for GET requests.
 		Method: "GET",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
 	getObjectIfMatchReq.Header.Set("If-Match", ETag)
+	getObjectIfMatchReq.Header.Set("User-Agent", appUserAgent)
 	// Fill request URL and sign
 	getObjectIfMatchReq.URL = targetURL
 	getObjectIfMatchReq = signv4.SignV4(*getObjectIfMatchReq, config.Access, config.Secret, config.Region)

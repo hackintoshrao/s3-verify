@@ -36,6 +36,7 @@ func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, d
 		},
 		Method: "PUT",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -52,6 +53,7 @@ func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, d
 	// Content-MD5 should never be set for CopyObject API.
 	copyObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectReq.Header.Set("User-Agent", appUserAgent)
 
 	copyObjectReq = signv4.SignV4(*copyObjectReq, config.Access, config.Secret, config.Region)
 

@@ -40,10 +40,12 @@ func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http
 		Body:   nil, // No body is sent with HEAD requests.
 		Method: "HEAD",
 	}
+	// Set the req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
+	headObjectReq.Header.Set("User-Agent", appUserAgent)
 	// Fill request URL and sign.
 	headObjectReq.URL = targetURL
 	headObjectReq = signv4.SignV4(*headObjectReq, config.Access, config.Secret, config.Region)

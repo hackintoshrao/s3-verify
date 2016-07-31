@@ -68,7 +68,7 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 		Method: "PUT",
 		// Body: will be set if the region is different from us-east-1.
 	}
-
+	// Set req URL, Header and Body if necessary.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -92,6 +92,8 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 		// Fill request headers and URL.
 		putBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	}
+	putBucketReq.Header.Set("User-Agent", appUserAgent)
+
 	putBucketReq = signv4.SignV4(*putBucketReq, config.Access, config.Secret, config.Region)
 	return putBucketReq, nil
 }

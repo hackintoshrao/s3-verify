@@ -26,9 +26,9 @@ import (
 	"github.com/minio/s3verify/signv4"
 )
 
-//
+// newHeadBucketReq - Create a new HTTP request for the HeadBucket API.
 func newHeadBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
-	//
+	// headBucketReq - a new HTTP request for the HeadBucket API.
 	var headBucketReq = &http.Request{
 		Header: map[string][]string{
 		// X-Amz-Content-Sha256 will be set below.
@@ -48,6 +48,7 @@ func newHeadBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 	// Set the URL and Header of the request.
 	headBucketReq.URL = targetURL
 	headBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headBucketReq.Header.Set("User-Agent", appUserAgent)
 
 	headBucketReq = signv4.SignV4(*headBucketReq, config.Access, config.Secret, config.Region)
 	return headBucketReq, nil

@@ -28,17 +28,29 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/minio/mc/pkg/console"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyz01234569"
 const (
+	appName       = "s3verify"
+	appVersion    = "0.1.0"
 	letterIdxBits = 6                    // 6 bits to represetn a letter index
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting into 63 bits.
+	letterBytes   = "abcdefghijklmnopqrstuvwxyz01234569"
+)
+
+// User Agent should always follow the style below.
+// Please open an issue to discuss any new changes here.
+//
+//		Minio (OS; ARCH) LIB/VER APP/VER
+const (
+	appUserAgentPrefix = "Minio (" + runtime.GOOS + "; " + runtime.GOARCH + ") "
+	appUserAgent       = appUserAgentPrefix + appName + "/" + appVersion
 )
 
 // List of success status.

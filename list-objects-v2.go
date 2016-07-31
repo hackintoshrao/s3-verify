@@ -49,9 +49,10 @@ func newListObjectsV2Req(config ServerConfig, bucketName string) (*http.Request,
 		return nil, err
 	}
 	listObjectsV2Req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listObjectsV2Req.Header.Set("User-Agent", appUserAgent)
 	listObjectsV2Req.URL = targetURL
-	listObjectsV2Req = signv4.SignV4(*listObjectsV2Req, config.Access, config.Secret, config.Region)
 
+	listObjectsV2Req = signv4.SignV4(*listObjectsV2Req, config.Access, config.Secret, config.Region)
 	return listObjectsV2Req, nil
 }
 

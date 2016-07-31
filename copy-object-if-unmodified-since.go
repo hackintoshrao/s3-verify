@@ -40,6 +40,7 @@ func newCopyObjectIfUnModifiedSinceReq(config ServerConfig, sourceBucketName, so
 		Body:   nil, // For CopyObject requests the body is filled in on the server side.
 		Method: "PUT",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -53,6 +54,7 @@ func newCopyObjectIfUnModifiedSinceReq(config ServerConfig, sourceBucketName, so
 	copyObjectIfUnModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectIfUnModifiedSinceReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	copyObjectIfUnModifiedSinceReq.Header.Set("x-amz-copy-if-unmodified-since", lastModified.Format(http.TimeFormat))
+	copyObjectIfUnModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
 
 	copyObjectIfUnModifiedSinceReq = signv4.SignV4(*copyObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfUnModifiedSinceReq, nil

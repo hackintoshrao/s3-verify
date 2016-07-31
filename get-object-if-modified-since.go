@@ -38,11 +38,13 @@ func newGetObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName 
 		Body:   nil, // There is no body for GET requests.
 		Method: "GET",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
 	getObjectIfModifiedReq.Header.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
+	getObjectIfModifiedReq.Header.Set("User-Agent", appUserAgent)
 
 	// Fill request URL and sign.
 	getObjectIfModifiedReq.URL = targetURL

@@ -50,6 +50,7 @@ func newListMultipartUploadsReq(config ServerConfig, bucketName string) (*http.R
 	}
 	// Set Header values and URL.
 	listMultipartUploadsReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listMultipartUploadsReq.Header.Set("User-Agent", appUserAgent)
 	listMultipartUploadsReq.URL = targetURL
 
 	listMultipartUploadsReq = signv4.SignV4(*listMultipartUploadsReq, config.Access, config.Secret, config.Region)

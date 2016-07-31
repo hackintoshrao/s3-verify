@@ -51,8 +51,9 @@ func newHeadObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName
 	headObjectIfModifiedSinceReq.URL = targetURL
 	headObjectIfModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	headObjectIfModifiedSinceReq.Header.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
-	headObjectIfModifiedSinceReq = signv4.SignV4(*headObjectIfModifiedSinceReq, config.Access, config.Secret, config.Region)
+	headObjectIfModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
 
+	headObjectIfModifiedSinceReq = signv4.SignV4(*headObjectIfModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return headObjectIfModifiedSinceReq, nil
 }
 

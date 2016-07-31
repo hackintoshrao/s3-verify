@@ -39,6 +39,7 @@ func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sour
 		},
 		Method: "PUT",
 	}
+	// Set req URL and Header.
 	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
 	if err != nil {
 		return nil, err
@@ -53,6 +54,8 @@ func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sour
 	copyObjectIfModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectIfModifiedSinceReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	copyObjectIfModifiedSinceReq.Header.Set("x-amz-copy-source-if-modified-since", lastModified.Format(http.TimeFormat))
+	copyObjectIfModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
+
 	copyObjectIfModifiedSinceReq = signv4.SignV4(*copyObjectIfModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfModifiedSinceReq, nil
 }

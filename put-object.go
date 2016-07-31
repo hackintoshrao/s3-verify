@@ -49,11 +49,12 @@ func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 		// Body:
 		Method: "PUT",
 	}
+	// Set req URL, Header, and Body.
 	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
 	if err != nil {
 		return nil, err
 	}
-	// Fill request headers and URL.
+	// Fill request Header, Body and URL.
 	putObjectReq.URL = targetURL
 
 	// Compute md5Sum and sha256Sum from the input data.
@@ -64,9 +65,11 @@ func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 	}
 	putObjectReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
 	putObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	putObjectReq.Header.Set("User-Agent", appUserAgent)
 	putObjectReq.ContentLength = contentLength
 	// Set the body to the data held in objectData.
 	putObjectReq.Body = ioutil.NopCloser(reader)
+
 	putObjectReq = signv4.SignV4(*putObjectReq, config.Access, config.Secret, config.Region)
 	return putObjectReq, nil
 }

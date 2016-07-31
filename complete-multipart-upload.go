@@ -38,6 +38,7 @@ func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, 
 		// Body: will be set dynamically,
 		Method: "POST",
 	}
+	// Set req URL, Header and Body.
 	// Initialize url queries.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
@@ -61,6 +62,7 @@ func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, 
 	completeMultipartUploadReq.URL = targetURL
 	completeMultipartUploadReq.ContentLength = contentLength
 	completeMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	completeMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
 	completeMultipartUploadReq.Body = ioutil.NopCloser(reader)
 
 	completeMultipartUploadReq = signv4.SignV4(*completeMultipartUploadReq, config.Access, config.Secret, config.Region)

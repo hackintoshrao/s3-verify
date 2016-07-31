@@ -66,8 +66,11 @@ func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName s
 	if err != nil {
 		return nil, err
 	}
+	// Set the req URL and Header.
 	initiateMultipartUploadReq.URL = targetURL
+	initiateMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
 	initiateMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	initiateMultipartUploadReq = signv4.SignV4(*initiateMultipartUploadReq, config.Access, config.Secret, config.Region)
 	return initiateMultipartUploadReq, nil
 }
