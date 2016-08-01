@@ -83,22 +83,22 @@ func newUploadPartReq(config ServerConfig, bucketName, objectName, uploadID stri
 }
 
 // uploadPartVerify - verify that the response returned matches what is expected.
-func uploadPartVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyBodyUploadPart(res); err != nil {
+func uploadPartVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyBodyUploadPart(res.Body); err != nil {
 		return err
 	}
-	if err := verifyStatusUploadPart(res, expectedStatus); err != nil {
+	if err := verifyStatusUploadPart(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderUploadPart(res); err != nil {
+	if err := verifyHeaderUploadPart(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyUploadPart - verify that that body returned is empty.
-func verifyBodyUploadPart(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyUploadPart(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -110,17 +110,17 @@ func verifyBodyUploadPart(res *http.Response) error {
 }
 
 // verifyStatusUploadPart - verify that the status returned matches what is expected.
-func verifyStatusUploadPart(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusUploadPart(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderUploadPart - verify that the header returned matches what is expected.
-func verifyHeaderUploadPart(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderUploadPart(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -177,7 +177,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response.
-			if err := uploadPartVerify(res, "200 OK"); err != nil {
+			if err := uploadPartVerify(res, http.StatusOK); err != nil {
 				partCh <- partChannel{
 					index:   cur,
 					objPart: part,

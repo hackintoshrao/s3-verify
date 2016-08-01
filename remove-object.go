@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -49,24 +50,30 @@ func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*ht
 }
 
 // removeObjectVerify - Verify that the response returned matches what is expected.
-func removeObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyHeaderRemoveObject(res); err != nil {
+func removeObjectVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyHeaderRemoveObject(res.Header); err != nil {
+		return err
+	}
+	if err := verifyBodyRemoveObject(res.Body); err != nil {
+		return err
+	}
+	if err := verifyStatusRemoveObject(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderRemoveObject - Verify that header returned matches what is expected.
-func verifyHeaderRemoveObject(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderRemoveObject(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyRemoveObject - Verify that the body returned is empty.
-func verifyBodyRemoveObject(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyRemoveObject(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -78,9 +85,9 @@ func verifyBodyRemoveObject(res *http.Response) error {
 }
 
 // verifyStatusRemoveObject - Verify that the status returned matches what is expected.
-func verifyStatusRemoveObject(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusRemoveObject(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %d, got %d", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -111,7 +118,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, "200 OK"); err != nil {
+				if err := removeObjectVerify(res, http.StatusOK); err != nil {
 					errCh <- err
 					return
 				}
@@ -153,7 +160,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, "200 OK"); err != nil {
+				if err := removeObjectVerify(res, http.StatusOK); err != nil {
 					errCh <- err
 					return
 				}
@@ -196,7 +203,7 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, "200 OK"); err != nil {
+				if err := removeObjectVerify(res, http.StatusOK); err != nil {
 					errCh <- err
 					return
 				}

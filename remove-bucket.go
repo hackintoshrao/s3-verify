@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -51,14 +52,14 @@ func newRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, 
 }
 
 // removeBucketVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
-func removeBucketVerify(res *http.Response, expectedStatus string, errorResponse ErrorResponse) error {
-	if err := verifyHeaderRemoveBucket(res); err != nil {
+func removeBucketVerify(res *http.Response, expectedStatusCode int, errorResponse ErrorResponse) error {
+	if err := verifyHeaderRemoveBucket(res.Header); err != nil {
 		return err
 	}
-	if err := verifyStatusRemoveBucket(res, expectedStatus); err != nil {
+	if err := verifyStatusRemoveBucket(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyRemoveBucket(res, errorResponse); err != nil {
+	if err := verifyBodyRemoveBucket(res.Body, errorResponse); err != nil {
 		return err
 	}
 	return nil
@@ -67,18 +68,18 @@ func removeBucketVerify(res *http.Response, expectedStatus string, errorResponse
 // TODO: right now only checks for correctly deleted buckets...need to add in checks for 'failed' tests.
 
 // verifyHeaderRemoveBucket - Check that the responses headers match the expected headers for a given DELETE Bucket request.
-func verifyHeaderRemoveBucket(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderRemoveBucket(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyRemoveBucket - Check that the body of the response matches the expected body for a given DELETE Bucket request.
-func verifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyRemoveBucket(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" { // Error is expected.
 		errResponse := ErrorResponse{}
-		err := xmlDecoder(res.Body, &errResponse)
+		err := xmlDecoder(resBody, &errResponse)
 		if err != nil {
 			return err
 		}
@@ -91,9 +92,9 @@ func verifyBodyRemoveBucket(res *http.Response, expectedError ErrorResponse) err
 }
 
 // verifyStatusRemoveBucket - Check that the status of the response matches the expected status for a given DELETE Bucket request.
-func verifyStatusRemoveBucket(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus { // Successful DELETE request will result in 204 No Content.
-		err := fmt.Errorf("Unexpected Status: wanted %v, got %v", expectedStatus, res.StatusCode)
+func verifyStatusRemoveBucket(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode { // Successful DELETE request will result in 204 No Content.
+		err := fmt.Errorf("Unexpected Status: wanted %d, got %d", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -122,7 +123,7 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		defer closeResponse(res)
 		// Spin the scanBar
 		scanBar(message)
-		if err := removeBucketVerify(res, "204 No Content", ErrorResponse{}); err != nil {
+		if err := removeBucketVerify(res, 204, ErrorResponse{}); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -164,7 +165,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	defer closeResponse(res)
 	// Spin scanBar
 	scanBar(message)
-	if err := removeBucketVerify(res, "404 Not Found", errResponse); err != nil {
+	if err := removeBucketVerify(res, http.StatusNotFound, errResponse); err != nil {
 		printMessage(message, err)
 		return false
 	}

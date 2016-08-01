@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -50,33 +51,33 @@ func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag st
 }
 
 // getObjectIfMatchVerify - Verify that the response matches what is expected.
-func getObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatus string, shouldFail bool) error {
-	if err := verifyHeaderGetObjectIfMatch(res); err != nil {
+func getObjectIfMatchVerify(res *http.Response, objectBody []byte, expectedStatusCode int, shouldFail bool) error {
+	if err := verifyHeaderGetObjectIfMatch(res.Header); err != nil {
 		return err
 	}
-	if err := verifyBodyGetObjectIfMatch(res, objectBody, shouldFail); err != nil {
+	if err := verifyBodyGetObjectIfMatch(res.Body, objectBody, shouldFail); err != nil {
 		return err
 	}
-	if err := verifyStatusGetObjectIfMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObjectIfMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderGetObjectIfMatch - Verify that the response header matches what is expected.
-func verifyHeaderGetObjectIfMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderGetObjectIfMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyGetObjectIfMatch - Verify that the response body matches what is expected.
-func verifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFail bool) error {
+func verifyBodyGetObjectIfMatch(resBody io.Reader, objectBody []byte, shouldFail bool) error {
 	if shouldFail {
 		// Decode the supposed error response.
 		errBody := ErrorResponse{}
-		err := xmlDecoder(res.Body, &errBody)
+		err := xmlDecoder(resBody, &errBody)
 		if err != nil {
 			return err
 		}
@@ -86,7 +87,7 @@ func verifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFai
 		}
 	} else {
 		// The body should be returned in full.
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := ioutil.ReadAll(resBody)
 		if err != nil {
 			return err
 		}
@@ -100,9 +101,9 @@ func verifyBodyGetObjectIfMatch(res *http.Response, objectBody []byte, shouldFai
 }
 
 // verifyStatusGetObjectIfMatch - Verify that the response status matches what is expected.
-func verifyStatusGetObjectIfMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusGetObjectIfMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -137,7 +138,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response...these checks do not check the headers yet.
-			if err := getObjectIfMatchVerify(res, objectBody, "200 OK", false); err != nil {
+			if err := getObjectIfMatchVerify(res, objectBody, http.StatusOK, false); err != nil {
 				errCh <- err
 				return
 			}
@@ -155,7 +156,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(badRes)
 			// Verify the request fails as expected.
-			if err := getObjectIfMatchVerify(badRes, []byte(""), "412 Precondition Failed", true); err != nil {
+			if err := getObjectIfMatchVerify(badRes, []byte(""), http.StatusPreconditionFailed, true); err != nil {
 				errCh <- err
 				return
 			}

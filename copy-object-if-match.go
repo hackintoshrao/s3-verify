@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -62,32 +63,32 @@ func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObject
 }
 
 // copyObjectIfMatchVerify - Verify that the response returned matches what is expected.
-func copyObjectIfMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := verifyBodyCopyObjectIfMatch(res, expectedError); err != nil {
+func copyObjectIfMatchVerify(res *http.Response, expectedStatusCode int, expectedError ErrorResponse) error {
+	if err := verifyBodyCopyObjectIfMatch(res.Body, expectedError); err != nil {
 		return err
 	}
-	if err := verifyHeaderCopyObjectIfMatch(res); err != nil {
+	if err := verifyHeaderCopyObjectIfMatch(res.Header); err != nil {
 		return err
 	}
-	if err := verifyStatusCopyObjectIfMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusCopyObjectIfMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderCopyObjectIfMatch - Verify that the header returned matches what is expected.
-func verifyHeaderCopyObjectIfMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderCopyObjectIfMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyCopyObjectIfMatch - Verify that the body returned matches what is expected.jK;
-func verifyBodyCopyObjectIfMatch(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyCopyObjectIfMatch(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" { // Error is expected. Verify error returned matches.
 		errResponse := ErrorResponse{}
-		err := xmlDecoder(res.Body, &errResponse)
+		err := xmlDecoder(resBody, &errResponse)
 		if err != nil {
 			return err
 		}
@@ -97,9 +98,9 @@ func verifyBodyCopyObjectIfMatch(res *http.Response, expectedError ErrorResponse
 		}
 	} else { // Error unexpected. Body should be a copyobjectresult.
 		copyObjResult := copyObjectResult{}
-		err := xmlDecoder(res.Body, &copyObjResult)
+		err := xmlDecoder(resBody, &copyObjResult)
 		if err != nil {
-			body, errR := ioutil.ReadAll(res.Body)
+			body, errR := ioutil.ReadAll(resBody)
 			if errR != nil {
 				return errR
 			}
@@ -112,9 +113,9 @@ func verifyBodyCopyObjectIfMatch(res *http.Response, expectedError ErrorResponse
 }
 
 // verifyStatusCopyObjectIfMatch - Verify that the status returned matches what is expected.
-func verifyStatusCopyObjectIfMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Recieved: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusCopyObjectIfMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Recieved: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -155,7 +156,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(res)
 	// Verify the response.
-	if err := copyObjectIfMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
+	if err := copyObjectIfMatchVerify(res, http.StatusOK, ErrorResponse{}); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -174,7 +175,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(badRes)
 	// Verify the request failed as expected.
-	if err := copyObjectIfMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
+	if err := copyObjectIfMatchVerify(badRes, http.StatusPreconditionFailed, expectedError); err != nil {
 		printMessage(message, err)
 		return false
 	}

@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -54,31 +55,31 @@ func newListBucketsReq(config ServerConfig) (*http.Request, error) {
 // TODO: these checks only verify correctly corrected buckets for now. There is no test made to fail / check failure yet.
 
 // listBucketsVerify - Check for S3 Compatibility in the response Status, Body, and Header
-func listBucketsVerify(res *http.Response, expected *listAllMyBucketsResult) error {
-	if err := verifyStatusListBuckets(res); err != nil {
+func listBucketsVerify(res *http.Response, expectedStatusCode int, expectedList *listAllMyBucketsResult) error {
+	if err := verifyStatusListBuckets(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyListBuckets(res, expected); err != nil {
+	if err := verifyBodyListBuckets(res.Body, expectedList); err != nil {
 		return err
 	}
-	if err := verifyHeaderListBuckets(res); err != nil {
+	if err := verifyHeaderListBuckets(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusListBuckets - Verify that the test was successful.
-func verifyStatusListBuckets(res *http.Response) error {
-	if res.StatusCode != http.StatusOK {
-		err := fmt.Errorf("Unexpected Response Status Code: %v", res.StatusCode)
+func verifyStatusListBuckets(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderListBuckets - Verify that the headers returned match what is expected.
-func verifyHeaderListBuckets(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderListBuckets(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -94,9 +95,9 @@ func isIn(s string, buckets []BucketInfo) (int, bool) {
 }
 
 // verifyBodyListBuckets - Verify that the body of the response matches with what is expected.
-func verifyBodyListBuckets(res *http.Response, expected *listAllMyBucketsResult) error {
+func verifyBodyListBuckets(resBody io.Reader, expected *listAllMyBucketsResult) error {
 	// Extract body from the HTTP response.
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] ListBuckets:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
-	expected := &listAllMyBucketsResult{
+	expectedList := &listAllMyBucketsResult{
 		Owner: owner{
 			DisplayName: "s3verify",
 			ID:          "",
@@ -166,7 +167,7 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	// Spin the scanBar
 	scanBar(message)
 	// Check for S3 Compatibility
-	if err := listBucketsVerify(res, expected); err != nil {
+	if err := listBucketsVerify(res, http.StatusOK, expectedList); err != nil {
 		printMessage(message, err)
 		return false
 	}

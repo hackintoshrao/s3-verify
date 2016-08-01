@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -61,31 +62,31 @@ func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, d
 }
 
 // copyObjectVerify - Verify that the response returned matches what is expected.
-func copyObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyHeaderCopyObject(res); err != nil {
+func copyObjectVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyHeaderCopyObject(res.Header); err != nil {
 		return err
 	}
-	if err := verifyBodyCopyObject(res); err != nil {
+	if err := verifyBodyCopyObject(res.Body); err != nil {
 		return err
 	}
-	if err := verifyStatusCopyObject(res, expectedStatus); err != nil {
+	if err := verifyStatusCopyObject(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderscopyObject - verify that the header returned matches what is expected.
-func verifyHeaderCopyObject(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderCopyObject(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
-// verifyBodycopyObject - verify that the body returned is empty.
-func verifyBodyCopyObject(res *http.Response) error {
+// verifyBodycopyObject - verify that the body returned is a valid CopyObject Result.
+func verifyBodyCopyObject(resBody io.Reader) error {
 	copyObjRes := copyObjectResult{}
-	decoder := xml.NewDecoder(res.Body)
+	decoder := xml.NewDecoder(resBody)
 	err := decoder.Decode(&copyObjRes)
 	if err != nil {
 		return err
@@ -94,9 +95,9 @@ func verifyBodyCopyObject(res *http.Response) error {
 }
 
 // verifyStatusCopyObject - verify that the status returned matches what is expected.
-func verifyStatusCopyObject(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusCopyObject(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -135,7 +136,7 @@ func mainCopyObject(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err = copyObjectVerify(res, "200 OK"); err != nil {
+	if err = copyObjectVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}

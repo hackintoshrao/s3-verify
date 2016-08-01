@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -59,32 +60,32 @@ func newListPartsReq(config ServerConfig, bucketName, objectName, uploadID strin
 }
 
 // listPartsVerify - verify that the returned response matches what is expected.
-func listPartsVerify(res *http.Response, expectedStatus string, expectedList listObjectPartsResult) error {
-	if err := verifyStatusListParts(res, expectedStatus); err != nil {
+func listPartsVerify(res *http.Response, expectedStatusCode int, expectedList listObjectPartsResult) error {
+	if err := verifyStatusListParts(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyListParts(res, expectedList); err != nil {
+	if err := verifyBodyListParts(res.Body, expectedList); err != nil {
 		return err
 	}
-	if err := verifyHeaderListParts(res); err != nil {
+	if err := verifyHeaderListParts(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusListParts - verify that the status returned matches what is expected.
-func verifyStatusListParts(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusListParts(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyListParts - verify that the returned body matches whats expected.
-func verifyBodyListParts(res *http.Response, expectedList listObjectPartsResult) error {
+func verifyBodyListParts(resBody io.Reader, expectedList listObjectPartsResult) error {
 	result := listObjectPartsResult{}
-	err := xmlDecoder(res.Body, &result)
+	err := xmlDecoder(resBody, &result)
 	if err != nil {
 		return err
 	}
@@ -104,8 +105,8 @@ func verifyBodyListParts(res *http.Response, expectedList listObjectPartsResult)
 }
 
 // verifyHeaderListParts - verify the header returned matches what is expected.
-func verifyHeaderListParts(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderListParts(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -143,7 +144,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := listPartsVerify(res, "200 OK", expectedList); err != nil {
+	if err := listPartsVerify(res, http.StatusOK, expectedList); err != nil {
 		printMessage(message, err)
 		return false
 	}

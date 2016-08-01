@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -50,40 +51,40 @@ func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETa
 }
 
 // getObjectIfNoneMatchVerify - Verify that the response matches with what is expected.
-func getObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatus string) error {
-	if err := verifyHeaderGetObjectIfNoneMatch(res); err != nil {
+func getObjectIfNoneMatchVerify(res *http.Response, objectBody []byte, expectedStatusCode int) error {
+	if err := verifyHeaderGetObjectIfNoneMatch(res.Header); err != nil {
 		return err
 	}
-	if err := verifyStatusGetObjectIfNoneMatch(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObjectIfNoneMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyGetObjectIfNoneMatch(res, objectBody); err != nil {
+	if err := verifyBodyGetObjectIfNoneMatch(res.Body, objectBody); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderGetObjectIfNoneMatch - Verify that the header fields of the response match what is expected.
-func verifyHeaderGetObjectIfNoneMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderGetObjectIfNoneMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusGetObjectIfNoneMatch - Verify that the response status matches what is expected.
-func verifyStatusGetObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusGetObjectIfNoneMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyGetObjectIfNoneMatch - Verify that the response body matches what is expected.
-func verifyBodyGetObjectIfNoneMatch(res *http.Response, expectedBody []byte) error {
+func verifyBodyGetObjectIfNoneMatch(resBody io.Reader, expectedBody []byte) error {
 	// The body should be returned in full.
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -122,7 +123,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response...these checks do not check the headers yet.
-			if err := getObjectIfNoneMatchVerify(res, []byte(""), "304 Not Modified"); err != nil {
+			if err := getObjectIfNoneMatchVerify(res, []byte(""), 304); err != nil {
 				errCh <- err
 				return
 			}
@@ -140,7 +141,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(badRes)
 			// Verify the response returns the object since ETag != invalidETag
-			if err := getObjectIfNoneMatchVerify(badRes, objectBody, "200 OK"); err != nil {
+			if err := getObjectIfNoneMatchVerify(badRes, objectBody, http.StatusOK); err != nil {
 				errCh <- err
 				return
 			}

@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -71,38 +72,41 @@ func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, 
 
 // TODO: So far only valid multipart requests are used. Implement tests that SHOULD fail.
 //
-func completeMultipartUploadVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyStatusCompleteMultipartUpload(res, expectedStatus); err != nil {
+// completeMultipartUploadVerify - verify tthat the response returned matches what is expected.
+func completeMultipartUploadVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyStatusCompleteMultipartUpload(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyCompleteMultipartUpload(res); err != nil {
+	if err := verifyBodyCompleteMultipartUpload(res.Body); err != nil {
 		return err
 	}
-	if err := verifyHeaderCompleteMultipartUpload(res); err != nil {
-		return err
-	}
-	return nil
-}
-
-//
-func verifyStatusCompleteMultipartUpload(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+	if err := verifyHeaderCompleteMultipartUpload(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
-func verifyBodyCompleteMultipartUpload(res *http.Response) error {
+// verifyStatusCompleteMultipartUpload - verify the status returned matches what is expected.
+func verifyStatusCompleteMultipartUpload(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
+		return err
+	}
+	return nil
+}
+
+// verifyBodyCompleteMultipartUpload - verify the body returned matches what is expected.
+func verifyBodyCompleteMultipartUpload(resBody io.Reader) error {
 	resCompleteMultipartUploadResult := completeMultipartUploadResult{}
-	if err := xmlDecoder(res.Body, &resCompleteMultipartUploadResult); err != nil {
+	if err := xmlDecoder(resBody, &resCompleteMultipartUploadResult); err != nil {
 		return err
 	}
 	return nil
 }
 
-func verifyHeaderCompleteMultipartUpload(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+// verifyHeaderCompleteMultipartUpload - verify the header returned matches what is expected.
+func verifyHeaderCompleteMultipartUpload(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -133,7 +137,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := completeMultipartUploadVerify(res, "200 OK"); err != nil {
+	if err := completeMultipartUploadVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -55,23 +56,23 @@ func newHeadBucketReq(config ServerConfig, bucketName string) (*http.Request, er
 }
 
 // headBucketVerify - verify the response returned matches what is expected.
-func headBucketVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyBodyHeadBucket(res); err != nil {
+func headBucketVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyBodyHeadBucket(res.Body); err != nil {
 		return err
 	}
-	if err := verifyStatusHeadBucket(res, expectedStatus); err != nil {
+	if err := verifyStatusHeadBucket(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderHeadBucket(res); err != nil {
+	if err := verifyHeaderHeadBucket(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyHeadBucket - verify the body returned matches what is expected.
-func verifyBodyHeadBucket(res *http.Response) error {
+func verifyBodyHeadBucket(resBody io.Reader) error {
 	// Verify that the body returned is empty.
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -83,17 +84,17 @@ func verifyBodyHeadBucket(res *http.Response) error {
 }
 
 // verifyHeaderHeadBucket - verify the header returned matches what is expected.
-func verifyHeaderHeadBucket(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderHeadBucket(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusHeadBucket - verify the status returned matches what is expected.
-func verifyStatusHeadBucket(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusHeadBucket(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -119,7 +120,7 @@ func mainHeadBucket(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(res)
 	// Verify the response.
-	if err := headBucketVerify(res, "200 OK"); err != nil {
+	if err := headBucketVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}

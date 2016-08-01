@@ -249,9 +249,9 @@ func verifyDate(respDateStr string) error {
 }
 
 // Verify all standard headers in an HTTP response.
-func verifyStandardHeaders(res *http.Response) error {
+func verifyStandardHeaders(header http.Header) error {
 	// Check the date header.
-	respDateStr := res.Header.Get("Date")
+	respDateStr := header.Get("Date")
 	if err := verifyDate(respDateStr); err != nil {
 		return err
 	}

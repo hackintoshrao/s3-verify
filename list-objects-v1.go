@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -60,32 +61,32 @@ func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[
 }
 
 // listObjectsV1Verify - verify the response returned matches what is expected.
-func listObjectsV1Verify(res *http.Response, expectedStatus string, expectedList listBucketResult) error {
-	if err := verifyStatusListObjectsV1(res, expectedStatus); err != nil {
+func listObjectsV1Verify(res *http.Response, expectedStatusCode int, expectedList listBucketResult) error {
+	if err := verifyStatusListObjectsV1(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyListObjectsV1(res, expectedList); err != nil {
+	if err := verifyBodyListObjectsV1(res.Body, expectedList); err != nil {
 		return err
 	}
-	if err := verifyHeaderListObjectsV1(res); err != nil {
+	if err := verifyHeaderListObjectsV1(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusListObjectsV1 - verify the status returned matches what is expected.
-func verifyStatusListObjectsV1(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusListObjectsV1(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyListObjectsV1 - verify the body returned matches what is expected.
-func verifyBodyListObjectsV1(res *http.Response, expectedList listBucketResult) error {
+func verifyBodyListObjectsV1(resBody io.Reader, expectedList listBucketResult) error {
 	receivedList := listBucketResult{}
-	err := xmlDecoder(res.Body, &receivedList)
+	err := xmlDecoder(resBody, &receivedList)
 	if err != nil {
 		return err
 	}
@@ -118,8 +119,8 @@ func verifyBodyListObjectsV1(res *http.Response, expectedList listBucketResult) 
 }
 
 // verifyHeaderListObjectsV1 - verify the header returned matches what is expected.
-func verifyHeaderListObjectsV1(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderListObjectsV1(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -175,7 +176,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := listObjectsV1Verify(noParamRes, "200 OK", expectedList); err != nil {
+	if err := listObjectsV1Verify(noParamRes, http.StatusOK, expectedList); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -199,7 +200,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the max-keys parameter is respected.
-	if err := listObjectsV1Verify(maxKeysRes, "200 OK", expectedListMaxKeys); err != nil {
+	if err := listObjectsV1Verify(maxKeysRes, http.StatusOK, expectedListMaxKeys); err != nil {
 		printMessage(message, err)
 		return false
 	}

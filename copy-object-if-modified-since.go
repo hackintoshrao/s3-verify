@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -61,33 +62,33 @@ func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sour
 }
 
 // copyObjectIfModifiedSinceVerify - verify the response returned matches what is expected.
-func copyObjectIfModifiedSinceVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := verifyStatusCopyObjectIfModifiedSince(res, expectedStatus); err != nil {
+func copyObjectIfModifiedSinceVerify(res *http.Response, expectedStatusCode int, expectedError ErrorResponse) error {
+	if err := verifyStatusCopyObjectIfModifiedSince(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyCopyObjectIfModifiedSince(res, expectedError); err != nil {
+	if err := verifyBodyCopyObjectIfModifiedSince(res.Body, expectedError); err != nil {
 		return err
 	}
-	if err := verifyHeaderCopyObjectIfModifiedSince(res); err != nil {
+	if err := verifyHeaderCopyObjectIfModifiedSince(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusCopyObjectIfModifiedSince - verify the status returned matches what is expected.
-func verifyStatusCopyObjectIfModifiedSince(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusCopyObjectIfModifiedSince(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyCopyObjectIfModifiedSince - verify the body returned matches what is expected.
-func verifyBodyCopyObjectIfModifiedSince(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyCopyObjectIfModifiedSince(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" {
 		resError := ErrorResponse{}
-		err := xmlDecoder(res.Body, &resError)
+		err := xmlDecoder(resBody, &resError)
 		if err != nil {
 			return err
 		}
@@ -98,9 +99,9 @@ func verifyBodyCopyObjectIfModifiedSince(res *http.Response, expectedError Error
 		return nil
 	} else {
 		copyObjResult := copyObjectResult{}
-		err := xmlDecoder(res.Body, &copyObjResult)
+		err := xmlDecoder(resBody, &copyObjResult)
 		if err != nil {
-			body, errR := ioutil.ReadAll(res.Body)
+			body, errR := ioutil.ReadAll(resBody)
 			if errR != nil {
 				return errR
 			}
@@ -112,8 +113,8 @@ func verifyBodyCopyObjectIfModifiedSince(res *http.Response, expectedError Error
 }
 
 // verifyHeaderCopyObjectIfModifiedSince - verify the header returned matches what is expected.
-func verifyHeaderCopyObjectIfModifiedSince(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderCopyObjectIfModifiedSince(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -160,7 +161,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response is valid.
-	if err := copyObjectIfModifiedSinceVerify(res, "200 OK", ErrorResponse{}); err != nil {
+	if err := copyObjectIfModifiedSinceVerify(res, http.StatusOK, ErrorResponse{}); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -184,7 +185,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the bad request fails the right way.
-	if err := copyObjectIfModifiedSinceVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
+	if err := copyObjectIfModifiedSinceVerify(badRes, http.StatusPreconditionFailed, expectedError); err != nil {
 		printMessage(message, err)
 		return false
 	}

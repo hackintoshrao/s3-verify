@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -53,25 +54,25 @@ func newGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectNam
 }
 
 // verifyGetObjectIfUnModifiedSince - Verify the response matches what is expected.
-func verifyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byte, expectedStatus string, shouldFail bool) error {
-	if err := verifyBodyGetObjectIfUnModifiedSince(res, expectedBody, shouldFail); err != nil {
+func verifyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byte, expectedStatusCode int, shouldFail bool) error {
+	if err := verifyBodyGetObjectIfUnModifiedSince(res.Body, expectedBody, shouldFail); err != nil {
 		return err
 	}
-	if err := verifyStatusGetObjectIfUnModifiedSince(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObjectIfUnModifiedSince(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderGetObjectIfUnModifiedSince(res); err != nil {
+	if err := verifyHeaderGetObjectIfUnModifiedSince(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyGetObjectIfUnModifiedSinceBody - Verify that the response body matches what is expected.
-func verifyBodyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byte, shouldFail bool) error {
+func verifyBodyGetObjectIfUnModifiedSince(resBody io.Reader, expectedBody []byte, shouldFail bool) error {
 	if shouldFail {
 		// Decode the supposed error response.
 		errBody := ErrorResponse{}
-		err := xmlDecoder(res.Body, &errBody)
+		err := xmlDecoder(resBody, &errBody)
 		if err != nil {
 			return err
 		}
@@ -81,7 +82,7 @@ func verifyBodyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byt
 		}
 	} else {
 		// The body should be returned in full.
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := ioutil.ReadAll(resBody)
 		if err != nil {
 			return err
 		}
@@ -95,17 +96,17 @@ func verifyBodyGetObjectIfUnModifiedSince(res *http.Response, expectedBody []byt
 }
 
 // verifyStatusGetObjectIfUnModifiedSince - Verify that the response status matches what is expected.
-func verifyStatusGetObjectIfUnModifiedSince(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusGetObjectIfUnModifiedSince(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderGetObjectIfUnModifiedSince - Verify that the header returned matches what is expected.
-func verifyHeaderGetObjectIfUnModifiedSince(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderGetObjectIfUnModifiedSince(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -142,7 +143,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify that the response returns an error.
-			if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), "412 Precondition Failed", true); err != nil {
+			if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), http.StatusPreconditionFailed, true); err != nil {
 				errCh <- err
 				return
 			}
@@ -160,7 +161,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(goodRes)
 			// Verify that the lastModified date in a request returns the object.
-			if err := verifyGetObjectIfUnModifiedSince(goodRes, objectBody, "200 OK", false); err != nil {
+			if err := verifyGetObjectIfUnModifiedSince(goodRes, objectBody, http.StatusOK, false); err != nil {
 				errCh <- err
 				return
 			}

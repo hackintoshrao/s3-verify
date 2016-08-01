@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -57,32 +58,32 @@ func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, upl
 }
 
 // abortMultipartUploadVerify - verify the response returned matches what is expected.
-func abortMultipartUploadVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := verifyBodyAbortMultipartUploadVerify(res, expectedError); err != nil {
+func abortMultipartUploadVerify(res *http.Response, expectedStatusCode int, expectedError ErrorResponse) error {
+	if err := verifyBodyAbortMultipartUploadVerify(res.Body, expectedError); err != nil {
 		return err
 	}
-	if err := verifyStatusAbortMultipartUpload(res, expectedStatus); err != nil {
+	if err := verifyStatusAbortMultipartUpload(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderAbortMultipartUpload(res); err != nil {
+	if err := verifyHeaderAbortMultipartUpload(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderAbortMultipartUpload - verify the header returned matches what is expected.
-func verifyHeaderAbortMultipartUpload(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderAbortMultipartUpload(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyAbortMultipartUploadVerify - verify the body returned has either an error or is empty.
-func verifyBodyAbortMultipartUploadVerify(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyAbortMultipartUploadVerify(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" {
 		resError := ErrorResponse{}
-		err := xmlDecoder(res.Body, &resError)
+		err := xmlDecoder(resBody, &resError)
 		if err != nil {
 			return err
 		}
@@ -95,9 +96,9 @@ func verifyBodyAbortMultipartUploadVerify(res *http.Response, expectedError Erro
 }
 
 // verifyStatusAbortMultipartUpload - verify the status returned matches what is expected.
-func verifyStatusAbortMultipartUpload(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusAbortMultipartUpload(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -134,7 +135,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify that the response went through.
-	if err := abortMultipartUploadVerify(res, "204 No Content", ErrorResponse{}); err != nil {
+	if err := abortMultipartUploadVerify(res, 204, ErrorResponse{}); err != nil {
 		printMessage(message, err)
 		return false
 	}

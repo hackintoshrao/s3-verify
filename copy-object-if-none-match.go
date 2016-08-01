@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -59,33 +60,33 @@ func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceOb
 }
 
 // Verify that the response returned matches what is expected.
-func copyObjectIfNoneMatchVerify(res *http.Response, expectedStatus string, expectedError ErrorResponse) error {
-	if err := verifyStatusCopyObjectIfNoneMatch(res, expectedStatus); err != nil {
+func copyObjectIfNoneMatchVerify(res *http.Response, expectedStatusCode int, expectedError ErrorResponse) error {
+	if err := verifyStatusCopyObjectIfNoneMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderCopyObjectIfNoneMatch(res); err != nil {
+	if err := verifyHeaderCopyObjectIfNoneMatch(res.Header); err != nil {
 		return err
 	}
-	if err := verifyBodyCopyObjectIfNoneMatch(res, expectedError); err != nil {
+	if err := verifyBodyCopyObjectIfNoneMatch(res.Body, expectedError); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusCopyIfNoneMatch - Verify that the response status matches what is expected.
-func verifyStatusCopyObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusCopyObjectIfNoneMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyCopyIfNoneMatch - Verify the body returned matches what is expected.
-func verifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyCopyObjectIfNoneMatch(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" { // Error is expected.
 		errResponse := ErrorResponse{}
-		if err := xmlDecoder(res.Body, &errResponse); err != nil {
+		if err := xmlDecoder(resBody, &errResponse); err != nil {
 			return err
 		}
 		if errResponse.Message != expectedError.Message {
@@ -95,7 +96,7 @@ func verifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResp
 		return nil
 	} else { // Successful copy expected.
 		copyObjRes := copyObjectResult{}
-		if err := xmlDecoder(res.Body, &copyObjRes); err != nil {
+		if err := xmlDecoder(resBody, &copyObjRes); err != nil {
 			return err
 		}
 		return nil
@@ -103,8 +104,8 @@ func verifyBodyCopyObjectIfNoneMatch(res *http.Response, expectedError ErrorResp
 }
 
 // verifyHeaderCopyIfNoneMatch - Verify that the header returned matches what is expected.
-func verifyHeaderCopyObjectIfNoneMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderCopyObjectIfNoneMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -144,7 +145,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(res)
 	// Verify the response.
-	if err = copyObjectIfNoneMatchVerify(res, "200 OK", ErrorResponse{}); err != nil {
+	if err = copyObjectIfNoneMatchVerify(res, http.StatusOK, ErrorResponse{}); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -162,7 +163,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(badRes)
 	// Verify the response errors out as it should.
-	if err = copyObjectIfNoneMatchVerify(badRes, "412 Precondition Failed", expectedError); err != nil {
+	if err = copyObjectIfNoneMatchVerify(badRes, http.StatusPreconditionFailed, expectedError); err != nil {
 		printMessage(message, err)
 		return false
 	}

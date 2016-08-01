@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -76,33 +77,33 @@ func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName s
 }
 
 // initiateMultipartUploadVerify - verify that the response returned matches what is expected.
-func initiateMultipartUploadVerify(res *http.Response, expectedStatus string) (string, error) {
-	uploadID, err := verifyBodyInitiateMultipartUpload(res)
+func initiateMultipartUploadVerify(res *http.Response, expectedStatusCode int) (string, error) {
+	uploadID, err := verifyBodyInitiateMultipartUpload(res.Body)
 	if err != nil {
 		return uploadID, err
 	}
-	if err := verifyHeaderInitiateMultipartUpload(res); err != nil {
+	if err := verifyHeaderInitiateMultipartUpload(res.Header); err != nil {
 		return uploadID, err
 	}
-	if err := verifyStatusInitiateMultipartUpload(res, expectedStatus); err != nil {
+	if err := verifyStatusInitiateMultipartUpload(res.StatusCode, expectedStatusCode); err != nil {
 		return uploadID, err
 	}
 	return uploadID, nil
 }
 
 // verifyStatusInitiateMultipartUpload - verify that the status returned matches what is expected.
-func verifyStatusInitiateMultipartUpload(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusInitiateMultipartUpload(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyInitiateMultipartUpload - verify that the body returned matches what is expected.
-func verifyBodyInitiateMultipartUpload(res *http.Response) (string, error) {
+func verifyBodyInitiateMultipartUpload(resBody io.Reader) (string, error) {
 	resInitiateMultipartUpload := initiateMultipartUploadResult{}
-	if err := xmlDecoder(res.Body, &resInitiateMultipartUpload); err != nil {
+	if err := xmlDecoder(resBody, &resInitiateMultipartUpload); err != nil {
 		return "", err
 	}
 	// Body was sent set the object UploadID.
@@ -111,8 +112,8 @@ func verifyBodyInitiateMultipartUpload(res *http.Response) (string, error) {
 }
 
 // verifyHeaderInitiateMultipartUpload - verify that the header returned matches what is expected.
-func verifyHeaderInitiateMultipartUpload(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderInitiateMultipartUpload(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -152,7 +153,7 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response and get the uploadID.
-			uploadID, err := initiateMultipartUploadVerify(res, "200 OK")
+			uploadID, err := initiateMultipartUploadVerify(res, http.StatusOK)
 			if err != nil {
 				multiUploadInitCh <- multiUploadInitChannel{
 					index:    cur,

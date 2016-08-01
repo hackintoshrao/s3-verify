@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -99,33 +100,33 @@ func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, err
 }
 
 // putBucketVerify - Check the response Body, Header, Status for AWS S3 compliance.
-func putBucketVerify(res *http.Response, bucketName, expectedStatus string, expectedError ErrorResponse) error {
-	if err := verifyStatusPutBucket(res, expectedStatus); err != nil {
+func putBucketVerify(res *http.Response, bucketName string, expectedStatusCode int, expectedError ErrorResponse) error {
+	if err := verifyStatusPutBucket(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderPutBucket(res, bucketName, expectedStatus); err != nil {
+	if err := verifyHeaderPutBucket(res.Header, bucketName, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyPutBucket(res, expectedError); err != nil {
+	if err := verifyBodyPutBucket(res.Body, expectedError); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusPutBucket - Check the response status for AWS S3 compliance.
-func verifyStatusPutBucket(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.StatusCode)
+func verifyStatusPutBucket(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyPutBucket - Check the response body for AWS S3 compliance.
-func verifyBodyPutBucket(res *http.Response, expectedError ErrorResponse) error {
+func verifyBodyPutBucket(resBody io.Reader, expectedError ErrorResponse) error {
 	if expectedError.Message != "" {
 		resError := ErrorResponse{}
-		err := xmlDecoder(res.Body, &resError)
+		err := xmlDecoder(resBody, &resError)
 		if err != nil {
 			return err
 		}
@@ -135,7 +136,7 @@ func verifyBodyPutBucket(res *http.Response, expectedError ErrorResponse) error 
 		}
 		return nil
 	} else {
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := ioutil.ReadAll(resBody)
 		if err != nil {
 			return err
 		}
@@ -149,16 +150,16 @@ func verifyBodyPutBucket(res *http.Response, expectedError ErrorResponse) error 
 }
 
 // verifyHeaderPutBucket - Check the response header for AWS S3 compliance.
-func verifyHeaderPutBucket(res *http.Response, bucketName, expectedStatus string) error {
-	if expectedStatus == "200 OK" {
-		location := res.Header["Location"][0]
+func verifyHeaderPutBucket(header http.Header, bucketName string, expectedStatusCode int) error {
+	if expectedStatusCode == http.StatusOK {
+		location := header.Get("Location")
 		if location != "http://"+bucketName+".s3.amazonaws.com/" && location != "/"+bucketName {
 			// TODO: wait for Minio server to fix endpoint detection.
 			err := fmt.Errorf("Unexpected Location: got %v", location)
 			return err
 		}
 	}
-	if err := verifyStandardHeaders(res); err != nil {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -195,7 +196,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Check the responses Body, Status, Header.
-		if err := putBucketVerify(res, validBucket.Name, "200 OK", ErrorResponse{}); err != nil {
+		if err := putBucketVerify(res, validBucket.Name, http.StatusOK, ErrorResponse{}); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -227,7 +228,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Verify that the request failed as predicted.
-		if err := putBucketVerify(res, bucket.Name, "400 Bad Request", expectedError); err != nil {
+		if err := putBucketVerify(res, bucket.Name, 400, expectedError); err != nil {
 			printMessage(message, err)
 			return false
 		}

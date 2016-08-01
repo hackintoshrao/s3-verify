@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -58,31 +59,40 @@ func newListMultipartUploadsReq(config ServerConfig, bucketName string) (*http.R
 }
 
 // listMultipartUploadsVerify - Verify that the response returned matches what is expected.
-func listMultipartUploadsVerify(res *http.Response, expectedStatus string, expectedList listMultipartUploadsResult) error {
+func listMultipartUploadsVerify(res *http.Response, expectedStatusCode int, expectedList listMultipartUploadsResult) error {
+	if err := verifyHeaderListMultipartUploads(res.Header); err != nil {
+		return err
+	}
+	if err := verifyBodyListMultipartUploads(res.Body, expectedList); err != nil {
+		return err
+	}
+	if err := verifyStatusListMultipartUploads(res.StatusCode, expectedStatusCode); err != nil {
+		return err
+	}
 	return nil
 }
 
 // verifyHeaderListMultipartUploads - verify the header returned matches what is expected.
-func verifyHeaderListMultipartUploads(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderListMultipartUploads(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusListMultipartUploads - verify the status returned matches what is expected.
-func verifyStatusListMultipartUploads(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusListMultipartUploads(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyListMultipartUploads - verify the body returned matches what is expected.
-func verifyBodyListMultipartUploads(res *http.Response, expectedList listMultipartUploadsResult) error {
+func verifyBodyListMultipartUploads(resBody io.Reader, expectedList listMultipartUploadsResult) error {
 	receivedList := listMultipartUploadsResult{}
-	err := xmlDecoder(res.Body, &receivedList)
+	err := xmlDecoder(resBody, &receivedList)
 	if err != nil {
 		return err
 	}
@@ -147,7 +157,7 @@ func mainListMultipartUploads(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := listMultipartUploadsVerify(res, "200 OK", expectedList); err != nil {
+	if err := listMultipartUploadsVerify(res, http.StatusOK, expectedList); err != nil {
 		printMessage(message, err)
 		return false
 	}

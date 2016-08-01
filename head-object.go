@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -53,31 +54,31 @@ func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http
 }
 
 // headObjectVerify - Verify that the response received matches what is expected.
-func headObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyStatusHeadObject(res, expectedStatus); err != nil {
+func headObjectVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyStatusHeadObject(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyHeaderHeadObject(res); err != nil {
+	if err := verifyHeaderHeadObject(res.Header); err != nil {
 		return err
 	}
-	if err := verifyBodyHeadObject(res); err != nil {
+	if err := verifyBodyHeadObject(res.Body); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusHeadObject - Verify that the status received matches what is expected.
-func verifyStatusHeadObject(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusHeadObject(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyHeadObject - Verify that the body recieved is empty.
-func verifyBodyHeadObject(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyHeadObject(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -89,8 +90,8 @@ func verifyBodyHeadObject(res *http.Response) error {
 }
 
 // verifyHeaderHeadObject - Verify that the header received matches what is exepected.
-func verifyHeaderHeadObject(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderHeadObject(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	// TODO: add verification for ETag formation.
@@ -122,7 +123,7 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response.
-			if err := headObjectVerify(res, "200 OK"); err != nil {
+			if err := headObjectVerify(res, http.StatusOK); err != nil {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
 				return
 			}

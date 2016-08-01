@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -52,30 +53,30 @@ func newGetObjectReq(config ServerConfig, bucketName, objectName string) (*http.
 // TODO: These checks only verify correctly formatted requests. There is no request that is made to fail / check failure yet.
 
 // getObjectVerify - Check a Response's Status, Headers, and Body for AWS S3 compliance.
-func getObjectVerify(res *http.Response, expectedBody []byte, expectedStatus string) error {
-	if err := verifyHeaderGetObject(res); err != nil {
+func getObjectVerify(res *http.Response, expectedBody []byte, expectedStatusCode int) error {
+	if err := verifyHeaderGetObject(res.Header); err != nil {
 		return err
 	}
-	if err := verifyStatusGetObject(res, expectedStatus); err != nil {
+	if err := verifyStatusGetObject(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyGetObject(res, expectedBody); err != nil {
+	if err := verifyBodyGetObject(res.Body, expectedBody); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderGetObject - Verify that the header returned matches what is expected.
-func verifyHeaderGetObject(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderGetObject(header map[string][]string) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyBodyGetObject - Verify that the body returned matches what is expected.
-func verifyBodyGetObject(res *http.Response, expectedBody []byte) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyGetObject(resBody io.Reader, expectedBody []byte) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -88,9 +89,9 @@ func verifyBodyGetObject(res *http.Response, expectedBody []byte) error {
 }
 
 // verifyStatusGetObject - Verify that the status returned matches what is expected.
-func verifyStatusGetObject(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusGetObject(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
@@ -121,7 +122,7 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response.
-			if err := getObjectVerify(res, objectBody, "200 OK"); err != nil {
+			if err := getObjectVerify(res, objectBody, http.StatusOK); err != nil {
 				errCh <- err
 				return
 			}

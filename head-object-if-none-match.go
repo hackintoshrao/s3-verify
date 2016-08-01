@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -55,31 +56,31 @@ func newHeadObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ET
 }
 
 // headObjectIfNoneMatchVerify - verify the returned response matches what is expected.
-func headObjectIfNoneMatchVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyStatusHeadObjectIfNoneMatch(res, expectedStatus); err != nil {
+func headObjectIfNoneMatchVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyStatusHeadObjectIfNoneMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyHeadObjectIfNoneMatch(res); err != nil {
+	if err := verifyBodyHeadObjectIfNoneMatch(res.Body); err != nil {
 		return err
 	}
-	if err := verifyHeaderHeadObjectIfNoneMatch(res); err != nil {
+	if err := verifyHeaderHeadObjectIfNoneMatch(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusHeadObjectIfNoneMatch - verify the returned status matches what is expected.
-func verifyStatusHeadObjectIfNoneMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusHeadObjectIfNoneMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyHeadObjectIfNoneMatch - verify the body returned is empty.
-func verifyBodyHeadObjectIfNoneMatch(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyHeadObjectIfNoneMatch(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -91,8 +92,8 @@ func verifyBodyHeadObjectIfNoneMatch(res *http.Response) error {
 }
 
 // verifyHeaderHeadObjectIfNoneMatch - verify the header returned matches what is expected.
-func verifyHeaderHeadObjectIfNoneMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderHeadObjectIfNoneMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -125,7 +126,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := headObjectIfNoneMatchVerify(res, "200 OK"); err != nil {
+	if err := headObjectIfNoneMatchVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -149,7 +150,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := headObjectIfNoneMatchVerify(badRes, "304 Not Modified"); err != nil {
+	if err := headObjectIfNoneMatchVerify(badRes, 304); err != nil {
 		printMessage(message, err)
 		return false
 	}

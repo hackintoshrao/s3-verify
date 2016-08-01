@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -59,31 +60,31 @@ func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectNa
 }
 
 // headObjectIfUnModifiedSinceVerify - verify the response returned matches what is expected.
-func headObjectIfUnModifiedSinceVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyStatusHeadObjectIfUnModifiedSince(res, expectedStatus); err != nil {
+func headObjectIfUnModifiedSinceVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyStatusHeadObjectIfUnModifiedSince(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyHeadObjectIfUnModifiedSince(res); err != nil {
+	if err := verifyBodyHeadObjectIfUnModifiedSince(res.Body); err != nil {
 		return err
 	}
-	if err := verifyHeaderHeadObjectIfUnModifiedSince(res); err != nil {
+	if err := verifyHeaderHeadObjectIfUnModifiedSince(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusHeadObjectIfUnModifiedSince - verify the status returned matches what is expected.
-func verifyStatusHeadObjectIfUnModifiedSince(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusHeadObjectIfUnModifiedSince(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyHeadObjectIfUnModifiedSince - verify the body returned is emtpy.
-func verifyBodyHeadObjectIfUnModifiedSince(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyHeadObjectIfUnModifiedSince(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -95,8 +96,8 @@ func verifyBodyHeadObjectIfUnModifiedSince(res *http.Response) error {
 }
 
 // verifyHeaderHeadObjectIfUnModifiedSince - verify that the header returned matches what is expected.
-func verifyHeaderHeadObjectIfUnModifiedSince(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderHeadObjectIfUnModifiedSince(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -132,7 +133,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request succeeds as expected.
-	if err := headObjectIfUnModifiedSinceVerify(res, "200 OK"); err != nil {
+	if err := headObjectIfUnModifiedSinceVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -156,7 +157,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response failed.
-	if err := headObjectIfUnModifiedSinceVerify(badRes, "412 Precondition Failed"); err != nil {
+	if err := headObjectIfUnModifiedSinceVerify(badRes, http.StatusPreconditionFailed); err != nil {
 		printMessage(message, err)
 		return false
 	}

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -57,40 +58,40 @@ func newListObjectsV2Req(config ServerConfig, bucketName string) (*http.Request,
 }
 
 // listObjectsV2Verify - verify the response returned matches what is expected.
-func listObjectsV2Verify(res *http.Response, expectedStatus string, expectedList listBucketV2Result) error {
-	if err := verifyStatusListObjectsV2(res, expectedStatus); err != nil {
+func listObjectsV2Verify(res *http.Response, expectedStatusCode int, expectedList listBucketV2Result) error {
+	if err := verifyStatusListObjectsV2(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyListObjectsV2(res, expectedList); err != nil {
+	if err := verifyBodyListObjectsV2(res.Body, expectedList); err != nil {
 		return err
 	}
-	if err := verifyHeaderListObjectsV2(res); err != nil {
+	if err := verifyHeaderListObjectsV2(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyHeaderListObjectsV2 - verify the heaer returned matches what is expected.
-func verifyHeaderListObjectsV2(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderListObjectsV2(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusListObjectsV2 - verify the status returned matches what is expected.
-func verifyStatusListObjectsV2(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusListObjectsV2(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyListObjectsV2 - verify the objects listed match what is expected.
-func verifyBodyListObjectsV2(res *http.Response, expectedList listBucketV2Result) error {
+func verifyBodyListObjectsV2(resBody io.Reader, expectedList listBucketV2Result) error {
 	receivedList := listBucketV2Result{}
-	if err := xmlDecoder(res.Body, &receivedList); err != nil {
+	if err := xmlDecoder(resBody, &receivedList); err != nil {
 		return err
 	}
 	if receivedList.Name != expectedList.Name {
@@ -144,7 +145,7 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	}
 	defer closeResponse(res)
 	// Verify the response.
-	if err := listObjectsV2Verify(res, "200 OK", expectedList); err != nil {
+	if err := listObjectsV2Verify(res, http.StatusOK, expectedList); err != nil {
 		printMessage(message, err)
 		return false
 	}

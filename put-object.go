@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -75,31 +76,31 @@ func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectD
 }
 
 // putObjectVerify - Verify the response matches what is expected.
-func putObjectVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyHeaderPutObject(res); err != nil {
+func putObjectVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyHeaderPutObject(res.Header); err != nil {
 		return err
 	}
-	if err := verifyStatusPutObject(res, expectedStatus); err != nil {
+	if err := verifyStatusPutObject(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyPutObject(res); err != nil {
+	if err := verifyBodyPutObject(res.Body); err != nil {
 		return err
 	}
 	return nil
 }
 
-// verifyStatusPutObject - Verify that the res status code matches what is expected.
-func verifyStatusPutObject(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatus, res.Status)
+// verifyStatusPutObject - Verify that the res.StatusCode code matches what is expected.
+func verifyStatusPutObject(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Response Status Code: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyPutObject - Verify that the body returned matches what is uploaded.
-func verifyBodyPutObject(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyPutObject(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -112,8 +113,8 @@ func verifyBodyPutObject(res *http.Response) error {
 }
 
 // verifyHeaderPutObject - Verify that the header returned matches waht is expected.
-func verifyHeaderPutObject(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderPutObject(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -151,7 +152,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 			}
 			defer closeResponse(res)
 			// Verify the response.
-			if err := putObjectVerify(res, "200 OK"); err != nil {
+			if err := putObjectVerify(res, http.StatusOK); err != nil {
 				errCh <- err
 				return
 			}

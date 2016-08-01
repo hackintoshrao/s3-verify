@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -57,31 +58,31 @@ func newHeadObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag s
 }
 
 // headObjectIfMatchVerify - verify that the returned response matches what is expected.
-func headObjectIfMatchVerify(res *http.Response, expectedStatus string) error {
-	if err := verifyStatusHeadObjectIfMatch(res, expectedStatus); err != nil {
+func headObjectIfMatchVerify(res *http.Response, expectedStatusCode int) error {
+	if err := verifyStatusHeadObjectIfMatch(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyHeadObjectIfMatch(res); err != nil {
+	if err := verifyBodyHeadObjectIfMatch(res.Body); err != nil {
 		return err
 	}
-	if err := verifyHeaderHeadObjectIfMatch(res); err != nil {
+	if err := verifyHeaderHeadObjectIfMatch(res.Header); err != nil {
 		return err
 	}
 	return nil
 }
 
 // verifyStatusHeadObjectIfMatch - verify the status returned matches what is expected.
-func verifyStatusHeadObjectIfMatch(res *http.Response, expectedStatus string) error {
-	if res.Status != expectedStatus {
-		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatus, res.Status)
+func verifyStatusHeadObjectIfMatch(respStatusCode, expectedStatusCode int) error {
+	if respStatusCode != expectedStatusCode {
+		err := fmt.Errorf("Unexpected Status Received: wanted %v, got %v", expectedStatusCode, respStatusCode)
 		return err
 	}
 	return nil
 }
 
 // verifyBodyHeadObjectIfMatch - verify that the body returned matches what is expected.
-func verifyBodyHeadObjectIfMatch(res *http.Response) error {
-	body, err := ioutil.ReadAll(res.Body)
+func verifyBodyHeadObjectIfMatch(resBody io.Reader) error {
+	body, err := ioutil.ReadAll(resBody)
 	if err != nil {
 		return err
 	}
@@ -93,8 +94,8 @@ func verifyBodyHeadObjectIfMatch(res *http.Response) error {
 }
 
 // verifyHeaderHeadObjectIfMatch - verify that the header returned matches what is expected.
-func verifyHeaderHeadObjectIfMatch(res *http.Response) error {
-	if err := verifyStandardHeaders(res); err != nil {
+func verifyHeaderHeadObjectIfMatch(header http.Header) error {
+	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
 	return nil
@@ -127,7 +128,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := headObjectIfMatchVerify(res, "200 OK"); err != nil {
+	if err := headObjectIfMatchVerify(res, http.StatusOK); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -151,7 +152,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the request sends back the right error.
-	if err := headObjectIfMatchVerify(badRes, "412 Precondition Failed"); err != nil {
+	if err := headObjectIfMatchVerify(badRes, http.StatusPreconditionFailed); err != nil {
 		printMessage(message, err)
 		return false
 	}
