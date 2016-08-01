@@ -43,21 +43,17 @@ var s3verifyHelpTemplate = `NAME:
 	{{.Name}} - {{.Usage}}
 
 USAGE:
-	{{.Name}} [COMMAND...] {{if .Flags}}[FLAGS] {{end}}
-	
-COMMANDS:
-	{{range .Commands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
-	{{end}}{{if .Flags}}
+	{{.Name}} {{if .Flags}}[FLAGS...] {{end}}
 GLOBAL FLAGS:
 	{{range .Flags}}{{.}}
-	{{end}}{{end}}
+	{{end}}
 EXAMPLES:
-	1. Run all tests on Minio server. Note play.minio.io is a public test server. You are free to
-	use these secret and Access keys in all your tests.
-		$ S3_URL=https://play.minio.io:9000 S3_ACCESS=Q3AM3UQ867SPQQA43P2F S3_SECRET=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG s3verify 
-	2. Run only makebucket and listbuckets tests on Amazon S3 server using flags.
+	1. Run all tests on Minio server. Note play.minio.io:9000 is a public test server. 
+	You are free to use these Secret and Access keys in all your tests.
+		$ S3_URL=https://play.minio.io:9000 S3_ACCESS=Q3AM3UQ867SPQQA43P2F S3_SECRET=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG s3verify --extended
+	2. Run all basic tests on Amazon S3 server using flags. 
 	Note that passing access and secret keys as flags should be avoided on a multi-user server for security reasons.
-		$ s3verify --access YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY --url https://s3.amazonaws.com makebucket listbuckets
+		$ s3verify --access YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY --url https://s3.amazonaws.com --region us-west-1
 `
 
 // Define all mainXXX tests to be of this form.
