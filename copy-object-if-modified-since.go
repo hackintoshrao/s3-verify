@@ -25,39 +25,30 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newCopyObjectIfModifiedSinceReq - Create a new HTTP request for CopyObject with the x-amz-copy-source-if-modified-since header set.
-func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (*http.Request, error) {
+func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (Request, error) {
 	// Create a new HTTP request for a CopyObject.
-	var copyObjectIfModifiedSinceReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		// x-amz-copy-source will be set dynamically.
-		// x-amz-copy-source-if-modified-since will be set dynamically.
-		},
-		Method: "PUT",
+	var copyObjectIfModifiedSinceReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
+
+	// Set the bucketName and objectName
+	copyObjectIfModifiedSinceReq.bucketName = destBucketName
+	copyObjectIfModifiedSinceReq.objectName = destObjectName
+
 	// Copying is done by the server so no body is sent in the request.
-	reader := bytes.NewReader([]byte(""))
+	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	copyObjectIfModifiedSinceReq.URL = targetURL
-	copyObjectIfModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	copyObjectIfModifiedSinceReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	copyObjectIfModifiedSinceReq.Header.Set("x-amz-copy-source-if-modified-since", lastModified.Format(http.TimeFormat))
-	copyObjectIfModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
+	copyObjectIfModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectIfModifiedSinceReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectIfModifiedSinceReq.customHeader.Set("x-amz-copy-source-if-modified-since", lastModified.Format(http.TimeFormat))
+	copyObjectIfModifiedSinceReq.customHeader.Set("User-Agent", appUserAgent)
 
-	copyObjectIfModifiedSinceReq = signv4.SignV4(*copyObjectIfModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfModifiedSinceReq, nil
 }
 
@@ -152,7 +143,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
+	res, err := config.execRequest("PUT", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -176,7 +167,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	badRes, err := execRequest(badReq, config.Client, destBucketName, destObject.Key)
+	badRes, err := config.execRequest("PUT", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

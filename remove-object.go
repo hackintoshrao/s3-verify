@@ -23,29 +23,28 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newRemoveObjectReq - Create a new DELETE object HTTP request.
-func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
-	var removeObjectReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for DELETE requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for DELETE requests.
-		Method: "DELETE",
+func newRemoveObjectReq(config ServerConfig, bucketName, objectName string) (Request, error) {
+	var removeObjectReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	removeObjectReq.URL = targetURL
-	removeObjectReq.Header.Set("User-Agent", appUserAgent)
 
-	removeObjectReq = signv4.SignV4(*removeObjectReq, config.Access, config.Secret, config.Region)
+	// Set the bucketName and objectName.
+	removeObjectReq.bucketName = bucketName
+	removeObjectReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because DELETE requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
+	if err != nil {
+		return Request{}, err
+	}
+
+	// Set the headers.
+	removeObjectReq.customHeader.Set("User-Agent", appUserAgent)
+	removeObjectReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return removeObjectReq, nil
 }
 
@@ -111,14 +110,14 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client, bucketName, objectKey)
+				res, err := config.execRequest("DELETE", req)
 				if err != nil {
 					errCh <- err
 					return
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusOK); err != nil {
+				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 					errCh <- err
 					return
 				}
@@ -153,14 +152,14 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client, bucketName, objectKey)
+				res, err := config.execRequest("DELETE", req)
 				if err != nil {
 					errCh <- err
 					return
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusOK); err != nil {
+				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 					errCh <- err
 					return
 				}
@@ -196,14 +195,14 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 					return
 				}
 				// Execute the request.
-				res, err := execRequest(req, config.Client, bucketName, objectKey)
+				res, err := config.execRequest("DELETE", req)
 				if err != nil {
 					errCh <- err
 					return
 				}
 				defer closeResponse(res)
 				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusOK); err != nil {
+				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 					errCh <- err
 					return
 				}

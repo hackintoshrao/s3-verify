@@ -29,8 +29,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // Store parts to be listed.
@@ -47,38 +45,35 @@ var complMultipartUploads = []*completeMultipartUpload{
 }
 
 // newUploadPartReq - Create a new HTTP request for an upload part request.
-func newUploadPartReq(config ServerConfig, bucketName, objectName, uploadID string, partNumber int, partData []byte) (*http.Request, error) {
+func newUploadPartReq(config ServerConfig, bucketName, objectName, uploadID string, partNumber int, partData []byte) (Request, error) {
 	// Create a new request for uploading a part.
-	var uploadPartReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		// Content-Length will be set dynamically.
-		// Content-MD5 will be set dynamically.
-		},
-		// Body: will be set dynamically,
-		Method: "PUT",
+	var uploadPartReq = Request{
+		customHeader: http.Header{},
 	}
-	urlValues := make(url.Values)
-	// Set part number.
-	urlValues.Set("partNumber", strconv.Itoa(partNumber))
-	// Set upload id.
-	urlValues.Set("uploadId", uploadID)
 
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
+	// Set the bucketName and objectName.
+	uploadPartReq.bucketName = bucketName
+	uploadPartReq.objectName = objectName
+
+	// Set the query values.
+	urlValues := make(url.Values)
+	urlValues.Set("partNumber", strconv.Itoa(partNumber))
+	urlValues.Set("uploadId", uploadID)
+	uploadPartReq.queryValues = urlValues
+
 	// Compute md5sum, sha256Sum and contentlength.
 	reader := bytes.NewReader(partData)
 	md5Sum, sha256Sum, contentLength, err := computeHash(reader)
-	// Set the Header values, URL, and Body of request.
-	uploadPartReq.URL = targetURL
-	uploadPartReq.Body = ioutil.NopCloser(reader)
-	uploadPartReq.ContentLength = contentLength
-	uploadPartReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	uploadPartReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
+	if err != nil {
+		return Request{}, err
+	}
 
-	uploadPartReq = signv4.SignV4(*uploadPartReq, config.Access, config.Secret, config.Region)
+	// Set the Header values and Body of request.
+	uploadPartReq.contentBody = ioutil.NopCloser(reader)
+	uploadPartReq.contentLength = contentLength
+	uploadPartReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	uploadPartReq.customHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
+
 	return uploadPartReq, nil
 }
 
@@ -166,7 +161,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("PUT", req)
 			if err != nil {
 				partCh <- partChannel{
 					index:   cur,

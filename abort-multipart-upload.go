@@ -23,36 +23,29 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newAbortMultipartUploadReq - Create a new HTTP request for an abort multipart API.
-func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string) (*http.Request, error) {
+func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string) (Request, error) {
 	// abortMultipartUploadReq - a new HTTP request for an abort multipart.
-	var abortMultipartUploadReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // No body is provided in DELETE requests.
-		Method: "DELETE",
+	var abortMultipartUploadReq = Request{
+		customHeader: http.Header{},
 	}
+	// Set the bucketName and objectName
+	abortMultipartUploadReq.bucketName = bucketName
+	abortMultipartUploadReq.objectName = objectName
 	// Set the req URL and Header.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	abortMultipartUploadReq.URL = targetURL
-	abortMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	abortMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
-	abortMultipartUploadReq = signv4.SignV4(*abortMultipartUploadReq, config.Access, config.Secret, config.Region)
+	abortMultipartUploadReq.queryValues = urlValues
+	abortMultipartUploadReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	abortMultipartUploadReq.customHeader.Set("User-Agent", appUserAgent)
+	abortMultipartUploadReq.contentBody = nil // There is no body sent for DELETE request.
 
 	return abortMultipartUploadReq, nil
 }
@@ -105,8 +98,7 @@ func verifyStatusAbortMultipartUpload(respStatusCode, expectedStatusCode int) er
 }
 
 // TODO: This test does not yet test for tests that should fail. Until there is a workaround for the way
-// AWS maintains the uploadIDs for several hours there is no sure way to test for the right error messages.
-// As of now though it is known there is a bug within the Minio Server that returns a shortened form of the
+// AWS maintains the uploadIDs for several hours there is no sure way to test for the right error messages.  // As of now though it is known there is a bug within the Minio Server that returns a shortened form of the
 // error AWS is said to return.
 
 // mainAbortMultipartUpload - Entry point for the abort multipart upload API test.
@@ -118,7 +110,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newAbortMultipartUploadReq(config, bucket.Name, validObject.Key, validObject.UploadID)
+	customAbortMultipartUploadReq, err := newAbortMultipartUploadReq(config, bucket.Name, validObject.Key, validObject.UploadID)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -126,7 +118,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucket.Name, validObject.Key)
+	res, err := config.execRequest("DELETE", customAbortMultipartUploadReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

@@ -23,39 +23,30 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newPutObjectCopyIfNoneMatchReq - Create a new HTTP request for a CopyObject with the if-none-match header set.
-func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (*http.Request, error) {
-	var copyObjectIfNoneMatchReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		// x-amz-copy-source will be set dynamically.
-		// x-amz-copy-source-if-match will be set dynamically.
-		},
-		Method: "PUT",
+func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
+	var copyObjectIfNoneMatchReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	copyObjectIfNoneMatchReq.URL = targetURL
+
+	// Set the bucketName and objectName
+	copyObjectIfNoneMatchReq.bucketName = destBucketName
+	copyObjectIfNoneMatchReq.objectName = destObjectName
+
 	// Body will be calculated by the server so no body needs to be sent in the request.
 	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
 	// Fill in the request header.
-	copyObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	copyObjectIfNoneMatchReq.Header.Set("x-amz-copy-source-if-none-match", ETag)
-	copyObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
+	copyObjectIfNoneMatchReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectIfNoneMatchReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectIfNoneMatchReq.customHeader.Set("x-amz-copy-source-if-none-match", ETag)
+	copyObjectIfNoneMatchReq.customHeader.Set("User-Agent", appUserAgent)
 
-	copyObjectIfNoneMatchReq = signv4.SignV4(*copyObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
 	return copyObjectIfNoneMatchReq, nil
 }
 
@@ -138,7 +129,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the response.
-	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
+	res, err := config.execRequest("PUT", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -156,7 +147,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the response.
-	badRes, err := execRequest(badReq, config.Client, destBucketName, destObject.Key)
+	badRes, err := config.execRequest("PUT", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

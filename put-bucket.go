@@ -26,8 +26,6 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 var (
@@ -60,42 +58,47 @@ var (
 )
 
 // newPutBucketReq - Create a new Make bucket request.
-func newPutBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+func newPutBucketReq(config ServerConfig, bucketName string) (Request, error) {
 	// putBucketReq - hardcode the static portions of a new Make Bucket request.
-	var putBucketReq = &http.Request{
-		Header: map[string][]string{
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Method: "PUT",
-		// Body: will be set if the region is different from us-east-1.
+	var putBucketReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL, Header and Body if necessary.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
+
+	// Set the bucketName
+	putBucketReq.bucketName = bucketName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body for requests that do not use regions other than us-east-1.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	putBucketReq.URL = targetURL
+
+	putBucketReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
+	// Set req URL, Header and Body if necessary.
 	if config.Region != globalDefaultRegion { // Must set the request elements for non us-east-1 regions.
 		bucketConfig := createBucketConfiguration{}
 		bucketConfig.Location = config.Region
 		bucketConfigBytes, err := xml.Marshal(bucketConfig)
 		if err != nil {
-			return nil, err
+			return Request{}, err
 		}
 		bucketConfigBuffer := bytes.NewReader(bucketConfigBytes)
 		_, sha256Sum, contentLength, err := computeHash(bucketConfigBuffer)
 		if err != nil {
-			return nil, err
+			return Request{}, err
 		}
 		// Set the body.
-		putBucketReq.Body = ioutil.NopCloser(bucketConfigBuffer)
-		putBucketReq.ContentLength = contentLength
+		putBucketReq.contentBody = bucketConfigBuffer
+		putBucketReq.contentLength = contentLength
 		// Fill request headers and URL.
-		putBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+		putBucketReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	}
-	putBucketReq.Header.Set("User-Agent", appUserAgent)
+	// Set the bucketName.
+	putBucketReq.bucketName = bucketName
+	// Set the user-agent.
+	putBucketReq.customHeader.Set("User-Agent", appUserAgent)
 
-	putBucketReq = signv4.SignV4(*putBucketReq, config.Access, config.Secret, config.Region)
 	return putBucketReq, nil
 }
 
@@ -179,7 +182,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Create a new Make bucket request.
-		req, err := newPutBucketReq(config, validBucket.Name)
+		customPutBucketReq, err := newPutBucketReq(config, validBucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -187,7 +190,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Execute the request.
-		res, err := execRequest(req, config.Client, validBucket.Name, "")
+		res, err := config.execRequest("PUT", customPutBucketReq)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -211,7 +214,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new PUT bucket request.
-		req, err := newPutBucketReq(config, bucket.Name)
+		customPutBucketReq, err := newPutBucketReq(config, bucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -219,7 +222,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Execute the request.
-		res, err := execRequest(req, config.Client, bucket.Name, "")
+		res, err := config.execRequest("PUT", customPutBucketReq)
 		if err != nil {
 			printMessage(message, err)
 			return false

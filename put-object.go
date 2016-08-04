@@ -27,51 +27,40 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // Store all objects that are uploaded through standard PUT operations.
-var objects = make([]*ObjectInfo, 500)
+var objects = make([]*ObjectInfo, 50)
 
 // Store all objects that were copied.
 var copyObjects = []*ObjectInfo{}
 
 // newPutObjectReq - Create a new HTTP request for PUT object.
-func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectData []byte) (*http.Request, error) {
+func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectData []byte) (Request, error) {
 	// An HTTP request for a PUT object.
-	var putObjectReq = &http.Request{
-		Header: map[string][]string{
-		// Set Content SHA dynamically because it is based on data being uploaded.
-		// Set Content MD5 dynamically because it is based on data being uploaded.
-		// Set Content-Length dynamically because it is based on data being uploaded.
-		},
-		// Body will be set dynamically.
-		// Body:
-		Method: "PUT",
+	var putObjectReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL, Header, and Body.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Fill request Header, Body and URL.
-	putObjectReq.URL = targetURL
+
+	// Set the bucketName and objectName.
+	putObjectReq.bucketName = bucketName
+	putObjectReq.objectName = objectName
 
 	// Compute md5Sum and sha256Sum from the input data.
 	reader := bytes.NewReader(objectData)
 	md5Sum, sha256Sum, contentLength, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	putObjectReq.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
-	putObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	putObjectReq.Header.Set("User-Agent", appUserAgent)
-	putObjectReq.ContentLength = contentLength
-	// Set the body to the data held in objectData.
-	putObjectReq.Body = ioutil.NopCloser(reader)
 
-	putObjectReq = signv4.SignV4(*putObjectReq, config.Access, config.Secret, config.Region)
+	putObjectReq.customHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(md5Sum))
+	putObjectReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	putObjectReq.customHeader.Set("User-Agent", appUserAgent)
+
+	putObjectReq.contentLength = contentLength
+	// Set the body to the data held in objectData.
+	putObjectReq.contentBody = reader
+
 	return putObjectReq, nil
 }
 
@@ -145,7 +134,7 @@ func mainPutObject(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+			res, err := config.execRequest("PUT", req)
 			if err != nil {
 				errCh <- err
 				return

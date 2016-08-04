@@ -23,30 +23,29 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjectIfNoneMatchReq - Create a new HTTP request to perform.
-func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
-	var getObjectIfNoneMatchReq = &http.Request{
-		Header: map[string][]string{
-			// Set the Content SHA with empty body for GET requests because nothing is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for GET requests
-		Method: "GET",
+func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+	var getObjectIfNoneMatchReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
+
+	// Set the bucketName and objectName.
+	getObjectIfNoneMatchReq.bucketName = bucketName
+	getObjectIfNoneMatchReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	getObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
-	getObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
-	// Add the URL and sign
-	getObjectIfNoneMatchReq.URL = targetURL
-	getObjectIfNoneMatchReq = signv4.SignV4(*getObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	getObjectIfNoneMatchReq.customHeader.Set("If-None-Match", ETag)
+	getObjectIfNoneMatchReq.customHeader.Set("User-Agent", appUserAgent)
+	getObjectIfNoneMatchReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return getObjectIfNoneMatchReq, nil
 }
 
@@ -116,7 +115,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return
@@ -134,7 +133,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			badRes, err := execRequest(badReq, config.Client, bucket.Name, objectKey)
+			badRes, err := config.execRequest("GET", badReq)
 			if err != nil {
 				errCh <- err
 				return

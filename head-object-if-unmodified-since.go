@@ -24,38 +24,29 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newHeadObjectIfUnModifiedReq - Create a new HTTP request for HEAD object with if-unmodified-since header set.
-func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (*http.Request, error) {
+func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// headObjectIfUnModifiedReq - a new HTTP request for HEAD object with if-unmodified-since header set.
-	var headObjectIfUnModifiedSinceReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		// If-Unmodified-Since will be set below.
-		},
-		Body:   nil, // No body is sent in HEAD object requests.
-		Method: "HEAD",
+	var headObjectIfUnModifiedSinceReq = Request{
+		customHeader: http.Header{},
 	}
 
-	// Set the req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
+	// Set the bucketName and objectName
+	headObjectIfUnModifiedSinceReq.bucketName = bucketName
+	headObjectIfUnModifiedSinceReq.objectName = objectName
+
+	// No body is sent with a HEAD request.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	headObjectIfUnModifiedSinceReq.Header.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
-	headObjectIfUnModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	headObjectIfUnModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
-	headObjectIfUnModifiedSinceReq.URL = targetURL
+	headObjectIfUnModifiedSinceReq.customHeader.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
+	headObjectIfUnModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headObjectIfUnModifiedSinceReq.customHeader.Set("User-Agent", appUserAgent)
 
-	headObjectIfUnModifiedSinceReq = signv4.SignV4(*headObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return headObjectIfUnModifiedSinceReq, nil
 }
 
@@ -124,7 +115,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+	res, err := config.execRequest("HEAD", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -148,7 +139,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Perform the bad request.
-	badRes, err := execRequest(badReq, config.Client, bucket.Name, object.Key)
+	badRes, err := config.execRequest("HEAD", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

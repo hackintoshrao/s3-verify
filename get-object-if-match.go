@@ -23,30 +23,29 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjectIfMatchReq - Create a new HTTP request to perform.
-func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
-	var getObjectIfMatchReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for GET requests.
-		Method: "GET",
+func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+	var getObjectIfMatchReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
+
+	// Set the bucketName and objectName
+	getObjectIfMatchReq.bucketName = bucketName
+	getObjectIfMatchReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	getObjectIfMatchReq.Header.Set("If-Match", ETag)
-	getObjectIfMatchReq.Header.Set("User-Agent", appUserAgent)
-	// Fill request URL and sign
-	getObjectIfMatchReq.URL = targetURL
-	getObjectIfMatchReq = signv4.SignV4(*getObjectIfMatchReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	getObjectIfMatchReq.customHeader.Set("If-Match", ETag)
+	getObjectIfMatchReq.customHeader.Set("User-Agent", appUserAgent)
+	getObjectIfMatchReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return getObjectIfMatchReq, nil
 }
 
@@ -72,7 +71,7 @@ func verifyHeaderGetObjectIfMatch(header http.Header) error {
 	return nil
 }
 
-// verifyBodyGetObjectIfMatch - Verify that the response body matches what is expected.
+//verifyBodyGetObjectIfMatch - Verify that the response body matches what is expected.
 func verifyBodyGetObjectIfMatch(resBody io.Reader, objectBody []byte, shouldFail bool) error {
 	if shouldFail {
 		// Decode the supposed error response.
@@ -131,7 +130,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return
@@ -149,7 +148,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			badRes, err := execRequest(badReq, config.Client, bucket.Name, objectKey)
+			badRes, err := config.execRequest("GET", badReq)
 			if err != nil {
 				errCh <- err
 				return

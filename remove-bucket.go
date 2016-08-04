@@ -17,37 +17,35 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newRemoveBucketReq - Fill in the dynamic fields of a DELETE request here.
-func newRemoveBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+func newRemoveBucketReq(config ServerConfig, bucketName string) (Request, error) {
 	// removeBucketReq is a new DELETE bucket request.
-	var removeBucketReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET / DELETE requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Method: "DELETE",
-		Body:   nil, // There is no body for GET / DELETE requests.
+	var removeBucketReq = Request{
+		customHeader: http.Header{},
 	}
 
-	// Set the DELETE req URL.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
+	// Set the bucketName.
+	removeBucketReq.bucketName = bucketName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because DELETE requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	removeBucketReq.URL = targetURL
-	removeBucketReq.Header.Set("User-Agent", appUserAgent)
-	// Sign the necessary headers.
-	removeBucketReq = signv4.SignV4(*removeBucketReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	removeBucketReq.customHeader.Set("User-Agent", appUserAgent)
+	removeBucketReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return removeBucketReq, nil
 }
 
@@ -115,7 +113,7 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Perform the request.
-		res, err := execRequest(req, config.Client, bucket.Name, "")
+		res, err := config.execRequest("DELETE", req)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -157,7 +155,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	// spin scanBar
 	scanBar(message)
 	// Perform the request.
-	res, err := execRequest(req, config.Client, bucketName, "")
+	res, err := config.execRequest("DELETE", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

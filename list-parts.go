@@ -23,39 +23,35 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newListPartsReq - Create a new HTTP request for the ListParts API.
-func newListPartsReq(config ServerConfig, bucketName, objectName, uploadID string) (*http.Request, error) {
+func newListPartsReq(config ServerConfig, bucketName, objectName, uploadID string) (Request, error) {
 	// listPartsReq - a new HTTP request for ListParts.
-	var listPartsReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // There is no body sent for GET requests.
-		Method: "GET",
+	var listPartsReq = Request{
+		customHeader: http.Header{},
 	}
+
+	// Set the bucketName and objectName.
+	listPartsReq.bucketName = bucketName
+	listPartsReq.objectName = objectName
+
 	// Create new url queries.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
+	listPartsReq.queryValues = urlValues
 
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
+	// No body is sent with GET requests.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	// Set the requests URL and Header values.
-	listPartsReq.URL = targetURL
-	listPartsReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	listPartsReq.Header.Set("User-Agent", appUserAgent)
 
-	listPartsReq = signv4.SignV4(*listPartsReq, config.Access, config.Secret, config.Region)
+	// Set the requests URL and Header values.
+	listPartsReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listPartsReq.customHeader.Set("User-Agent", appUserAgent)
+
 	return listPartsReq, nil
 }
 
@@ -135,7 +131,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+	res, err := config.execRequest("GET", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
@@ -24,31 +25,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newListBucketsReq - Create a new List Buckets request.
-func newListBucketsReq(config ServerConfig) (*http.Request, error) {
+func newListBucketsReq(config ServerConfig) (Request, error) {
 	// listBucketsReq - a new HTTP request to list all buckets.
-	var listBucketsReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for GET requests.
-		Method: "GET",
+	var listBucketsReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set the GET req URL.
-	// ListBuckets / GET Service is always run through https://s3.amazonaws.com and subsequently us-east-1.
-	targetURL, err := makeTargetURL(config.Endpoint, "", "", config.Region, nil)
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because HEAD requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	listBucketsReq.URL = targetURL
-	listBucketsReq.Header.Set("User-Agent", appUserAgent)
-	// Sign the necessary headers.
-	listBucketsReq = signv4.SignV4(*listBucketsReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	listBucketsReq.customHeader.Set("User-Agent", appUserAgent)
+	listBucketsReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return listBucketsReq, nil
 }
 
@@ -158,7 +152,7 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	scanBar(message)
 
 	// Generate the server response.
-	res, err := execRequest(req, config.Client, "", "")
+	res, err := config.execRequest("GET", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

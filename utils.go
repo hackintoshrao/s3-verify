@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/xml"
@@ -97,77 +96,6 @@ func verifyHostReachable(endpoint, region string) error {
 func xmlDecoder(body io.Reader, v interface{}) error {
 	d := xml.NewDecoder(body)
 	return d.Decode(v)
-}
-
-// execRequest - Executes an HTTP request creating an HTTP response and implements retry logic for predefined retryable errors.
-func execRequest(req *http.Request, client *http.Client, bucketName, objectName string) (resp *http.Response, err error) {
-	var isRetryable bool         // Indicates if request can be retried.
-	var bodyReader io.ReadSeeker // io.Seeking for seeking.
-	if req.Body != nil {
-		// FIXME: remove this and reduce ioutil.NopCloser usage elsewhere.
-		buf, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			return nil, err
-		}
-		isRetryable = true
-		bodyReader = bytes.NewReader(buf)
-	}
-	// Do not need the index.
-	for _ = range newRetryTimer(MaxRetry, time.Second, time.Second*30, MaxJitter, globalRandom) {
-		if isRetryable {
-			// Seek back to beginning for each attempt.
-			if _, err := bodyReader.Seek(0, 0); err != nil {
-				// If seek failed no need to retry.
-				return resp, err
-			}
-		}
-		if bodyReader != nil {
-			req.Body = ioutil.NopCloser(bodyReader)
-		}
-		resp, err = client.Do(req)
-		if err != nil {
-			// For supported network errors verify.
-			if isNetErrorRetryable(err) {
-				continue // Retry.
-			}
-			// For other errors there is no need to retry.
-			return resp, err
-		}
-		// For any known successful http status, return quickly.
-		for _, httpStatus := range successStatus {
-			if httpStatus == resp.StatusCode {
-				return resp, nil
-			}
-		}
-		// Read the body to be saved later.
-		errBodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return resp, err
-		}
-		// Save the body.
-		errBodySeeker := bytes.NewReader(errBodyBytes)
-		resp.Body = ioutil.NopCloser(errBodySeeker)
-
-		// For errors verify if its retryable otherwise fail quickly.
-		errResponse := ToErrorResponse(httpRespToErrorResponse(resp, bucketName, objectName))
-
-		//Verify if error response code is retryable.
-		if isS3CodeRetryable(errResponse.Code) {
-			continue // Retry.
-		}
-		// Verify if http status code is retryable.
-		if isHTTPStatusRetryable(resp.StatusCode) {
-			continue // Retry.
-		}
-
-		// Save the body back again.
-		errBodySeeker.Seek(0, 0) // Seek back to starting point.
-		resp.Body = ioutil.NopCloser(errBodySeeker)
-
-		// For all other cases break out of the retry loop.
-		break
-	}
-	return resp, err
 }
 
 // closeResponse close non nil response with any response Body.

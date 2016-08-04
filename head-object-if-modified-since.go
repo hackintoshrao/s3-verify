@@ -24,37 +24,29 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newHeadObjectIfModifiedSinceReq - Create a new HTTP request for HEAD object with if-modified-since header set.
-func newHeadObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (*http.Request, error) {
+func newHeadObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// headObjectIfModifiedSinceReq - a new HTTP request for HEAD object with if-modified-since header set.
-	var headObjectIfModifiedSinceReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		// If-Modified-Since will be set below.
-		},
-		Body:   nil, // No body is sent in a HEAD request.
-		Method: "HEAD",
+	var headObjectIfModifiedSinceReq = Request{
+		customHeader: http.Header{},
 	}
+
+	// Set the bucketName and objectName.
+	headObjectIfModifiedSinceReq.bucketName = bucketName
+	headObjectIfModifiedSinceReq.objectName = objectName
+
+	// No body is sent with HEAD request.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Set the URL and Header.
-	headObjectIfModifiedSinceReq.URL = targetURL
-	headObjectIfModifiedSinceReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	headObjectIfModifiedSinceReq.Header.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
-	headObjectIfModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
+	headObjectIfModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headObjectIfModifiedSinceReq.customHeader.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
+	headObjectIfModifiedSinceReq.customHeader.Set("User-Agent", appUserAgent)
 
-	headObjectIfModifiedSinceReq = signv4.SignV4(*headObjectIfModifiedSinceReq, config.Access, config.Secret, config.Region)
 	return headObjectIfModifiedSinceReq, nil
 }
 
@@ -123,7 +115,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+	res, err := config.execRequest("HEAD", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -147,7 +139,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the bad request.
-	badRes, err := execRequest(badReq, config.Client, bucket.Name, object.Key)
+	badRes, err := config.execRequest("HEAD", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

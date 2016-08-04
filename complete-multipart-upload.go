@@ -22,51 +22,41 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 //
-func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string, complete *completeMultipartUpload) (*http.Request, error) {
-	var completeMultipartUploadReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically,
-		// Content-Length will be set dynamically,
-		},
-		// Body: will be set dynamically,
-		Method: "POST",
+func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string, complete *completeMultipartUpload) (Request, error) {
+	var completeMultipartUploadReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL, Header and Body.
+	// Set the bucketName and objectName
+	completeMultipartUploadReq.bucketName = bucketName
+	completeMultipartUploadReq.objectName = objectName
+
 	// Initialize url queries.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
+	completeMultipartUploadReq.queryValues = urlValues
 
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
 	completeMultipartUploadBytes, err := xml.Marshal(complete)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
 	reader := bytes.NewReader(completeMultipartUploadBytes)
 	// Compute sha256Sum and contentLength.
 	_, sha256Sum, contentLength, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
 
 	// Set the Body, Header and URL of the request.
-	completeMultipartUploadReq.URL = targetURL
-	completeMultipartUploadReq.ContentLength = contentLength
-	completeMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	completeMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
-	completeMultipartUploadReq.Body = ioutil.NopCloser(reader)
+	completeMultipartUploadReq.contentLength = contentLength
+	completeMultipartUploadReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	completeMultipartUploadReq.customHeader.Set("User-Agent", appUserAgent)
+	completeMultipartUploadReq.contentBody = reader
 
-	completeMultipartUploadReq = signv4.SignV4(*completeMultipartUploadReq, config.Access, config.Secret, config.Region)
 	return completeMultipartUploadReq, nil
 }
 
@@ -120,7 +110,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a new completeMultipartUpload request.
-	req, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUploads[0])
+	customCompleteMultipartUploadReq, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUploads[0])
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -128,7 +118,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+	res, err := config.execRequest("POST", customCompleteMultipartUploadReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

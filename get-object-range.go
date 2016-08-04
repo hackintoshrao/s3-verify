@@ -17,38 +17,36 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjectRangeReq - Create a new GET object range request.
-func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, startRange, endRange int64) (*http.Request, error) {
+func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, startRange, endRange int64) (Request, error) {
 	// getObjectRangeReq - a new HTTP request for a GET object with a specific range request.
-	var getObjectRangeReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body sent for GET requests.
-		Method: "GET",
+	var getObjectRangeReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set the req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
+
+	// Set the bucketName and objectName.
+	getObjectRangeReq.bucketName = bucketName
+	getObjectRangeReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	// Fill the request URL.
-	getObjectRangeReq.URL = targetURL
-	getObjectRangeReq.Header.Set("Range", "bytes="+strconv.FormatInt(startRange, 10)+"-"+strconv.FormatInt(endRange, 10))
-	getObjectRangeReq.Header.Set("User-Agent", appUserAgent)
-	// Sign the request.
-	getObjectRangeReq = signv4.SignV4(*getObjectRangeReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	getObjectRangeReq.customHeader.Set("Range", "bytes="+strconv.FormatInt(startRange, 10)+"-"+strconv.FormatInt(endRange, 10))
+	getObjectRangeReq.customHeader.Set("User-Agent", appUserAgent)
+	getObjectRangeReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	return getObjectRangeReq, nil
 }
 
@@ -73,7 +71,7 @@ func mainGetObjectRange(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return

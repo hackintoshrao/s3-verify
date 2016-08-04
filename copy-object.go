@@ -24,39 +24,29 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newCopyObjectReq - Create a new HTTP request for PUT object with copy-
-func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string) (*http.Request, error) {
-	var copyObjectReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		// x-amz-copy-source will be set dynamically.
-		},
-		Method: "PUT",
+func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string) (Request, error) {
+	var copyObjectReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Fill request URL.
-	copyObjectReq.URL = targetURL
+
+	// Set the bucketName and objectName
+	copyObjectReq.bucketName = destBucketName
+	copyObjectReq.objectName = destObjectName
+
 	// Body will be set by the server so don't upload any body here.
 	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
 	// Fill request headers.
 	// Content-MD5 should never be set for CopyObject API.
-	copyObjectReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	copyObjectReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	copyObjectReq.Header.Set("User-Agent", appUserAgent)
-
-	copyObjectReq = signv4.SignV4(*copyObjectReq, config.Access, config.Secret, config.Region)
+	copyObjectReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectReq.customHeader.Set("User-Agent", appUserAgent)
 
 	return copyObjectReq, nil
 }
@@ -127,7 +117,7 @@ func mainCopyObject(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
+	res, err := config.execRequest("PUT", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

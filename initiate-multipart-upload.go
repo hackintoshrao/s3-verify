@@ -23,8 +23,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // Holds all the objects to be uploaded by a multipart request.
@@ -45,34 +43,32 @@ var multipartObjects = []*ObjectInfo{
 }
 
 // newInitiateMultipartUploadReq - Create a new HTTP request for the initiate-multipart-upload API.
-func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName string) (Request, error) {
 	// Initialize url queries.
 	urlValues := make(url.Values)
 	urlValues.Set("uploads", "")
 	// An HTTP request for a multipart upload.
-	var initiateMultipartUploadReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		},
-		// Body is empty for the initiate request.
-		Method: "POST",
+	var initiateMultipartUploadReq = Request{
+		customHeader: http.Header{},
 	}
-	// Create new targetURL using the ?uploads query.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
-	reader := bytes.NewReader([]byte(""))
+
+	// Set the bucketName and objectName
+	initiateMultipartUploadReq.bucketName = bucketName
+	initiateMultipartUploadReq.objectName = objectName
+
+	// Set the query values.
+	initiateMultipartUploadReq.queryValues = urlValues
+
+	// No body is sent with initiate-multipart requests.
+	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	// Set the req URL and Header.
-	initiateMultipartUploadReq.URL = targetURL
-	initiateMultipartUploadReq.Header.Set("User-Agent", appUserAgent)
-	initiateMultipartUploadReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 
-	initiateMultipartUploadReq = signv4.SignV4(*initiateMultipartUploadReq, config.Access, config.Secret, config.Region)
+	initiateMultipartUploadReq.customHeader.Set("User-Agent", appUserAgent)
+	initiateMultipartUploadReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return initiateMultipartUploadReq, nil
 }
 
@@ -142,7 +138,7 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("POST", req)
 			if err != nil {
 				multiUploadInitCh <- multiUploadInitChannel{
 					index:    cur,

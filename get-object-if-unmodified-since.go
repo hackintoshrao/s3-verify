@@ -24,32 +24,30 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjectIfUnModifiedSinceReq - Create a new HTTP GET request with the If-Unmodified-Since header set to perform.
-func newGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (*http.Request, error) {
+func newGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// An HTTP GET request with the If-Unmodified-Since header set.
-	var getObjectIfUnModifiedSinceReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for GET requests.
-		Method: "GET",
+	var getObjectIfUnModifiedSinceReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set the req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	getObjectIfUnModifiedSinceReq.Header.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
-	getObjectIfUnModifiedSinceReq.Header.Set("User-Agent", appUserAgent)
 
-	// Fill request URL and sign.
-	getObjectIfUnModifiedSinceReq.URL = targetURL
-	getObjectIfUnModifiedSinceReq = signv4.SignV4(*getObjectIfUnModifiedSinceReq, config.Access, config.Secret, config.Region)
+	// Set the bucketName and objectName.
+	getObjectIfUnModifiedSinceReq.bucketName = bucketName
+	getObjectIfUnModifiedSinceReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
+	if err != nil {
+		return Request{}, err
+	}
+
+	// Set the headers.
+	getObjectIfUnModifiedSinceReq.customHeader.Set("If-Unmodified-Since", lastModified.Format(http.TimeFormat))
+	getObjectIfUnModifiedSinceReq.customHeader.Set("User-Agent", appUserAgent)
+	getObjectIfUnModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return getObjectIfUnModifiedSinceReq, nil
 }
 
@@ -136,7 +134,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return
@@ -154,7 +152,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute current request.
-			goodRes, err := execRequest(goodReq, config.Client, bucket.Name, objectKey)
+			goodRes, err := config.execRequest("GET", goodReq)
 			if err != nil {
 				errCh <- err
 				return

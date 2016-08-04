@@ -24,39 +24,36 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newListObjectsV1Req - Create a new HTTP request for ListObjects V1.
-func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[string]string) (*http.Request, error) {
+func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[string]string) (Request, error) {
 	// listObjectsV1Req - a new HTTP request for ListObjects V1.
-	var listObjectsV1Req = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // There is no body sent in GET requests.
-		Method: "GET",
+	var listObjectsV1Req = Request{
+		customHeader: http.Header{},
 	}
+
+	// Set the bucketName.
+	listObjectsV1Req.bucketName = bucketName
+
+	// Set the query values.
 	urlValues := make(url.Values)
 	for k, v := range parameters {
 		urlValues.Set(k, v)
 	}
-	// Set the req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
+	listObjectsV1Req.queryValues = urlValues
+
+	// No body is sent with GET requests.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	listObjectsV1Req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	listObjectsV1Req.Header.Set("User-Agent", appUserAgent)
-	listObjectsV1Req.URL = targetURL
 
-	listObjectsV1Req = signv4.SignV4(*listObjectsV1Req, config.Access, config.Secret, config.Region)
+	// Set the headers.
+	listObjectsV1Req.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listObjectsV1Req.customHeader.Set("User-Agent", appUserAgent)
+
 	return listObjectsV1Req, nil
 }
 
@@ -167,7 +164,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	noParamRes, err := execRequest(noParamReq, config.Client, bucketName, "")
+	noParamRes, err := config.execRequest("GET", noParamReq)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -191,7 +188,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	maxKeysRes, err := execRequest(maxKeysReq, config.Client, bucketName, "")
+	maxKeysRes, err := config.execRequest("GET", maxKeysReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

@@ -26,30 +26,29 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newHeadObjectReq - Create a new HTTP request for a HEAD object.
-func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (Request, error) {
 	// headObjectReq - an HTTP request for HEAD with no headers set.
-	var headObjectReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with an empty for HEAD requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // No body is sent with HEAD requests.
-		Method: "HEAD",
+	var headObjectReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set the req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
+
+	// Set the bucketName and objectName.
+	headObjectReq.bucketName = bucketName
+	headObjectReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because HEAD requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	headObjectReq.Header.Set("User-Agent", appUserAgent)
-	// Fill request URL and sign.
-	headObjectReq.URL = targetURL
-	headObjectReq = signv4.SignV4(*headObjectReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	headObjectReq.customHeader.Set("User-Agent", appUserAgent)
+	headObjectReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return headObjectReq, nil
 }
 
@@ -115,8 +114,8 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
 				return
 			}
-			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			// execute the request.
+			res, err := config.execRequest("HEAD", req)
 			if err != nil {
 				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
 				return

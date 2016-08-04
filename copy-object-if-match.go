@@ -24,41 +24,33 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newCopyObjectIfMatchReq - Create a new HTTP request for a PUT copy object.
-func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (*http.Request, error) {
-	var copyObjectIfMatchReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set dynamically.
-		// x-amz-copy-source will be set dynamically.
-		// x-amz-copy-source-if-match will be set dynamically.
-		},
-		Method: "PUT",
+func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
+	var copyObjectIfMatchReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, destBucketName, destObjectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	copyObjectIfMatchReq.URL = targetURL
+	// Set the bucketName and objectName
+	copyObjectIfMatchReq.bucketName = destBucketName
+	copyObjectIfMatchReq.objectName = destObjectName
 	// The body will be set by the server so calculate SHA from an empty body.
 	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
 	// Fill in the request header.
-	copyObjectIfMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	copyObjectIfMatchReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	// Content-MD5 should not be set for CopyObject request.
 	// Content-Length should not be set for CopyObject request.
-	copyObjectIfMatchReq.Header.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	copyObjectIfMatchReq.Header.Set("x-amz-copy-source-if-match", ETag)
-	copyObjectIfMatchReq.Header.Set("User-Agent", appUserAgent)
+	copyObjectIfMatchReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
+	copyObjectIfMatchReq.customHeader.Set("x-amz-copy-source-if-match", ETag)
+	copyObjectIfMatchReq.customHeader.Set("User-Agent", appUserAgent)
 
-	copyObjectIfMatchReq = signv4.SignV4(*copyObjectIfMatchReq, config.Access, config.Secret, config.Region)
+	// Body will be set server side so set to nil here.
+	copyObjectIfMatchReq.contentBody = nil
+
 	return copyObjectIfMatchReq, nil
 }
 
@@ -149,7 +141,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the response.
-	res, err := execRequest(req, config.Client, destBucketName, destObject.Key)
+	res, err := config.execRequest("PUT", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -168,7 +160,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the request.
-	badRes, err := execRequest(badReq, config.Client, destBucketName, destObject.Key)
+	badRes, err := config.execRequest("PUT", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

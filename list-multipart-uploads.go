@@ -23,38 +23,34 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newListMultipartUploadsReq - Create a new HTTP request for List Multipart Uploads API.
-func newListMultipartUploadsReq(config ServerConfig, bucketName string) (*http.Request, error) {
+func newListMultipartUploadsReq(config ServerConfig, bucketName string) (Request, error) {
 	// listMultipartUploadsReq - a new HTTP request for the List Multipart Uploads API.
-	var listMultipartUploadsReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // There is no body sent with GET requests.
-		Method: "GET",
+	var listMultipartUploadsReq = Request{
+		customHeader: http.Header{},
 	}
+
+	// Set the query values.
 	urlValues := make(url.Values)
 	urlValues.Set("uploads", "")
+	listMultipartUploadsReq.queryValues = urlValues
 
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
+	// Set the bucketName.
+	listMultipartUploadsReq.bucketName = bucketName
+
+	// No body is sent with GET requests.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	// Set Header values and URL.
-	listMultipartUploadsReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	listMultipartUploadsReq.Header.Set("User-Agent", appUserAgent)
-	listMultipartUploadsReq.URL = targetURL
 
-	listMultipartUploadsReq = signv4.SignV4(*listMultipartUploadsReq, config.Access, config.Secret, config.Region)
+	// Set Header values.
+	listMultipartUploadsReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listMultipartUploadsReq.customHeader.Set("User-Agent", appUserAgent)
+
 	return listMultipartUploadsReq, nil
 }
 
@@ -148,7 +144,7 @@ func mainListMultipartUploads(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucketName, "")
+	res, err := config.execRequest("GET", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

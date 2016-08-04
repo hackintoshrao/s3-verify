@@ -23,30 +23,29 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjectReq - Create a new HTTP requests to perform.
-func newGetObjectReq(config ServerConfig, bucketName, objectName string) (*http.Request, error) {
+func newGetObjectReq(config ServerConfig, bucketName, objectName string) (Request, error) {
 	// getObjectReq - a new HTTP request for a GET object.
-	var getObjectReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-		},
-		Body:   nil, // There is no body for GET requests.
-		Method: "GET",
+	var getObjectReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set the URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
+
+	// Set the bucketName and objectName.
+	getObjectReq.bucketName = bucketName
+	getObjectReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	getObjectReq.Header.Set("User-Agent", appUserAgent)
-	// Fill request URL and sign.
-	getObjectReq.URL = targetURL
-	getObjectReq = signv4.SignV4(*getObjectReq, config.Access, config.Secret, config.Region)
+
+	// Set the headers.
+	getObjectReq.customHeader.Set("User-Agent", appUserAgent)
+	getObjectReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+
 	return getObjectReq, nil
 }
 
@@ -115,7 +114,7 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return

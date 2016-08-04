@@ -23,35 +23,30 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newHeadObjectIfNoneMatch - Create a new HTTP request for HEAD object with if-none-match header set.
-func newHeadObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (*http.Request, error) {
-	//
-	var headObjectIfNoneMatchReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		// If-None-Match will be set below.
-		},
-		Body:   nil, // There is no body sent by HEAD requests.
-		Method: "HEAD",
+func newHeadObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+	// headObjectIfNoneMatchReq - a new custom request.
+	var headObjectIfNoneMatchReq = Request{
+		customHeader: http.Header{},
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
+
+	// Set the bucketName and objectName
+	headObjectIfNoneMatchReq.bucketName = bucketName
+	headObjectIfNoneMatchReq.objectName = objectName
+
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
+	if err != nil {
+		return Request{}, err
+	}
 
-	// Set requests URL and Header.
-	headObjectIfNoneMatchReq.URL = targetURL
-	headObjectIfNoneMatchReq.Header.Set("If-None-Match", ETag)
-	headObjectIfNoneMatchReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	headObjectIfNoneMatchReq.Header.Set("User-Agent", appUserAgent)
+	// Set the headers.
+	headObjectIfNoneMatchReq.customHeader.Set("If-None-Match", ETag)
+	headObjectIfNoneMatchReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headObjectIfNoneMatchReq.customHeader.Set("User-Agent", appUserAgent)
 
-	headObjectIfNoneMatchReq = signv4.SignV4(*headObjectIfNoneMatchReq, config.Access, config.Secret, config.Region)
 	return headObjectIfNoneMatchReq, nil
 }
 
@@ -117,7 +112,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucket.Name, object.Key)
+	res, err := config.execRequest("HEAD", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -141,7 +136,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	badRes, err := execRequest(badReq, config.Client, bucket.Name, object.Key)
+	badRes, err := config.execRequest("HEAD", badReq)
 	if err != nil {
 		printMessage(message, err)
 		return false

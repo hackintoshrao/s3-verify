@@ -23,37 +23,33 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newListObjectsV2Req - Create a new HTTP request for ListObjects V2 API.
-func newListObjectsV2Req(config ServerConfig, bucketName string) (*http.Request, error) {
+func newListObjectsV2Req(config ServerConfig, bucketName string) (Request, error) {
 	// listObjectsV2Req - a new HTTP request for ListObjects V2 API.
-	var listObjectsV2Req = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // No body is sent with GET requests.
-		Method: "GET",
+	var listObjectsV2Req = Request{
+		customHeader: http.Header{},
 	}
-	// Set URL query values
+
+	// Set the bucketName.
+	listObjectsV2Req.bucketName = bucketName
+
+	// Set URL query values.
 	urlValues := make(url.Values)
 	urlValues.Set("list-type", "2")
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, urlValues)
-	if err != nil {
-		return nil, err
-	}
+	listObjectsV2Req.queryValues = urlValues
+
+	// No body is sent with GET requests.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	listObjectsV2Req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	listObjectsV2Req.Header.Set("User-Agent", appUserAgent)
-	listObjectsV2Req.URL = targetURL
 
-	listObjectsV2Req = signv4.SignV4(*listObjectsV2Req, config.Access, config.Secret, config.Region)
+	listObjectsV2Req.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	listObjectsV2Req.customHeader.Set("User-Agent", appUserAgent)
+
 	return listObjectsV2Req, nil
 }
 
@@ -138,7 +134,7 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucketName, "")
+	res, err := config.execRequest("GET", req)
 	if err != nil {
 		printMessage(message, err)
 		return false

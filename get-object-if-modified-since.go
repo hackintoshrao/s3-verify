@@ -24,32 +24,29 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newGetObjcetIfModifiedSinceReq - Create a new HTTP request to perform.
-func newGetObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (*http.Request, error) {
-	var getObjectIfModifiedReq = &http.Request{
-		Header: map[string][]string{
-			// Set Content SHA with empty body for GET requests because no data is being uploaded.
-			"X-Amz-Content-Sha256": {hex.EncodeToString(signv4.Sum256([]byte{}))},
-			"If-Modified-Since":    {""}, // To be added dynamically.
-		},
-		Body:   nil, // There is no body for GET requests.
-		Method: "GET",
+func newGetObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
+	var getObjectIfModifiedReq = Request{
+		customHeader: http.Header{},
 	}
-	// Set req URL and Header.
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, objectName, config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
-	getObjectIfModifiedReq.Header.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
-	getObjectIfModifiedReq.Header.Set("User-Agent", appUserAgent)
 
-	// Fill request URL and sign.
-	getObjectIfModifiedReq.URL = targetURL
-	getObjectIfModifiedReq = signv4.SignV4(*getObjectIfModifiedReq, config.Access, config.Secret, config.Region)
+	// Set the bucketName and objectName.
+	getObjectIfModifiedReq.bucketName = bucketName
+	getObjectIfModifiedReq.objectName = objectName
+
+	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because GET requests do not send a body.
+	_, sha256Sum, _, err := computeHash(reader)
+	if err != nil {
+		return Request{}, err
+	}
+
+	// Set the headers.
+	getObjectIfModifiedReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	getObjectIfModifiedReq.customHeader.Set("If-Modified-Since", lastModified.Format(http.TimeFormat))
+	getObjectIfModifiedReq.customHeader.Set("User-Agent", appUserAgent)
+
 	return getObjectIfModifiedReq, nil
 }
 
@@ -121,7 +118,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Perform the request.
-			res, err := execRequest(req, config.Client, bucket.Name, objectKey)
+			res, err := config.execRequest("GET", req)
 			if err != nil {
 				errCh <- err
 				return
@@ -139,7 +136,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 				return
 			}
 			// Execute the response that should give back a body.
-			goodRes, err := execRequest(goodReq, config.Client, bucket.Name, objectKey)
+			goodRes, err := config.execRequest("GET", goodReq)
 			if err != nil {
 				errCh <- err
 				return

@@ -23,35 +23,27 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/minio/s3verify/signv4"
 )
 
 // newHeadBucketReq - Create a new HTTP request for the HeadBucket API.
-func newHeadBucketReq(config ServerConfig, bucketName string) (*http.Request, error) {
+func newHeadBucketReq(config ServerConfig, bucketName string) (Request, error) {
 	// headBucketReq - a new HTTP request for the HeadBucket API.
-	var headBucketReq = &http.Request{
-		Header: map[string][]string{
-		// X-Amz-Content-Sha256 will be set below.
-		},
-		Body:   nil, // There is no body sent with HEAD requests.
-		Method: "HEAD",
+	var headBucketReq = Request{
+		customHeader: http.Header{},
 	}
-	targetURL, err := makeTargetURL(config.Endpoint, bucketName, "", config.Region, nil)
-	if err != nil {
-		return nil, err
-	}
+	// Set the bucketName.
+	headBucketReq.bucketName = bucketName
+
 	reader := bytes.NewReader([]byte{}) // Compute hash using empty body because HEAD requests do not send a body.
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
-		return nil, err
+		return Request{}, err
 	}
-	// Set the URL and Header of the request.
-	headBucketReq.URL = targetURL
-	headBucketReq.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
-	headBucketReq.Header.Set("User-Agent", appUserAgent)
 
-	headBucketReq = signv4.SignV4(*headBucketReq, config.Access, config.Secret, config.Region)
+	// Set the headers.
+	headBucketReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
+	headBucketReq.customHeader.Set("User-Agent", appUserAgent)
+
 	return headBucketReq, nil
 }
 
@@ -113,7 +105,7 @@ func mainHeadBucket(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Execute the request.
-	res, err := execRequest(req, config.Client, bucketName, "")
+	res, err := config.execRequest("HEAD", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
