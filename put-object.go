@@ -29,8 +29,11 @@ import (
 	"time"
 )
 
+// Store all objects that are uploaded by s3verify tests.
+var s3verifyObjects = []*ObjectInfo{}
+
 // Store all objects that are uploaded through standard PUT operations.
-var objects = make([]*ObjectInfo, 50)
+var objects = []*ObjectInfo{}
 
 // Store all objects that were copied.
 var copyObjects = []*ObjectInfo{}
@@ -109,64 +112,89 @@ func verifyHeaderPutObject(header http.Header) error {
 	return nil
 }
 
-// Test a PUT object request with no special headers set. This adds one object to each of the test buckets.
-func mainPutObject(config ServerConfig, curTest int) bool {
+// TODO: need mainPutObjectPrepared and mainPutObjectUnPrepared.
+func mainPutObjectPrepared(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutObject:", curTest, globalTotalNumTest)
-	// TODO: create tests designed to fail.
-	bucket := validBuckets[0]
+	// Use the last bucket created by s3verify itself.
+	bucket := s3verifyBuckets[0]
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, globalTotalNumTest)
-	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
-	for i := 0; i < len(objects); i++ {
-		// Spin scanBar
-		scanBar(message)
-		go func(cur int) {
-			object := &ObjectInfo{}
-			object.Key = "s3verify-put-parallel" + strconv.Itoa(cur)
-			// Create 60 bytes worth of random data for each object.
-			body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
-			object.Body = []byte(body)
-			// Create a new request.
-			req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("PUT", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response.
-			if err := putObjectVerify(res, http.StatusOK); err != nil {
-				errCh <- err
-				return
-			}
-			// Add the new object to the list of objects.
-			objects[cur] = object
-			// This upload passed.
-			errCh <- nil
-		}(i)
-		// Spin scanBar
-		scanBar(message)
+	// Since the use of --prepare will have set up enough objects for future tests
+	// only add one more additional object.
+	object := &ObjectInfo{
+		Key:  "s3verify-put-object-1001",
+		Body: []byte(randString(60, rand.NewSource(time.Now().UnixNano()), "")),
 	}
-	count := len(objects)
-	for count > 0 {
-		count--
+	// Spin scanBar
+	scanBar(message)
+	// Create a new request.
+	req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	res, err := config.execRequest("PUT", req)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	defer closeResponse(res)
+	// Verify the response.
+	if err := putObjectVerify(res, http.StatusOK); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Store this object in the global objects list.
+	s3verifyObjects = append(s3verifyObjects, object)
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
+	printMessage(message, nil)
+	return true
+}
+
+// Test a PUT object request with no special headers set. This adds one object to each of the test buckets.
+func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
+	message := fmt.Sprintf("[%02d/%d] PutObject:", curTest, globalTotalNumTest)
+	// TODO: create tests designed to fail.
+	bucket := unpreparedBuckets[0]
+	// Spin scanBar
+	scanBar(message)
+	// TODO: need to update to 1001 once this is production ready.
+	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
+	for i := 0; i < 101; i++ {
 		// Spin scanBar
 		scanBar(message)
-		// Read from the error channel as each test finishes.
-		err, ok := <-errCh
-		if !ok {
-			return false
-		}
+		object := &ObjectInfo{}
+		object.Key = "s3verify-object-" + strconv.Itoa(i)
+		// Create 60 bytes worth of random data for each object.
+		body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+		object.Body = []byte(body)
+		// Create a new request.
+		req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
 		if err != nil {
-			printMessage(message, err) // Error out if the test fails.
+			printMessage(message, err)
 			return false
 		}
+		// Execute the request.
+		res, err := config.execRequest("PUT", req)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify the response.
+		if err := putObjectVerify(res, http.StatusOK); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Add the new object to the list of objects.
+		objects = append(objects, object)
 		// Spin scanBar
 		scanBar(message)
 	}

@@ -93,17 +93,15 @@ func verifyHeaderHeadObjectIfMatch(header http.Header) error {
 	return nil
 }
 
-// mainHeadObjectIfMatch - Entry point for the HEAD object with if-match header set test.
-func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
+// testHeadObjectIfMatch - tests the HeadObject API with the If-Match header set.
+func testHeadObjectIfMatch(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad ETag.
 	invalidETag := "1234567890"
-	bucket := validBuckets[0]
-	object := objects[0]
 	// Create a new valid request for HEAD object with if-match header set.
-	req, err := newHeadObjectIfMatchReq(config, bucket.Name, object.Key, object.ETag)
+	req, err := newHeadObjectIfMatchReq(config, bucketName, object.Key, object.ETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -127,7 +125,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for HEAD object with if-match header set.
-	badReq, err := newHeadObjectIfMatchReq(config, bucket.Name, object.Key, invalidETag)
+	badReq, err := newHeadObjectIfMatchReq(config, bucketName, object.Key, invalidETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -152,4 +150,18 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	printMessage(message, nil)
 	return true
+}
+
+// mainHeadObjectIfMatchUnPrepared - Entry point for the HEAD object with if-match header set test. if --prepare was not used.
+func mainHeadObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	object := objects[0]
+	return testHeadObjectIfMatch(config, curTest, bucketName, object)
+}
+
+// mainHeadObjectIfMatchPrepared - Entry point for the HeadObject test with if-match header set. if --prepare was used.
+func mainHeadObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
+	return testHeadObjectIfMatch(config, curTest, bucketName, object)
 }

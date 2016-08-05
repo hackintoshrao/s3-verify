@@ -114,13 +114,11 @@ func verifyBodyListMultipartUploads(resBody io.Reader, expectedList listMultipar
 	return nil
 }
 
-// mainListMultipartUploads - Entry point for the list-multipart-uplods API test.
-func mainListMultipartUploads(config ServerConfig, curTest int) bool {
+// testListMultipartUploads - list-multipart-uplods API test.
+func testListMultipartUploads(config ServerConfig, curTest int, bucketName string) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (List-Uploads):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucketName := validBuckets[0].Name
-
 	uploads := []ObjectMultipartInfo{}
 
 	for _, multipartObject := range multipartObjects {
@@ -162,4 +160,16 @@ func mainListMultipartUploads(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+//
+func mainListMultipartUploadsPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testListMultipartUploads(config, curTest, bucketName)
+}
+
+//
+func mainListMultipartUploadsUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testListMultipartUploads(config, curTest, bucketName)
 }

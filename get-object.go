@@ -96,51 +96,28 @@ func verifyStatusGetObject(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// Test a GET object request with no special headers set.
-func mainGetObject(config ServerConfig, curTest int) bool {
+// testGetObject - test a get object request.
+func testGetObject(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject:", curTest, globalTotalNumTest)
-	errCh := make(chan error, globalTotalNumTest)
-	bucket := validBuckets[0]
-	// Spin scanBar
-	scanBar(message)
-	for _, object := range objects {
+	// Use the bucket created in the mainPutBucketPrepared Test.
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, objectBody []byte) {
-			// Create new GET object request.
-			req, err := newGetObjectReq(config, bucket.Name, objectKey)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response.
-			if err := getObjectVerify(res, objectBody, http.StatusOK); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.Body)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		// Check the error channel.
-		err, ok := <-errCh
-		if !ok {
+		// Create new GET object request.
+		req, err := newGetObjectReq(config, bucketName, object.Key)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
+		// Execute the request.
+		res, err := config.execRequest("GET", req)
 		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify the response.
+		if err := getObjectVerify(res, object.Body, http.StatusOK); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -152,4 +129,16 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectUnPrepared - entry point for the GetObject test if --prepare was not used.
+func mainGetObjectUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObject(config, curTest, bucketName, objects)
+}
+
+// mainGetObjectPrepared - entry point for the GetObject test if --prepare was used.
+func mainGetObjectPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObject(config, curTest, bucketName, s3verifyObjects)
 }

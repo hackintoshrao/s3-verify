@@ -113,8 +113,8 @@ func verifyHeaderCopyObjectIfUnModifiedSince(header http.Header) error {
 	return nil
 }
 
-// mainCopyObjectIfUnModifiedSince - Entry point for the CopyObject if-unmodified-since test.
-func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
+// testCopyObjectIfUnModifiedSince - Entry point for the CopyObject if-unmodified-since test.
+func testCopyObjectIfUnModifiedSince(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Unmodified-Since): ", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -124,11 +124,6 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
-	// Source bucket and destination bucket.
-	sourceBucket := validBuckets[0]
-	destBucket := validBuckets[1]
-	// Object to be copied.
-	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-unmodified-since",
 	}
@@ -138,7 +133,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		Message: "At least one of the pre-conditions you specified did not hold",
 	}
 	// Create a new valid request.
-	req, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucket.Name, sourceObject.Key, destBucket.Name, destObject.Key, sourceObject.LastModified.Add(time.Hour*2))
+	req, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.LastModified.Add(time.Hour*2))
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -164,7 +159,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request.
-	badReq, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucket.Name, sourceObject.Key, destBucket.Name, destObject.Key, pastDate)
+	badReq, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -190,4 +185,22 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainCopyObjectIfUnModifiedSincePrepared - entry point for CopyObject with if-unmodified-since header and --prepare used.
+func mainCopyObjectIfUnModifiedSincePrepared(config ServerConfig, curTest int) bool {
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
+	return testCopyObjectIfUnModifiedSince(config, curTest, sourceBucketName, destBucketName, sourceObject)
+}
+
+// mainCopyObjectIfUnModifiedSinceUnPrepared - entry point for CopyObject with if-unmodified-since header set and --prepare not used.
+func mainCopyObjectIfUnModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
+	sourceBucketName := unpreparedBuckets[0].Name
+	destBucketName := unpreparedBuckets[1].Name
+	sourceObject := objects[0]
+
+	return testCopyObjectIfUnModifiedSince(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

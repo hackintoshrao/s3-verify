@@ -94,12 +94,10 @@ func verifyHeaderHeadObjectIfUnModifiedSince(header http.Header) error {
 	return nil
 }
 
-// mainHeadObjectIfUnModifiedSince - Entry point for the HEAD object with if-unmodified-since header set test.
-func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
+// testHeadObjectIfUnModifiedSince - HEAD object with if-unmodified-since header set test.
+func testHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	scanBar(message)
-	bucket := validBuckets[0]
-	object := objects[0]
 	// Create a date in the past to use.
 	lastModified, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
@@ -107,7 +105,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Create a new request.
-	req, err := newHeadObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified)
+	req, err := newHeadObjectIfUnModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -131,7 +129,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
-	badReq, err := newHeadObjectIfUnModifiedSinceReq(config, bucket.Name, object.Key, lastModified)
+	badReq, err := newHeadObjectIfUnModifiedSinceReq(config, bucketName, object.Key, lastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -157,4 +155,18 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainHeadObjectIfUnModifiedSinceUnPrepared - Entry point for the HEAD object with if-unmodified-since header set and --prepare used.
+func mainHeadObjectIfUnModifiedSincePrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
+	return testHeadObjectIfUnModifiedSince(config, curTest, bucketName, object)
+}
+
+// mainHeadObjectIfUnModifiedSinceUnPrepared - Entry point for the HEAD object with if-unmodified-since header set and --prepare not used.
+func mainHeadObjectIfUnModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	object := objects[0]
+	return testHeadObjectIfUnModifiedSince(config, curTest, bucketName, object)
 }

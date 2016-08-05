@@ -98,10 +98,10 @@ func verifyStatusRemoveBucket(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// Test the RemoveBucket API when the bucket exists.
-func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
+//
+func testRemoveBucketExists(config ServerConfig, curTest int, testBuckets []BucketInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] RemoveBucket (Bucket Exists):", curTest, globalTotalNumTest)
-	for _, bucket := range validBuckets {
+	for _, bucket := range testBuckets {
 		// Spin the scanBar
 		scanBar(message)
 		// Generate the new DELETE bucket request.
@@ -130,6 +130,18 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 	}
 	printMessage(message, nil)
 	return true
+}
+
+// mainRemoveBucketExistsUnPrepared - entry point for the RemoveBucket API test when --prepare was used and when the bucket exists.
+func mainRemoveBucketExistsUnPrepared(config ServerConfig, curTest int) bool {
+	// Remove all buckets.
+	return testRemoveBucketExists(config, curTest, unpreparedBuckets)
+}
+
+//
+func mainRemoveBucketExistsPrepared(config ServerConfig, curTest int) bool {
+	// Only remove the buckets created by s3verify tests themselves. Not the buckets made by --prepare.
+	return testRemoveBucketExists(config, curTest, s3verifyBuckets)
 }
 
 // Test the RemoveBucket API when the bucket does not exist.

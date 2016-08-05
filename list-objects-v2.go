@@ -94,33 +94,24 @@ func verifyBodyListObjectsV2(resBody io.Reader, expectedList listBucketV2Result)
 		err := fmt.Errorf("Unexpected Bucket Listed: wanted %v, got %v", expectedList.Name, receivedList.Name)
 		return err
 	}
-	listedObjects := 0
-	for _, receivedObject := range receivedList.Contents {
-		for _, expectedObject := range expectedList.Contents {
-			if receivedObject.Key == expectedObject.Key &&
-				receivedObject.ETag == "\""+expectedObject.ETag+"\"" &&
-				receivedObject.Size == expectedObject.Size {
-				listedObjects++
-			}
-		}
-	}
-	if listedObjects != len(objects) {
-		err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(objects), listedObjects)
+	if len(receivedList.Contents)+len(receivedList.CommonPrefixes) != len(expectedList.Contents)+len(expectedList.CommonPrefixes) {
+		err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(expectedList.Contents)+len(expectedList.CommonPrefixes), len(receivedList.CommonPrefixes)+len(receivedList.Contents))
 		return err
 	}
 	return nil
 }
 
-// mainListObjectsV2 - Entry point for the ListObjects V2 API test.
+// mainListObjectsV2 - Entry point for the ListObjects V2 API test. This test is the same for --prepared environments and non --prepared.
 func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] ListObjects V2:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucketName := validBuckets[0].Name
+	bucketName := unpreparedBuckets[0].Name
 	objectInfo := []ObjectInfo{}
 	for _, object := range objects {
 		objectInfo = append(objectInfo, *object)
 	}
+
 	expectedList := listBucketV2Result{
 		Name:     bucketName, // List only from the first bucket created because that is the bucket holding the objects.
 		Contents: objectInfo,

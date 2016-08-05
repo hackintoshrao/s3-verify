@@ -95,70 +95,48 @@ func verifyBodyGetObjectIfNoneMatch(resBody io.Reader, expectedBody []byte) erro
 }
 
 // Test the compatibility of the GetObject API when using the If-None-Match header.
-func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
+func testGetObjectIfNoneMatch(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-	bucket := validBuckets[0]
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, globalTotalNumTest)
-	for _, object := range objects {
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		// Test with If-None-Match Header set.
-		go func(objectKey, objectETag string, objectBody []byte) {
-			// Create new GET object If-None-Match request.
-			req, err := newGetObjectIfNoneMatchReq(config, bucket.Name, objectKey, objectETag)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response...these checks do not check the headers yet.
-			if err := getObjectIfNoneMatchVerify(res, []byte(""), 304); err != nil {
-				errCh <- err
-				return
-			}
-			// Create a bad GET object If-None-Match request with invalid ETag.
-			badReq, err := newGetObjectIfNoneMatchReq(config, bucket.Name, objectKey, invalidETag)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			badRes, err := config.execRequest("GET", badReq)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(badRes)
-			// Verify the response returns the object since ETag != invalidETag
-			if err := getObjectIfNoneMatchVerify(badRes, objectBody, http.StatusOK); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.ETag, object.Body)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		err, ok := <-errCh
-		if !ok {
+		// Create new GET object If-None-Match request.
+		req, err := newGetObjectIfNoneMatchReq(config, bucketName, object.Key, object.ETag)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
+		// Execute the request.
+		res, err := config.execRequest("GET", req)
 		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify the response...these checks do not check the headers yet.
+		if err := getObjectIfNoneMatchVerify(res, []byte(""), http.StatusNotModified); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Create a bad GET object If-None-Match request with invalid ETag.
+		badReq, err := newGetObjectIfNoneMatchReq(config, bucketName, object.Key, invalidETag)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Execute the request.
+		badRes, err := config.execRequest("GET", badReq)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(badRes)
+		// Verify the response returns the object since ETag != invalidETag
+		if err := getObjectIfNoneMatchVerify(badRes, object.Body, http.StatusOK); err != nil {
 			printMessage(message, err)
 			return false
 		}
@@ -170,4 +148,16 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectIfNoneMatchPrepared - entry point for the GetObject with if-none-match header set with --prepare used.
+func mainGetObjectIfNoneMatchPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObjectIfNoneMatch(config, curTest, bucketName, s3verifyObjects)
+}
+
+// mainGetObjectIfNoneMatchUnPrepared - entry point for the GetObject with if-none-match header set with --prepare not used.
+func mainGetObjectIfNoneMatchUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObjectIfNoneMatch(config, curTest, bucketName, objects)
 }

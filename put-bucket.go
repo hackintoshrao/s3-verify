@@ -29,8 +29,10 @@ import (
 )
 
 var (
+	//
+	s3verifyBuckets = []BucketInfo{}
 	// Make two random buckets below in the test.
-	validBuckets = make([]BucketInfo, 2)
+	unpreparedBuckets = []BucketInfo{}
 	// See http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html for all bucket naming restrictions.
 	invalidBuckets = []BucketInfo{
 		BucketInfo{
@@ -168,17 +170,27 @@ func verifyHeaderPutBucket(header http.Header, bucketName string, expectedStatus
 	return nil
 }
 
-// Test the PutBucket API when no extra headers are set. This creates two new buckets and leaves them for the next tests to use.
-func mainPutBucket(config ServerConfig, curTest int) bool {
-	message := fmt.Sprintf("[%02d/%d] PutBucket:", curTest, globalTotalNumTest)
-	// Spin the scanBar
-	scanBar(message)
-	// Create two new buckets with valid names.
+// mainPutBucketTest - entry point for the putbucket test if --prepared flag was used earlier.
+func mainPutBucketPrepared(config ServerConfig, curTest int) bool {
+	// Store the buckets created here differently from those created by the --prepare flag.
+	return testPutBucket(config, curTest, &s3verifyBuckets)
+}
+
+// mainPutBucketUnPrepared - entry point for the putbucket test if --prepared was not used.
+func mainPutBucketUnPrepared(config ServerConfig, curTest int) bool {
+	return testPutBucket(config, curTest, &unpreparedBuckets)
+}
+
+// mainPutBucketUnPrepared - entry point for the putBucketUnPrepared test.
+func testPutBucket(config ServerConfig, curTest int, storage *[]BucketInfo) bool {
+	message := fmt.Sprintf("[%02d/%d] PutBucket (Valid Names):", curTest, globalTotalNumTest)
+	// Spin the scanBar scanBar(message)
+	// Two new buckets are created on the same host regardless of whether or not the test has been prepared.
 	for i := 0; i < 2; i++ {
 		validBucket := BucketInfo{
 			Name: randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify"),
 		}
-		validBuckets[i] = validBucket
+		*storage = append(*storage, validBucket)
 		// Spin the scanBar
 		scanBar(message)
 		// Create a new Make bucket request.
@@ -206,6 +218,14 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 	}
+	printMessage(message, nil)
+	return true
+}
+
+// mainPutBucketInvalid - entry point for testing putbucket API with invalid names.
+func mainPutBucketInvalid(config ServerConfig, curTest int) bool {
+	// Test invalid names. This cannot be separated yet into its own test because of the way --prepared is laid out currently.
+	message := fmt.Sprintf("[%02d/%d] PutBucket (Invalid Names):", curTest, globalTotalNumTest)
 	expectedError := ErrorResponse{
 		Message: "The specified bucket is not valid.",
 	}

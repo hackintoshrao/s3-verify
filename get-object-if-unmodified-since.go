@@ -111,7 +111,7 @@ func verifyHeaderGetObjectIfUnModifiedSince(header http.Header) error {
 }
 
 // Test the GET object API with the If-Unmodified-Since header set.
-func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
+func testGetObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -121,72 +121,61 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
-	errCh := make(chan error, globalTotalNumTest)
-	bucket := validBuckets[0]
-	for _, object := range objects {
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, objectLastModified time.Time, objectBody []byte) {
-			// Form a request with a pastDate to make sure the object is not returned.
-			req, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, pastDate)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify that the response returns an error.
-			if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), http.StatusPreconditionFailed, true); err != nil {
-				errCh <- err
-				return
-			}
-			// Form a request with a date in the past.
-			goodReq, err := newGetObjectIfUnModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute current request.
-			goodRes, err := config.execRequest("GET", goodReq)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(goodRes)
-			// Verify that the lastModified date in a request returns the object.
-			if err := verifyGetObjectIfUnModifiedSince(goodRes, objectBody, http.StatusOK, false); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.LastModified, object.Body)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		err, ok := <-errCh
-		if !ok {
-			return false
-		}
+		// Form a request with a pastDate to make sure the object is not returned.
+		req, err := newGetObjectIfUnModifiedSinceReq(config, bucketName, object.Key, pastDate)
 		if err != nil {
 			printMessage(message, err)
 			return false
 		}
-		// Spin scanBar
-		scanBar(message)
+		// Execute the request.
+		res, err := config.execRequest("GET", req)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify that the response returns an error.
+		if err := verifyGetObjectIfUnModifiedSince(res, []byte(""), http.StatusPreconditionFailed, true); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Form a request with a date in the past.
+		goodReq, err := newGetObjectIfUnModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Execute current request.
+		goodRes, err := config.execRequest("GET", goodReq)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(goodRes)
+		// Verify that the lastModified date in a request returns the object.
+		if err := verifyGetObjectIfUnModifiedSince(goodRes, object.Body, http.StatusOK, false); err != nil {
+			printMessage(message, err)
+			return false
+		}
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectIfUnModifiedSincePrepared - entry point for the GetObject with if-unmodified-since header set and --prepare flag used.
+func mainGetObjectIfUnModifiedSincePrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObjectIfUnModifiedSince(config, curTest, bucketName, s3verifyObjects)
+}
+
+// mainGetObjectIfUnModifiedSinceUnPrepared - entry point for the GetObject with if-unmodified-since header set and --prepare flag not used.
+func mainGetObjectIfUnModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObjectIfUnModifiedSince(config, curTest, bucketName, objects)
 }

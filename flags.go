@@ -35,7 +35,7 @@ var globalFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "region, r",
 		Value: globalDefaultRegion,
-		Usage: "Set AWS S3 region. Defaults to 'us-east-1'. Do not use 'us-east-1' with AWS endpoint or automatic clean up will fail",
+		Usage: "Set AWS S3 region. Defaults to 'us-east-1'. Do not use 'us-east-1' with AWS endpoint or automatic clean up will fail.",
 		// Allow env. variables to used as well as flags.
 		EnvVar: "S3_REGION",
 	},
@@ -51,5 +51,13 @@ var globalFlags = []cli.Flag{
 	cli.BoolFlag{
 		Name:  "extended",
 		Usage: "Enable testing of extra S3 APIs.",
+	},
+	cli.BoolFlag{
+		Name:  "prepare",
+		Usage: "Prepare the testing environment with 2 buckets and 1001 objects and 1001 multipart object parts.",
+	},
+	cli.StringFlag{
+		Name:  "clean",
+		Usage: "Remove all s3verify objects and multipart object parts from the specified bucket. If only s3verify material is in the bucket the bucket itself will be removed as well.",
 	},
 }

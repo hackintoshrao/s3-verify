@@ -101,16 +101,15 @@ func verifyStatusAbortMultipartUpload(respStatusCode, expectedStatusCode int) er
 // AWS maintains the uploadIDs for several hours there is no sure way to test for the right error messages.  // As of now though it is known there is a bug within the Minio Server that returns a shortened form of the
 // error AWS is said to return.
 
-// mainAbortMultipartUpload - Entry point for the abort multipart upload API test.
-func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
+// testAbortMultipartUpload - abort multipart upload API test.
+func testAbortMultipartUpload(config ServerConfig, curTest int, bucketName string) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Abort Upload):", curTest, globalTotalNumTest)
 	scanBar(message)
-	bucket := validBuckets[0]
 	validObject := multipartObjects[1] // This multipart has not been completed and will instead be aborted.
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	customAbortMultipartUploadReq, err := newAbortMultipartUploadReq(config, bucket.Name, validObject.Key, validObject.UploadID)
+	req, err := newAbortMultipartUploadReq(config, bucketName, validObject.Key, validObject.UploadID)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -118,7 +117,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := config.execRequest("DELETE", customAbortMultipartUploadReq)
+	res, err := config.execRequest("DELETE", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -136,4 +135,16 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+//
+func mainAbortMultipartUploadPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testAbortMultipartUpload(config, curTest, bucketName)
+}
+
+//
+func mainAbortMultipartUploadUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testAbortMultipartUpload(config, curTest, bucketName)
 }

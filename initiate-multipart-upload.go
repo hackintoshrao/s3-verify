@@ -115,77 +115,38 @@ func verifyHeaderInitiateMultipartUpload(header http.Header) error {
 	return nil
 }
 
-// mainInitiateMultipartUpload - Entry point for the initiate multipart upload test.
-func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
+// testInitiateMultipartUpload - initiate multipart upload test.
+func testInitiateMultipartUpload(config ServerConfig, curTest int, bucketName string) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Initiate-Upload):", curTest, globalTotalNumTest)
 	// Spin scanBar.
 	scanBar(message)
 	// Get the bucket to upload to and the objectName to call the new upload.
-	bucket := validBuckets[0]
-	multiUploadInitCh := make(chan multiUploadInitChannel, globalRequestPoolSize)
-	for i, object := range multipartObjects {
+	for _, object := range multipartObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, cur int) {
-			// Create a new InitiateMultiPartUpload request.
-			req, err := newInitiateMultipartUploadReq(config, bucket.Name, objectKey)
-			if err != nil {
-				multiUploadInitCh <- multiUploadInitChannel{
-					index:    cur,
-					err:      err,
-					uploadID: "",
-				}
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("POST", req)
-			if err != nil {
-				multiUploadInitCh <- multiUploadInitChannel{
-					index:    cur,
-					err:      err,
-					uploadID: "",
-				}
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response and get the uploadID.
-			uploadID, err := initiateMultipartUploadVerify(res, http.StatusOK)
-			if err != nil {
-				multiUploadInitCh <- multiUploadInitChannel{
-					index:    cur,
-					err:      err,
-					uploadID: "",
-				}
-				return
-			}
-			// Save the current initiate and uploadID.
-			multiUploadInitCh <- multiUploadInitChannel{
-				index:    cur,
-				err:      nil,
-				uploadID: uploadID,
-			}
-		}(object.Key, i)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(multipartObjects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		uploadInfo, ok := <-multiUploadInitCh
-		if !ok {
+		// Create a new InitiateMultiPartUpload request.
+		req, err := newInitiateMultipartUploadReq(config, bucketName, object.Key)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
-		// If the initiate failed exit.
-		if uploadInfo.err != nil {
-			printMessage(message, uploadInfo.err)
+		// Execute the request.
+		res, err := config.execRequest("POST", req)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
-		// Retrieve the specific uploadID that was started.
-		object := multipartObjects[uploadInfo.index]
+		defer closeResponse(res)
+		// Verify the response and get the uploadID.
+		uploadID, err := initiateMultipartUploadVerify(res, http.StatusOK)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
 		// Set the uploadId of the uploaded object.
-		object.UploadID = uploadInfo.uploadID
+		object.UploadID = uploadID
 		// Spin scanBar
 		scanBar(message)
 	}
@@ -194,4 +155,16 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainInitiateMultipartUploadPrepared - entry point for the iniatiate-multipart test if --prepare was used.
+func mainInitiateMultipartUploadPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testInitiateMultipartUpload(config, curTest, bucketName)
+}
+
+// mainInitiateMultipartUploadUnPrepared - entry point for the initiate-multipart test if --prepare was not used.
+func mainInitiateMultipartUploadUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testInitiateMultipartUpload(config, curTest, bucketName)
 }

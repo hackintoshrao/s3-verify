@@ -92,92 +92,55 @@ func verifyStatusRemoveObject(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// mainRemoveObjectExists - Entry point for the RemoveObject API test when object exists.
-func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
+// testRemoveObjectExists - RemoveObject API test when object exists.
+func testRemoveObjectExists(config ServerConfig, curTest int, testBuckets []BucketInfo, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
-	errCh := make(chan error, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	for _, bucket := range validBuckets {
-		for _, object := range objects {
+	for _, bucket := range testBuckets {
+		for _, object := range testObjects {
 			// Spin scanBar
 			scanBar(message)
-			go func(bucketName, objectKey string) {
-				// Create a new request.
-				req, err := newRemoveObjectReq(config, bucketName, objectKey)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				// Execute the request.
-				res, err := config.execRequest("DELETE", req)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				defer closeResponse(res)
-				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
-					errCh <- err
-					return
-				}
-				errCh <- nil
-			}(bucket.Name, object.Key)
-			// Spin scanBar
-			scanBar(message)
-
-		}
-		count := len(objects)
-		for count > 0 {
-			count--
-			err, ok := <-errCh
-			if !ok {
+			// Create a new request.
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				printMessage(message, err)
 				return false
 			}
+			// Execute the request.
+			res, err := config.execRequest("DELETE", req)
 			if err != nil {
+				printMessage(message, err)
+				return false
+			}
+			defer closeResponse(res)
+			// Verify the response.
+			if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 				printMessage(message, err)
 				return false
 			}
 			// Spin scanBar
 			scanBar(message)
+
 		}
 		for _, object := range copyObjects {
 			// Spin scanBar
 			scanBar(message)
-			go func(bucketName, objectKey string) {
-				// Create a new request.
-				req, err := newRemoveObjectReq(config, bucketName, objectKey)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				// Execute the request.
-				res, err := config.execRequest("DELETE", req)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				defer closeResponse(res)
-				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
-					errCh <- err
-					return
-				}
-				errCh <- nil
-			}(bucket.Name, object.Key)
-			// Spin scanBar
-			scanBar(message)
-		}
-		count = len(copyObjects)
-		for count > 0 {
-			count--
-			// Spin scanBar
-			scanBar(message)
-			err, ok := <-errCh
-			if !ok {
+			// Create a new request.
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				printMessage(message, err)
 				return false
 			}
+			// Execute the request.
+			res, err := config.execRequest("DELETE", req)
 			if err != nil {
+				printMessage(message, err)
+				return false
+			}
+			defer closeResponse(res)
+			// Verify the response.
+			if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 				printMessage(message, err)
 				return false
 			}
@@ -187,40 +150,21 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 		for _, object := range multipartObjects {
 			// Spin scanBar
 			scanBar(message)
-			go func(bucketName, objectKey string) {
-				// Create a new request.
-				req, err := newRemoveObjectReq(config, bucketName, objectKey)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				// Execute the request.
-				res, err := config.execRequest("DELETE", req)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				defer closeResponse(res)
-				// Verify the response.
-				if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
-					errCh <- err
-					return
-				}
-				errCh <- nil
-			}(bucket.Name, object.Key)
-			// Spin scanBar
-			scanBar(message)
-		}
-		count = len(multipartObjects)
-		for count > 0 {
-			count--
-			// Spin scanBar
-			scanBar(message)
-			err, ok := <-errCh
-			if !ok {
+			// Create a new request.
+			req, err := newRemoveObjectReq(config, bucket.Name, object.Key)
+			if err != nil {
+				printMessage(message, err)
 				return false
 			}
+			// Execute the request.
+			res, err := config.execRequest("DELETE", req)
 			if err != nil {
+				printMessage(message, err)
+				return false
+			}
+			defer closeResponse(res)
+			// Verify the response.
+			if err := removeObjectVerify(res, http.StatusNoContent); err != nil {
 				printMessage(message, err)
 				return false
 			}
@@ -233,4 +177,14 @@ func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainRemoveObjectExistsPrepared - entry point for the removeobject exists test if --prepare was used.
+func mainRemoveObjectExistsPrepared(config ServerConfig, curTest int) bool {
+	return testRemoveObjectExists(config, curTest, s3verifyBuckets, s3verifyObjects)
+}
+
+// mainRemoveObjectExistsUnPrepared - entry point for the removeobject exists test if --prepare was not used.
+func mainRemoveObjectExistsUnPrepared(config ServerConfig, curTest int) bool {
+	return testRemoveObjectExists(config, curTest, unpreparedBuckets, objects)
 }

@@ -23,7 +23,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 )
 
 // newListObjectsV1Req - Create a new HTTP request for ListObjects V1.
@@ -91,26 +90,9 @@ func verifyBodyListObjectsV1(resBody io.Reader, expectedList listBucketResult) e
 		err := fmt.Errorf("Unexpected Bucket Listed: wanted %v, got %v", expectedList.Name, receivedList.Name)
 		return err
 	}
-	listedObjects := 0
-	for _, receivedObject := range receivedList.Contents {
-		for _, expectedObject := range expectedList.Contents {
-			if receivedObject.Key == expectedObject.Key &&
-				receivedObject.Size == expectedObject.Size &&
-				receivedObject.ETag == "\""+expectedObject.ETag+"\"" {
-				listedObjects++
-			}
-		}
-	}
-	if expectedList.MaxKeys != 0 {
-		if expectedList.MaxKeys != int64(len(receivedList.Contents)+len(receivedList.CommonPrefixes)) {
-			err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", expectedList.MaxKeys, len(receivedList.Contents)+len(receivedList.CommonPrefixes))
-			return err
-		}
-	} else {
-		if len(objects) != listedObjects {
-			err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(objects), listedObjects)
-			return err
-		}
+	if len(receivedList.Contents) != len(expectedList.Contents) {
+		err := fmt.Errorf("Incorrect Number of Objects Listed: wanted %v, got %v", len(expectedList.Contents), len(receivedList.Contents))
+		return err
 	}
 	return nil
 }
@@ -123,18 +105,16 @@ func verifyHeaderListObjectsV1(header http.Header) error {
 	return nil
 }
 
-// mainListObjectsV1 - Entry point for the ListObjects V1 API test.
+// mainListObjectsV1 - ListObjects V1 API test. This test is the same for both --prepared and non --prepared environments.
 func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] ListObjects V1:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucketName := validBuckets[0].Name
+	bucketName := unpreparedBuckets[0].Name
 	objectInfo := ObjectInfos{}
 	for _, object := range objects {
 		objectInfo = append(objectInfo, *object)
 	}
-	// Order objects by their Key.
-	sort.Sort(objectInfo)
 	// Test for listobjects with no extra parameters.
 	expectedList := listBucketResult{
 		Name:     bucketName, // Listing from the first bucket created that houses all objects.
@@ -148,7 +128,7 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Test for listobjects with maxkeys parameter set.
 	expectedListMaxKeys := listBucketResult{
 		Name:     bucketName,
-		Contents: objectInfo[:31], // Only return the first 30 objects.
+		Contents: objectInfo[:30], // Only return the first 30 objects.
 		MaxKeys:  30,              // Only return the first 30 objects.
 	}
 	// Store the parameters to be set by the request.

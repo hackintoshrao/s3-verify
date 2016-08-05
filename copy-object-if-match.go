@@ -114,20 +114,16 @@ func verifyStatusCopyObjectIfMatch(respStatusCode, expectedStatusCode int) error
 }
 
 // Test the PUT Object Copy with If-Match header is set.
-func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
+func testCopyObjectIfMatch(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Match)", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create bad ETag.
 	badETag := "1234567890"
 
-	sourceBucketName := validBuckets[0].Name
-	destBucketName := validBuckets[1].Name
-	sourceObject := objects[0]
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key + "if-match",
 	}
-	copyObjects = append(copyObjects, destObject)
 	expectedError := ErrorResponse{
 		Code:    "PreconditionFailed",
 		Message: "At least one of the pre-conditions you specified did not hold",
@@ -171,6 +167,27 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 		printMessage(message, err)
 		return false
 	}
+	// Save the copied object.
+	copyObjects = append(copyObjects, destObject)
+	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainCopyObjectIfMatchPrepared - entry point for the CopyObject with if-match header and --prepare used.
+func mainCopyObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
+	return testCopyObjectIfMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
+}
+
+// mainCopyObjectIfMatchUnPrepared - entry point for the CopyObject with if-match header and --prepare not used.
+func mainCopyObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
+	sourceBucketName := unpreparedBuckets[0].Name
+	destBucketName := unpreparedBuckets[1].Name
+	sourceObject := objects[0]
+
+	return testCopyObjectIfMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

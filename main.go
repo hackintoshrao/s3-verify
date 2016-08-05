@@ -73,7 +73,7 @@ func registerApp() *cli.App {
 	app := cli.NewApp()
 	app.Usage = "Test for Amazon S3 v4 API compatibility."
 	app.Author = "Minio.io"
-	//app.Name = "s3verify"
+	app.Name = "s3verify"
 	app.Flags = append(s3verifyFlags, globalFlags...)
 	app.CustomAppHelpTemplate = s3verifyHelpTemplate // Custom help template defined above.
 	app.CommandNotFound = commandNotFound            // Custom commandNotFound function defined above.
@@ -81,33 +81,79 @@ func registerApp() *cli.App {
 	return app
 }
 
+// makeConfigFromCtx - parse the passed context to create a new config.
+func makeConfigFromCtx(ctx *cli.Context) (*ServerConfig, error) {
+	if ctx.GlobalString("access") != "" &&
+		ctx.GlobalString("secret") != "" &&
+		ctx.GlobalString("url") != "" {
+		config := newServerConfig(ctx)
+		return config, nil
+	}
+	// If config cannot be created successfully show help and exit immediately.
+	return nil, fmt.Errorf("Unable to create config.")
+}
+
 // callAllAPIS parse context extract flags and then call all.
 func callAllAPIs(ctx *cli.Context) {
-	if ctx.GlobalString("access") != "" && ctx.GlobalString("secret") != "" && ctx.GlobalString("url") != "" { // Necessary variables passed, run all tests.
-		// Test that the given endpoint is reachable with a simple GET request.
-		config := newServerConfig(ctx)
-		if err := verifyHostReachable(config.Endpoint, config.Region); err != nil { // If the provided endpoint is unreachable error out instantly.
+	// Create a new config from the context.
+	config, err := makeConfigFromCtx(ctx)
+	if err != nil {
+		// Could not create a config. Exit immediately.
+		cli.ShowAppHelpAndExit(ctx, 1)
+	}
+	// Test that the given endpoint is reachable with a simple GET request.
+	if err := verifyHostReachable(config.Endpoint, config.Region); err != nil { // If the provided endpoint is unreachable error out instantly.
+		console.Fatalln(err)
+	}
+	if ctx.GlobalBool("prepare") {
+		// Create a prepared testing environment with 2 buckets and 1001 objects and 1001 object parts.
+		bucketNames, err := mainPrepareS3Verify(*config)
+		if err != nil {
 			console.Fatalln(err)
 		}
+		console.Printf("Please run 's3verify -a [YOUR_ACCESS_KEY] -s [YOUR_SECRET_KEY] -u [HOST_URL] [FLAGS...] %s %s'\n", bucketNames[0], bucketNames[1])
+	} else if ctx.GlobalString("clean") != "" {
+		if err := cleanObjects(*config, ctx.GlobalString("clean")); err != nil {
+			console.Fatalln(err)
+		}
+		if err := cleanBucket(*config, ctx.GlobalString("clean")); err != nil {
+			console.Fatalln(err)
+		}
+	} else if len(ctx.Args()) == 2 {
+		console.Printf("s3verify attempting to test AWS signv4 compatability using %s and %s...\n", ctx.Args()[0], ctx.Args()[1])
+		// Validate the passed names as valid bucket names and store their objects in the global objects array.
+		for _, bucketName := range ctx.Args() {
+			validateBucket(*config, bucketName)
+		}
 		testCount := 1
-		for _, test := range apiTests {
-			if test.Extended { // By definition an extended test cannot be critical.
-				if ctx.GlobalBool("extended") { // Only run extended tests if explicitly invoked by user.
+		for _, test := range preparedTests { // Run all tests that have been set up.
+			if test.Extended {
+				if ctx.GlobalBool("extended") {
 					test.Test(*config, testCount)
 					testCount++
 				}
 			} else {
-				if !test.Test(*config, testCount) {
-					if test.Critical { // Error out immediately for critical tests.
-						os.Exit(1)
-					}
+				if !test.Test(*config, testCount) && test.Critical {
+					os.Exit(1)
 				}
 				testCount++
 			}
-
 		}
 	} else {
-		cli.ShowAppHelp(ctx)
+		// If the user does not use --prepare flag then just run all non preparedTests.
+		testCount := 1
+		for _, test := range unpreparedTests {
+			if test.Extended {
+				if ctx.GlobalBool("extended") {
+					test.Test(*config, testCount)
+				}
+			} else {
+				if !test.Test(*config, testCount) && test.Critical {
+					os.Exit(1)
+				}
+				testCount++
+			}
+		}
 	}
 }
 

@@ -102,15 +102,14 @@ func verifyHeaderCompleteMultipartUpload(header http.Header) error {
 	return nil
 }
 
-// mainCompleteMultipartUpload - Entry point for the Complete Multipart Upload API test.
-func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
+// testCompleteMultipartUpload - Complete Multipart Upload API test.
+func testCompleteMultipartUpload(config ServerConfig, curTest int, bucketName string) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Complete-Upload):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a new completeMultipartUpload request.
-	customCompleteMultipartUploadReq, err := newCompleteMultipartUploadReq(config, bucket.Name, object.Key, object.UploadID, complMultipartUploads[0])
+	req, err := newCompleteMultipartUploadReq(config, bucketName, object.Key, object.UploadID, complMultipartUploads[0])
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -118,7 +117,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Execute the request.
-	res, err := config.execRequest("POST", customCompleteMultipartUploadReq)
+	res, err := config.execRequest("POST", req)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -135,4 +134,16 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	printMessage(message, nil)
 	return true
+}
+
+//
+func mainCompleteMultipartUploadPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testCompleteMultipartUpload(config, curTest, bucketName)
+}
+
+//
+func mainCompleteMultipartUploadUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testCompleteMultipartUpload(config, curTest, bucketName)
 }

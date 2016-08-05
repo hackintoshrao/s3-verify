@@ -51,62 +51,54 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 }
 
 // Test a GET object request with a range header set.
-func mainGetObjectRange(config ServerConfig, curTest int) bool {
+func testGetObjectRange(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (Range):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucket := validBuckets[0]
-	errCh := make(chan error, globalTotalNumTest)
 	rand.Seed(time.Now().UnixNano())
-	for _, object := range objects {
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, objectSize int64, objectBody []byte) {
-			startRange := rand.Int63n(objectSize)
-			endRange := rand.Int63n(int64(objectSize-startRange)) + startRange
-			// Create new GET object range request...testing range.
-			req, err := newGetObjectRangeReq(config, bucket.Name, objectKey, startRange, endRange)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			bufRange := objectBody[startRange : endRange+1]
-			// Verify the response...these checks do not check the headers yet.
-			if err := getObjectVerify(res, bufRange, http.StatusPartialContent); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.Size, object.Body)
-		// Spin scanBar
-		scanBar(message)
-
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		err, ok := <-errCh
-		if !ok {
+		startRange := rand.Int63n(object.Size)
+		endRange := rand.Int63n(int64(object.Size-startRange)) + startRange
+		// Create new GET object range request...testing range.
+		req, err := newGetObjectRangeReq(config, bucketName, object.Key, startRange, endRange)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
+		// Execute the request.
+		res, err := config.execRequest("GET", req)
 		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		bufRange := object.Body[startRange : endRange+1]
+		// Verify the response...these checks do not check the headers yet.
+		if err := getObjectVerify(res, bufRange, http.StatusPartialContent); err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
+
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectRangePrepared - entry point for the GetObject with range header set and --prepare used.
+func mainGetObjectRangePrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObjectRange(config, curTest, bucketName, s3verifyObjects)
+}
+
+//
+func mainGetObjectRangeUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObjectRange(config, curTest, bucketName, objects)
 }

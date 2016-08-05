@@ -94,11 +94,9 @@ func verifyHeaderHeadObjectIfModifiedSince(header http.Header) error {
 	return nil
 }
 
-// mainHeadObjectIfModifiedSince - Entry point for the HEAD object with if-modified-since header set.
-func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
+// testHeadObjectIfModifiedSince - test the HeadObject with the If-Modified-Since.
+func testHeadObjectIfModifiedSince(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Modified-Since):", curTest, globalTotalNumTest)
-	bucket := validBuckets[0]
-	object := objects[0]
 	lastModified, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
 		printMessage(message, err)
@@ -107,7 +105,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newHeadObjectIfModifiedSinceReq(config, bucket.Name, object.Key, lastModified)
+	req, err := newHeadObjectIfModifiedSinceReq(config, bucketName, object.Key, lastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -131,7 +129,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
-	badReq, err := newHeadObjectIfModifiedSinceReq(config, bucket.Name, object.Key, object.LastModified.Add(time.Hour*2))
+	badReq, err := newHeadObjectIfModifiedSinceReq(config, bucketName, object.Key, object.LastModified.Add(time.Hour*2))
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -155,4 +153,18 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	printMessage(message, nil)
 	return true
+}
+
+// mainHeadObjectIfModifiedSince - Entry point for the HEAD object with if-modified-since header set. if --prepare was not used.
+func mainHeadObjectIfModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	object := objects[0]
+	return testHeadObjectIfModifiedSince(config, curTest, bucketName, object)
+}
+
+// mainHeadObjectIfModifiedSincePrepared - Entry point for the HEAD object with if-modified-since header set. if --prepare was used.
+func mainHeadObjectIfModifiedSincePrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
+	return testHeadObjectIfModifiedSince(config, curTest, bucketName, object)
 }

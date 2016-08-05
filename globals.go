@@ -71,14 +71,17 @@ func setGlobals(verbose bool, numTests int) {
 func setGlobalsFromContext(ctx *cli.Context) error {
 	verbose := ctx.Bool("verbose") || ctx.GlobalBool("verbose")
 	numTests := 0
-	for _, test := range apiTests {
-		if !test.Extended {
-			numTests++
+	if ctx.Bool("extended") || ctx.GlobalBool("extended") {
+		numTests = len(unpreparedTests)
+	} else {
+		// The length of unpreparedTests == preparedTests.
+		for _, test := range unpreparedTests {
+			if !test.Extended {
+				numTests++
+			}
 		}
 	}
-	if ctx.Bool("extended") || ctx.GlobalBool("extended") {
-		numTests = len(apiTests)
-	}
 	setGlobals(verbose, numTests)
+
 	return nil
 }

@@ -95,7 +95,7 @@ func verifyHeaderGetObjectIfModifiedSince(header http.Header) error {
 }
 
 // Test the compatibility of the GET object API when using the If-Modified-Since header.
-func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
+func testGetObjectIfModifiedSince(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	// Set a date in the past.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
@@ -105,70 +105,61 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
-	errCh := make(chan error, globalTotalNumTest)
-	bucket := validBuckets[0]
-	for _, object := range objects {
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, objectLastModified time.Time, objectBody []byte) {
-			// Create new GET object request.
-			req, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, objectKey, objectLastModified)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Perform the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response...these checks do not check the headers yet.
-			if err := verifyGetObjectIfModifiedSince(res, []byte(""), http.StatusNotModified); err != nil {
-				errCh <- err
-				return
-			}
-			// Create an acceptable request.
-			goodReq, err := newGetObjectIfModifiedSinceReq(config, bucket.Name, objectKey, pastDate)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the response that should give back a body.
-			goodRes, err := config.execRequest("GET", goodReq)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(goodRes)
-			// Verify that the past date gives back the data.
-			if err := verifyGetObjectIfModifiedSince(goodRes, objectBody, http.StatusOK); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.LastModified, object.Body)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		err, ok := <-errCh
-		if !ok {
-			return false
-		}
+		// Create new GET object request.
+		req, err := newGetObjectIfModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
 		if err != nil {
 			printMessage(message, err)
 			return false
 		}
-		// Spin scanBar
-		scanBar(message)
+		// Perform the request.
+		res, err := config.execRequest("GET", req)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify the response...these checks do not check the headers yet.
+		if err := verifyGetObjectIfModifiedSince(res, []byte(""), http.StatusNotModified); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Create an acceptable request.
+		goodReq, err := newGetObjectIfModifiedSinceReq(config, bucketName, object.Key, pastDate)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Execute the response that should give back a body.
+		goodRes, err := config.execRequest("GET", goodReq)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(goodRes)
+		// Verify that the past date gives back the data.
+		if err := verifyGetObjectIfModifiedSince(goodRes, object.Body, http.StatusOK); err != nil {
+			printMessage(message, err)
+			return false
+		}
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectIfModifiedSincePrepared - Entry point for the GetObject with if-modified-since header set if --prepare was used.
+func mainGetObjectIfModifiedSincePrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObjectIfModifiedSince(config, curTest, bucketName, s3verifyObjects)
+}
+
+// mainGetObjectIfModifiedSinceUnPrepared - Entry point for the GetObject with if-modified-since header set if --prepare wasn't used.
+func mainGetObjectIfModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObjectIfModifiedSince(config, curTest, bucketName, objects)
 }

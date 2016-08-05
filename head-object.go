@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -97,88 +96,64 @@ func verifyHeaderHeadObject(header http.Header) error {
 	return nil
 }
 
-// mainHeadObject - Entry point for the HeadObject API test with no header set.
-func mainHeadObject(config ServerConfig, curTest int) bool {
+// testHeadObject - test the HeadObject API with no header set.
+func testHeadObject(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject:", curTest, globalTotalNumTest)
-	// Spin scanBar
-	scanBar(message)
-	bucket := validBuckets[0]
-	objInfoCh := make(chan objectInfoChannel, globalRequestPoolSize)
-	for i, object := range objects {
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey string, cur int) {
-			// Create a new HEAD object with no headers.
-			req, err := newHeadObjectReq(config, bucket.Name, objectKey)
-			if err != nil {
-				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
-				return
-			}
-			// execute the request.
-			res, err := config.execRequest("HEAD", req)
-			if err != nil {
-				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response.
-			if err := headObjectVerify(res, http.StatusOK); err != nil {
-				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
-				return
-			}
-			// If the verification is valid then set the ETag, Size, and LastModified.
-			// Remove the odd double quotes from ETag in the beginning and end.
-			eTag := strings.TrimPrefix(res.Header.Get("ETag"), "\"")
-			eTag = strings.TrimSuffix(eTag, "\"")
-			date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
-			if err != nil {
-				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
-				return
-			}
-			size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
-			if err != nil {
-				objInfoCh <- objectInfoChannel{objInfo: ObjectInfo{}, index: cur, err: err}
-				return
-			}
-			objInfoCh <- objectInfoChannel{ // Send back the valid data through the channel to be set.
-				objInfo: ObjectInfo{
-					Key:          objectKey,
-					Size:         size,
-					ETag:         eTag,
-					LastModified: date,
-				},
-				index: cur,
-				err:   nil,
-			}
-		}(object.Key, i)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		objInfoErr, ok := <-objInfoCh
-		if !ok {
+		// Create a new HEAD object with no headers.
+		req, err := newHeadObjectReq(config, bucketName, object.Key)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
-		if objInfoErr.err != nil {
-			printMessage(message, objInfoErr.err)
+		// Execute the request.
+		res, err := config.execRequest("HEAD", req)
+		if err != nil {
+			printMessage(message, err)
 			return false
 		}
-		// Retrieve the object returned by the specific goroutine.
-		object := objects[objInfoErr.index]
-		// Set the objects metadata if the test did not fail.
-		object.Size = objInfoErr.objInfo.Size
-		object.ETag = objInfoErr.objInfo.ETag
-		object.LastModified = objInfoErr.objInfo.LastModified
-		// Spin scanBar
-		scanBar(message)
+		defer closeResponse(res)
+		// Verify the response.
+		if err := headObjectVerify(res, http.StatusOK); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// If the verification is valid then set the ETag, Size, and LastModified.
+		// Remove the odd double quotes from ETag in the beginning and end.
+		eTag := canonicalizeETag(res.Header.Get("ETag"))
+		date, err := time.Parse(http.TimeFormat, res.Header.Get("Last-Modified")) // This will never error out because it has already been verified.
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		object.Size = size
+		object.ETag = eTag
+		object.LastModified = date
 	}
 	// Spin scanBar
 	scanBar(message)
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainHeadObjectPrepared - entry point for HeadObject test with --prepare used.
+func mainHeadObjectPrepared(config ServerConfig, curTest int) bool {
+	// Run on s3verify created buckets.
+	bucketName := s3verifyBuckets[0].Name
+	return testHeadObject(config, curTest, bucketName, s3verifyObjects)
+}
+
+// mainHeadObjectUnPrepared - entry point for HeadObject test without --prepare used.
+func mainHeadObjectUnPrepared(config ServerConfig, curTest int) bool {
+	// Needs to only run on s3verify created objects.
+	bucketName := unpreparedBuckets[0].Name
+	return testHeadObject(config, curTest, bucketName, objects)
 }

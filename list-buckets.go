@@ -128,7 +128,7 @@ func verifyBodyListBuckets(resBody io.Reader, expected *listAllMyBucketsResult) 
 }
 
 // Test the ListBuckets API with no added parameters.
-func mainListBucketsExist(config ServerConfig, curTest int) bool {
+func testListBuckets(config ServerConfig, curTest int, testBuckets []BucketInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] ListBuckets:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
@@ -138,7 +138,7 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 			ID:          "",
 		},
 		Buckets: buckets{
-			Bucket: validBuckets,
+			Bucket: testBuckets,
 		},
 	}
 
@@ -169,4 +169,14 @@ func mainListBucketsExist(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	printMessage(message, err)
 	return true
+}
+
+// mainListBucketsPrepared - Test the listbuckets API if --prepare was used.
+func mainListBucketsPrepared(config ServerConfig, curTest int) bool {
+	return testListBuckets(config, curTest, s3verifyBuckets)
+}
+
+// mainListBucketsUnPrepared - Test the listbuckets API if --prepare was not used.
+func mainListBucketsUnPrepared(config ServerConfig, curTest int) bool {
+	return testListBuckets(config, curTest, unpreparedBuckets)
 }

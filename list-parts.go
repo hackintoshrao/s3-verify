@@ -108,22 +108,21 @@ func verifyHeaderListParts(header http.Header) error {
 	return nil
 }
 
-// mainListParts - Entry point for the ListParts API test.
-func mainListParts(config ServerConfig, curTest int) bool {
+// testListParts - Entry point for the ListParts API test.
+func testListParts(config ServerConfig, curTest int, bucketName string) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (List-Parts):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucket := validBuckets[0]
 	object := multipartObjects[0]
 	// Create a handcrafted ListObjectsPartsResult
 	expectedList := listObjectPartsResult{
-		Bucket:      bucket.Name,
+		Bucket:      bucketName,
 		Key:         object.Key,
 		UploadID:    object.UploadID,
 		ObjectParts: objectParts,
 	}
 	// Create a new ListParts request.
-	req, err := newListPartsReq(config, bucket.Name, object.Key, object.UploadID)
+	req, err := newListPartsReq(config, bucketName, object.Key, object.UploadID)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -149,4 +148,16 @@ func mainListParts(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, err)
 	return true
+}
+
+//
+func mainListPartsPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testListParts(config, curTest, bucketName)
+}
+
+//
+func mainListPartsUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testListParts(config, curTest, bucketName)
 }

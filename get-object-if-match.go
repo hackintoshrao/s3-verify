@@ -109,80 +109,74 @@ func verifyStatusGetObjectIfMatch(respStatusCode, expectedStatusCode int) error 
 }
 
 // Test the compatibility of the GET object API when using the If-Match header.
-func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
+func testGetObjectIfMatch(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Match):", curTest, globalTotalNumTest)
-	// Run the test on every object in every bucket.
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-	errCh := make(chan error, globalTotalNumTest)
-	bucket := validBuckets[0]
-	// Spin scanBar
-	scanBar(message)
-	for _, object := range objects {
-		// Test with If-Match Header set.
+	for _, object := range testObjects {
 		// Spin scanBar
 		scanBar(message)
-		go func(objectKey, objectETag string, objectBody []byte) {
-			// Create new GET object If-Match request.
-			req, err := newGetObjectIfMatchReq(config, bucket.Name, objectKey, objectETag)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			res, err := config.execRequest("GET", req)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(res)
-			// Verify the response...these checks do not check the headers yet.
-			if err := getObjectIfMatchVerify(res, objectBody, http.StatusOK, false); err != nil {
-				errCh <- err
-				return
-			}
-			// Create a bad GET object If-Match request.
-			badReq, err := newGetObjectIfMatchReq(config, bucket.Name, objectKey, invalidETag)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			// Execute the request.
-			badRes, err := config.execRequest("GET", badReq)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer closeResponse(badRes)
-			// Verify the request fails as expected.
-			if err := getObjectIfMatchVerify(badRes, []byte(""), http.StatusPreconditionFailed, true); err != nil {
-				errCh <- err
-				return
-			}
-			errCh <- nil
-		}(object.Key, object.ETag, object.Body)
-		// Spin scanBar
-		scanBar(message)
-	}
-	count := len(objects)
-	for count > 0 {
-		count--
-		// Spin scanBar
-		scanBar(message)
-		err, ok := <-errCh
-		if !ok {
-			return false
-		}
+		// Create new GET object If-Match request.
+		req, err := newGetObjectIfMatchReq(config, bucketName, object.Key, object.ETag)
 		if err != nil {
 			printMessage(message, err)
 			return false
 		}
 		// Spin scanBar
 		scanBar(message)
+		// Execute the request.
+		res, err := config.execRequest("GET", req)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		defer closeResponse(res)
+		// Verify the response...these checks do not check the headers yet.
+		if err := getObjectIfMatchVerify(res, object.Body, http.StatusOK, false); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Create a bad GET object If-Match request.
+		badReq, err := newGetObjectIfMatchReq(config, bucketName, object.Key, invalidETag)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		// Execute the request.
+		badRes, err := config.execRequest("GET", badReq)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Spin scanBar
+		scanBar(message)
+		defer closeResponse(badRes)
+		// Verify the request fails as expected.
+		if err := getObjectIfMatchVerify(badRes, []byte(""), http.StatusPreconditionFailed, true); err != nil {
+			printMessage(message, err)
+			return false
+		}
 	}
 	// Spin scanBar
 	scanBar(message)
-	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+// mainGetObjectIfMatchPrepared - Entry point for the GetObject test with if-match header if --prepare was used.
+func mainGetObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return testGetObjectIfMatch(config, curTest, bucketName, s3verifyObjects)
+}
+
+// mainGetObjectIfMatchUnPrepared - Entry point for the GetObject test with if-match header if --prepare not used.
+func mainGetObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := unpreparedBuckets[0].Name
+	return testGetObjectIfMatch(config, curTest, bucketName, objects)
 }
