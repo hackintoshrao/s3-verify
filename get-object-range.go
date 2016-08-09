@@ -76,7 +76,7 @@ func testGetObjectRange(config ServerConfig, curTest int, bucketName string, tes
 		defer closeResponse(res)
 		bufRange := object.Body[startRange : endRange+1]
 		// Verify the response...these checks do not check the headers yet.
-		if err := getObjectVerify(res, bufRange, http.StatusPartialContent); err != nil {
+		if err := getObjectVerify(res, bufRange, http.StatusPartialContent, nil); err != nil {
 			printMessage(message, err)
 			return false
 		}
