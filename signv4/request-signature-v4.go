@@ -204,9 +204,9 @@ func getStringToSignV4(t time.Time, location, canonicalRequest string) string {
 	return stringToSign
 }
 
-// preSignV4 presign the request, in accordance with
+// PreSignV4 presign the request, in accordance with
 // http://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html.
-func preSignV4(req http.Request, accessKeyID, secretAccessKey, location string, expires int64) *http.Request {
+func PreSignV4(req http.Request, accessKeyID, secretAccessKey, location string, expires int64) *http.Request {
 	// Presign is not needed for anonymous credentials.
 	if accessKeyID == "" || secretAccessKey == "" {
 		return &req

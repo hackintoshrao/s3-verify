@@ -53,6 +53,11 @@ var preparedTests = []APItest{
 		Extended: false, // PutObject is not an extended API.
 		Critical: false, // Because --prepared has been used this object is not necessary for future tests.
 	},
+	APItest{
+		Test:     mainPresignedPutObjectPrepared,
+		Extended: false, // PutObject presigned is not an extended API.
+		Critical: false, // This object is not needed for future tests.
+	},
 
 	// Tests for ListBuckets API.
 	APItest{
@@ -173,6 +178,12 @@ var preparedTests = []APItest{
 		Critical: false, // This test does not affect future tests.
 	},
 	APItest{
+		Test:     mainGetObjectPresignedPrepared,
+		Extended: false, // GetObject Presigned is not an extended API.
+		Critical: false, // This test does not affect future tests.
+	},
+
+	APItest{
 		Test:     mainGetObjectIfModifiedSincePrepared,
 		Extended: true,  // GetObject with if-modified-since header is an extended API.
 		Critical: false, // This test does not affect future tests.
@@ -236,7 +247,12 @@ var unpreparedTests = []APItest{
 	APItest{
 		Test:     mainPutObjectUnPrepared,
 		Extended: false, // PutObject is not an extended API.
-		Critical: false, // Because --UnPrepared has been used this object is not necessary for future tests.
+		Critical: true,  // These objects are necessary for future tests.
+	},
+	APItest{
+		Test:     mainPresignedPutObjectUnPrepared,
+		Extended: false, // PutObject presigned is not an extended API.
+		Critical: false, // This test is not neccessay for future tests.
 	},
 
 	// Tests for ListBuckets API.
@@ -355,6 +371,11 @@ var unpreparedTests = []APItest{
 	APItest{
 		Test:     mainGetObjectUnPrepared,
 		Extended: false, // GetObject is not an extended API.
+		Critical: false, // This test does not affect future tests.
+	},
+	APItest{
+		Test:     mainGetObjectPresignedUnPrepared,
+		Extended: false, // GetObject Presigned is not an extended API.
 		Critical: false, // This test does not affect future tests.
 	},
 	APItest{

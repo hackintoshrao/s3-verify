@@ -31,10 +31,11 @@ import (
 // rather than an io.ReadCloser for the body to reduce the number of type
 // conversions that must happen for retry to function properly.
 type Request struct {
+	presignURL bool  // Indicates whether or not this will be a presigned http.Request.
+	expires    int64 // Describes for how long the presigned URL will be valid for.
+
 	customHeader http.Header
 	contentBody  io.Reader
-
-	endpoint string
 
 	bucketName  string
 	objectName  string
@@ -150,7 +151,13 @@ func (c ServerConfig) newRequest(method string, customReq Request) (req *http.Re
 	}
 
 	// Sign the request.
-	req = signv4.SignV4(*req, c.Access, c.Secret, c.Region)
+	if customReq.presignURL {
+		// Presign the request.
+		req = signv4.PreSignV4(*req, c.Access, c.Secret, c.Region, customReq.expires)
+	} else {
+		// Else use regular signature v4.
+		req = signv4.SignV4(*req, c.Access, c.Secret, c.Region)
+	}
 
 	return req, nil
 }

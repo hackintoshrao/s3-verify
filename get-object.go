@@ -66,7 +66,7 @@ func getObjectVerify(res *http.Response, expectedBody []byte, expectedStatusCode
 }
 
 // verifyHeaderGetObject - Verify that the header returned matches what is expected.
-func verifyHeaderGetObject(header map[string][]string) error {
+func verifyHeaderGetObject(header http.Header) error {
 	if err := verifyStandardHeaders(header); err != nil {
 		return err
 	}
