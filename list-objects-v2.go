@@ -23,10 +23,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 )
 
 // newListObjectsV2Req - Create a new HTTP request for ListObjects V2 API.
-func newListObjectsV2Req(config ServerConfig, bucketName string) (Request, error) {
+func newListObjectsV2Req(config ServerConfig, bucketName string, requestParameters map[string]string) (Request, error) {
 	// listObjectsV2Req - a new HTTP request for ListObjects V2 API.
 	var listObjectsV2Req = Request{
 		customHeader: http.Header{},
@@ -38,6 +39,10 @@ func newListObjectsV2Req(config ServerConfig, bucketName string) (Request, error
 	// Set URL query values.
 	urlValues := make(url.Values)
 	urlValues.Set("list-type", "2")
+	for k, v := range requestParameters {
+		urlValues.Set(k, v)
+	}
+
 	listObjectsV2Req.queryValues = urlValues
 
 	// No body is sent with GET requests.
@@ -95,7 +100,9 @@ func verifyBodyListObjectsV2(resBody io.Reader, expectedList listBucketV2Result)
 		return err
 	}
 	if len(receivedList.Contents)+len(receivedList.CommonPrefixes) != len(expectedList.Contents)+len(expectedList.CommonPrefixes) {
-		err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d, got %d", len(expectedList.Contents)+len(expectedList.CommonPrefixes), len(receivedList.CommonPrefixes)+len(receivedList.Contents))
+		err := fmt.Errorf("Unexpected Number of Objects Listed: wanted %d objects and %d prefixes, got %d objects and %d prefixes",
+			len(expectedList.Contents), len(expectedList.CommonPrefixes),
+			len(receivedList.Contents), len(receivedList.CommonPrefixes))
 		return err
 	}
 	return nil
@@ -107,17 +114,18 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	bucketName := unpreparedBuckets[0].Name
-	objectInfo := []ObjectInfo{}
+	objectInfo := ObjectInfos{}
 	for _, object := range objects {
 		objectInfo = append(objectInfo, *object)
 	}
+	sort.Sort(objectInfo)
 
 	expectedList := listBucketV2Result{
 		Name:     bucketName, // List only from the first bucket created because that is the bucket holding the objects.
 		Contents: objectInfo,
 	}
 	// Create a new request.
-	req, err := newListObjectsV2Req(config, bucketName)
+	req, err := newListObjectsV2Req(config, bucketName, nil)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -138,6 +146,146 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
+
+	// Test for listobjects with start-after parameter set.
+	expectedListStartAfter := listBucketV2Result{
+		Name:     bucketName,
+		Contents: objectInfo[31:],
+	}
+
+	// Store the parameters.
+	startAfterMap := map[string]string{
+		"start-after": objectInfo[30].Key,
+	}
+
+	// Create a new request.
+	startAfterReq, err := newListObjectsV2Req(config, bucketName, startAfterMap)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Execute request.
+	startAfterRes, err := config.execRequest("GET", startAfterReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(startAfterRes)
+	// Verify the response
+	if err := listObjectsV2Verify(startAfterRes, http.StatusOK, expectedListStartAfter); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
+	// Test for listobjects with maxkeys parameter set.
+	expectedListMaxKeys := listBucketV2Result{
+		Name:     bucketName,
+		Contents: objectInfo[:30], // Only return the first 30 objects.
+		MaxKeys:  30,              // Only return the first 30 objects.
+	}
+	// Store the parameters to be set by the request.
+	maxKeysMap := map[string]string{
+		"max-keys": "30", // 30 objects.
+	}
+	// Create a new request with max-keys set to 30.
+	maxKeysReq, err := newListObjectsV2Req(config, bucketName, maxKeysMap) // MaxKeys set to 30.
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	maxKeysRes, err := config.execRequest("GET", maxKeysReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(maxKeysRes)
+	// Spin scanBar
+	scanBar(message)
+	// Verify the max-keys parameter is respected.
+	if err := listObjectsV2Verify(maxKeysRes, http.StatusOK, expectedListMaxKeys); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
+	// Test for listobjects with prefix parameter set.
+	expectedListPrefix := listBucketV2Result{
+		Name: bucketName,
+		// Should only return objects that were put during the put-object test.
+		Contents: objectInfo[1:],
+		Prefix:   "s3verify/put/object/",
+	}
+	// Store the parameters.
+	prefixMap := map[string]string{
+		"prefix": "s3verify/put/object/",
+	}
+
+	prefixReq, err := newListObjectsV2Req(config, bucketName, prefixMap)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	prefixRes, err := config.execRequest("GET", prefixReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(prefixRes)
+	// Verify the prefix parameter is respected.
+	if err := listObjectsV2Verify(prefixRes, http.StatusOK, expectedListPrefix); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
+	// Test for listobjects with delimiter parameter and prefix parameter set.
+	expectedListDelimiterPrefix := listBucketV2Result{
+		Name:     bucketName,
+		Contents: []ObjectInfo{},
+		// Should return all objects.
+		CommonPrefixes: []commonPrefix{commonPrefix{"s3verify/put/object/"}},
+		Prefix:         "s3verify/put/",
+		Delimiter:      "/",
+	}
+
+	// Store the parameters.
+	prefixDelimiterMap := map[string]string{
+		"delimiter": "/",
+		"prefix":    "s3verify/put/",
+	}
+
+	prefixDelimiterReq, err := newListObjectsV2Req(config, bucketName, prefixDelimiterMap)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	prefixDelimRes, err := config.execRequest("GET", prefixDelimiterReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(prefixDelimRes)
+	// Verify that delimiter and prefix parameters are respected.
+	if err := listObjectsV2Verify(prefixDelimRes, http.StatusOK, expectedListDelimiterPrefix); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
 	// Test passed.
 	printMessage(message, nil)
 	return true

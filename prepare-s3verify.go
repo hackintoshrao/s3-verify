@@ -62,7 +62,7 @@ func prepareObjects(client *minio.Client, bucketName string) error {
 		// Spin scanBar
 		scanBar(message)
 		randomData := randString(60, rand.NewSource(time.Now().UnixNano()), "")
-		objectKey := "s3verify-object-" + strconv.Itoa(i)
+		objectKey := "s3verify/put/object/" + strconv.Itoa(i)
 		// Create 60 bytes worth of random data for each object.
 		reader := bytes.NewReader([]byte(randomData))
 		_, err := client.PutObject(bucketName, objectKey, reader, "application/octet-stream")

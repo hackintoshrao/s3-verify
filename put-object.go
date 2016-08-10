@@ -171,7 +171,7 @@ func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		object := &ObjectInfo{}
-		object.Key = "s3verify-object-" + strconv.Itoa(i)
+		object.Key = "s3verify/put/object/" + strconv.Itoa(i)
 		// Create 60 bytes worth of random data for each object.
 		body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
 		object.Body = []byte(body)

@@ -119,7 +119,7 @@ func testPresignedPutObject(config ServerConfig, curTest int, bucketName, object
 	// Attempt to use the presignedURL to upload an object.
 	presignedObject := &ObjectInfo{
 		Key:  objectName,
-		Body: []byte(randString(60, rand.NewSource(time.Now().UnixNano()), "")),
+		Body: []byte(randString(60, rand.NewSource(time.Now().UnixNano()), "a")),
 	}
 	reader := bytes.NewReader(presignedObject.Body)
 
@@ -160,13 +160,15 @@ func testPresignedPutObject(config ServerConfig, curTest int, bucketName, object
 // mainPresignedPutObjectPrepared - entry point for the test of presigned PUT object if --prepare was used.
 func mainPresignedPutObjectPrepared(config ServerConfig, curTest int) bool {
 	bucketName := s3verifyBuckets[0].Name
-	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify")
+	// Prefix this object differently to allow ListObjects to function easier.
+	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-a")
 	return testPresignedPutObject(config, curTest, bucketName, objectName, &s3verifyObjects)
 }
 
 // mainPresignedPutObjectUnPrepared - entry point for the test of presigned PUT object if --prepare was not used.
 func mainPresignedPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 	bucketName := unpreparedBuckets[0].Name
-	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify")
+	// Prefix this object differently to allow ListObjects to function easier.
+	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-a")
 	return testPresignedPutObject(config, curTest, bucketName, objectName, &objects)
 }

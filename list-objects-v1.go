@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 )
 
 // newListObjectsV1Req - Create a new HTTP request for ListObjects V1.
@@ -90,8 +91,10 @@ func verifyBodyListObjectsV1(resBody io.Reader, expectedList listBucketResult) e
 		err := fmt.Errorf("Unexpected Bucket Listed: wanted %v, got %v", expectedList.Name, receivedList.Name)
 		return err
 	}
-	if len(receivedList.Contents) != len(expectedList.Contents) {
-		err := fmt.Errorf("Incorrect Number of Objects Listed: wanted %v, got %v", len(expectedList.Contents), len(receivedList.Contents))
+	if len(receivedList.Contents)+len(receivedList.CommonPrefixes) != len(expectedList.Contents)+len(expectedList.CommonPrefixes) {
+		err := fmt.Errorf("Incorrect Number of Objects Listed: wanted %d objects and %d prefixes, got %d objects and %d prefixes",
+			len(expectedList.Contents), len(expectedList.CommonPrefixes),
+			len(receivedList.Contents), len(receivedList.CommonPrefixes))
 		return err
 	}
 	return nil
@@ -115,25 +118,11 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	for _, object := range objects {
 		objectInfo = append(objectInfo, *object)
 	}
+	sort.Sort(objectInfo)
 	// Test for listobjects with no extra parameters.
 	expectedList := listBucketResult{
 		Name:     bucketName, // Listing from the first bucket created that houses all objects.
 		Contents: objectInfo, // The first bucket created will house all the objects created by the PUT object test.
-		// Currently the ListObjects V1 test does not test with extra 'parameters' set:
-		// Prefix
-		// Max-Keys
-		// Marker
-		// Delimiter
-	}
-	// Test for listobjects with maxkeys parameter set.
-	expectedListMaxKeys := listBucketResult{
-		Name:     bucketName,
-		Contents: objectInfo[:30], // Only return the first 30 objects.
-		MaxKeys:  30,              // Only return the first 30 objects.
-	}
-	// Store the parameters to be set by the request.
-	maxKeysMap := map[string]string{
-		"max-keys": "30", // 30 objects.
 	}
 	// Create a new request.
 	noParamReq, err := newListObjectsV1Req(config, bucketName, nil) // No extra parameters for the first test.
@@ -159,6 +148,17 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
+
+	// Test for listobjects with maxkeys parameter set.
+	expectedListMaxKeys := listBucketResult{
+		Name:     bucketName,
+		Contents: objectInfo[:30], // Only return the first 30 objects.
+		MaxKeys:  30,              // Only return the first 30 objects.
+	}
+	// Store the parameters to be set by the request.
+	maxKeysMap := map[string]string{
+		"max-keys": "30", // 30 objects.
+	}
 	// Create a new request with max-keys set to 30.
 	maxKeysReq, err := newListObjectsV1Req(config, bucketName, maxKeysMap) // MaxKeys set to 30.
 	if err != nil {
@@ -183,6 +183,79 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	}
 	// Spin scanBar
 	scanBar(message)
+
+	// Test for listobjects with prefix parameter set.
+	expectedListPrefix := listBucketResult{
+		Name: bucketName,
+		// Should only return objects that were put during the put-object test.
+		Contents: objectInfo[1:],
+		Prefix:   "s3verify/put/object/",
+	}
+	// Store the parameters.
+	prefixMap := map[string]string{
+		"prefix": "s3verify/put/object/",
+	}
+
+	prefixReq, err := newListObjectsV1Req(config, bucketName, prefixMap)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	prefixRes, err := config.execRequest("GET", prefixReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(prefixRes)
+	// Verify the prefix parameter is respected.
+	if err := listObjectsV1Verify(prefixRes, http.StatusOK, expectedListPrefix); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
+	// Test for listobjects with delimiter parameter and prefix parameter set.
+	expectedListDelimiterPrefix := listBucketResult{
+		Name:     bucketName,
+		Contents: []ObjectInfo{},
+		// Should return all objects.
+		CommonPrefixes: []commonPrefix{commonPrefix{"s3verify/put/object/"}},
+		Prefix:         "s3verify/put/",
+		Delimiter:      "/",
+	}
+
+	// Store the parameters.
+	prefixDelimiterMap := map[string]string{
+		"delimiter": "/",
+		"prefix":    "s3verify/put/",
+	}
+
+	prefixDelimiterReq, err := newListObjectsV1Req(config, bucketName, prefixDelimiterMap)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Execute the request.
+	prefixDelimRes, err := config.execRequest("GET", prefixDelimiterReq)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(prefixDelimRes)
+	// Verify that delimiter and prefix parameters are respected.
+	if err := listObjectsV1Verify(prefixDelimRes, http.StatusOK, expectedListDelimiterPrefix); err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Spin scanBar
+	scanBar(message)
+
 	// Test passed.
 	printMessage(message, nil)
 	return true
