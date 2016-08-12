@@ -26,7 +26,7 @@ import (
 )
 
 // newGetObjectIfMatchReq - Create a new HTTP request to perform.
-func newGetObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+func newGetObjectIfMatchReq(bucketName, objectName, ETag string) (Request, error) {
 	var getObjectIfMatchReq = Request{
 		customHeader: http.Header{},
 	}
@@ -120,7 +120,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-Match request.
-		req, err := newGetObjectIfMatchReq(config, bucketName, object.Key, object.ETag)
+		req, err := newGetObjectIfMatchReq(bucketName, object.Key, object.ETag)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -144,7 +144,7 @@ func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create a bad GET object If-Match request.
-		badReq, err := newGetObjectIfMatchReq(config, bucketName, object.Key, invalidETag)
+		badReq, err := newGetObjectIfMatchReq(bucketName, object.Key, invalidETag)
 		if err != nil {
 			printMessage(message, err)
 			return false

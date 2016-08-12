@@ -40,7 +40,7 @@ var overWrittenHeaders = map[string]string{
 }
 
 // newGetObjectReq - Create a new HTTP requests to perform.
-func newGetObjectReq(config ServerConfig, bucketName, objectName string, responseHeaders map[string]string) (Request, error) {
+func newGetObjectReq(bucketName, objectName string, responseHeaders map[string]string) (Request, error) {
 	// getObjectReq - a new HTTP request for a GET object.
 	var getObjectReq = Request{
 		customHeader: http.Header{},
@@ -144,7 +144,7 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object request.
-		req, err := newGetObjectReq(config, bucketName, object.Key, expectedHeaders)
+		req, err := newGetObjectReq(bucketName, object.Key, expectedHeaders)
 		if err != nil {
 			printMessage(message, err)
 			return false

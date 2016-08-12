@@ -26,8 +26,9 @@ import (
 	"net/url"
 )
 
-//
-func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string, complete *completeMultipartUpload) (Request, error) {
+// newCompleteMultipartUploadReq - Create a new Request for complete-multipart API.
+func newCompleteMultipartUploadReq(bucketName, objectName, uploadID string, complete *completeMultipartUpload) (Request, error) {
+	// completeMultipartUploadReq - a new Request for complete-multipart API.
 	var completeMultipartUploadReq = Request{
 		customHeader: http.Header{},
 	}
@@ -44,6 +45,7 @@ func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, 
 	if err != nil {
 		return Request{}, err
 	}
+
 	reader := bytes.NewReader(completeMultipartUploadBytes)
 	// Compute sha256Sum and contentLength.
 	_, sha256Sum, contentLength, err := computeHash(reader)
@@ -51,7 +53,7 @@ func newCompleteMultipartUploadReq(config ServerConfig, bucketName, objectName, 
 		return Request{}, err
 	}
 
-	// Set the Body, Header and URL of the request.
+	// Set the Body, Header, ContentLength of the request.
 	completeMultipartUploadReq.contentLength = contentLength
 	completeMultipartUploadReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	completeMultipartUploadReq.customHeader.Set("User-Agent", appUserAgent)
@@ -110,7 +112,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	bucketName := s3verifyBuckets[0].Name
 	object := multipartObjects[0]
 	// Create a new completeMultipartUpload request.
-	req, err := newCompleteMultipartUploadReq(config, bucketName, object.Key, object.UploadID, complMultipartUploads[0])
+	req, err := newCompleteMultipartUploadReq(bucketName, object.Key, object.UploadID, complMultipartUploads[0])
 	if err != nil {
 		printMessage(message, err)
 		return false

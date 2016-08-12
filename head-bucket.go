@@ -26,7 +26,7 @@ import (
 )
 
 // newHeadBucketReq - Create a new HTTP request for the HeadBucket API.
-func newHeadBucketReq(config ServerConfig, bucketName string) (Request, error) {
+func newHeadBucketReq(bucketName string) (Request, error) {
 	// headBucketReq - a new HTTP request for the HeadBucket API.
 	var headBucketReq = Request{
 		customHeader: http.Header{},
@@ -99,7 +99,7 @@ func mainHeadBucket(config ServerConfig, curTest int) bool {
 	scanBar(message)
 	bucketName := s3verifyBuckets[0].Name
 	// Create a new HeadBucket request.
-	req, err := newHeadBucketReq(config, bucketName)
+	req, err := newHeadBucketReq(bucketName)
 	if err != nil {
 		printMessage(message, err)
 		return false

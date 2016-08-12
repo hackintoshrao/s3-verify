@@ -26,7 +26,7 @@ import (
 )
 
 // newHeadObjectIfNoneMatch - Create a new HTTP request for HEAD object with if-none-match header set.
-func newHeadObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+func newHeadObjectIfNoneMatchReq(bucketName, objectName, ETag string) (Request, error) {
 	// headObjectIfNoneMatchReq - a new custom request.
 	var headObjectIfNoneMatchReq = Request{
 		customHeader: http.Header{},
@@ -106,7 +106,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	bucketName := s3verifyBuckets[0].Name
 	object := s3verifyObjects[0]
 	// Create a new request for a HEAD object with if-none-match header set.
-	req, err := newHeadObjectIfNoneMatchReq(config, bucketName, object.Key, validETag)
+	req, err := newHeadObjectIfNoneMatchReq(bucketName, object.Key, validETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -130,7 +130,7 @@ func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for a HEAD object with if-none-match header set.
-	badReq, err := newHeadObjectIfNoneMatchReq(config, bucketName, object.Key, object.ETag)
+	badReq, err := newHeadObjectIfNoneMatchReq(bucketName, object.Key, object.ETag)
 	if err != nil {
 		printMessage(message, err)
 		return false

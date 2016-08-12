@@ -60,7 +60,7 @@ var (
 )
 
 // newPutBucketReq - Create a new Make bucket request.
-func newPutBucketReq(config ServerConfig, bucketName string) (Request, error) {
+func newPutBucketReq(region, bucketName string) (Request, error) {
 	// putBucketReq - hardcode the static portions of a new Make Bucket request.
 	var putBucketReq = Request{
 		customHeader: http.Header{},
@@ -78,9 +78,9 @@ func newPutBucketReq(config ServerConfig, bucketName string) (Request, error) {
 	putBucketReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 
 	// Set req URL, Header and Body if necessary.
-	if config.Region != globalDefaultRegion { // Must set the request elements for non us-east-1 regions.
+	if region != globalDefaultRegion { // Must set the request elements for non us-east-1 regions.
 		bucketConfig := createBucketConfiguration{}
-		bucketConfig.Location = config.Region
+		bucketConfig.Location = region
 		bucketConfigBytes, err := xml.Marshal(bucketConfig)
 		if err != nil {
 			return Request{}, err
@@ -182,7 +182,7 @@ func mainPutBucket(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Create a new Make bucket request.
-		customPutBucketReq, err := newPutBucketReq(config, validBucket.Name)
+		customPutBucketReq, err := newPutBucketReq(config.Region, validBucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -224,7 +224,7 @@ func mainPutBucketInvalid(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new PUT bucket request.
-		customPutBucketReq, err := newPutBucketReq(config, bucket.Name)
+		customPutBucketReq, err := newPutBucketReq(config.Region, bucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false

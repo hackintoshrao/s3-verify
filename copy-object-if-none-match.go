@@ -26,7 +26,7 @@ import (
 )
 
 // newPutObjectCopyIfNoneMatchReq - Create a new HTTP request for a CopyObject with the if-none-match header set.
-func newCopyObjectIfNoneMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
+func newCopyObjectIfNoneMatchReq(sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
 	var copyObjectIfNoneMatchReq = Request{
 		customHeader: http.Header{},
 	}
@@ -127,7 +127,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		Message: "At least one of the pre-conditions you specified did not hold",
 	}
 	// Create a successful copy request.
-	req, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, goodETag)
+	req, err := newCopyObjectIfNoneMatchReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, goodETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -145,7 +145,7 @@ func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Create a bad copy request.
-	badReq, err := newCopyObjectIfNoneMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
+	badReq, err := newCopyObjectIfNoneMatchReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
 		printMessage(message, err)
 		return false

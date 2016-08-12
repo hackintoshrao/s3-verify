@@ -28,7 +28,7 @@ import (
 )
 
 // newHeadObjectReq - Create a new HTTP request for a HEAD object.
-func newHeadObjectReq(config ServerConfig, bucketName, objectName string) (Request, error) {
+func newHeadObjectReq(bucketName, objectName string) (Request, error) {
 	// headObjectReq - an HTTP request for HEAD with no headers set.
 	var headObjectReq = Request{
 		customHeader: http.Header{},
@@ -105,7 +105,7 @@ func mainHeadObject(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new HEAD object with no headers.
-		req, err := newHeadObjectReq(config, bucketName, object.Key)
+		req, err := newHeadObjectReq(bucketName, object.Key)
 		if err != nil {
 			printMessage(message, err)
 			return false

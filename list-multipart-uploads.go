@@ -26,7 +26,7 @@ import (
 )
 
 // newListMultipartUploadsReq - Create a new HTTP request for List Multipart Uploads API.
-func newListMultipartUploadsReq(config ServerConfig, bucketName string) (Request, error) {
+func newListMultipartUploadsReq(bucketName string) (Request, error) {
 	// listMultipartUploadsReq - a new HTTP request for the List Multipart Uploads API.
 	var listMultipartUploadsReq = Request{
 		customHeader: http.Header{},
@@ -135,7 +135,7 @@ func mainListMultipartUploads(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newListMultipartUploadsReq(config, bucketName)
+	req, err := newListMultipartUploadsReq(bucketName)
 	if err != nil {
 		printMessage(message, err)
 		return false

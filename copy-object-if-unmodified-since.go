@@ -28,7 +28,7 @@ import (
 )
 
 // newCopyObjectIfUnModifiedSinceReq - Create a new HTTP request for CopyObject with if-unmodified-since header set.
-func newCopyObjectIfUnModifiedSinceReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (Request, error) {
+func newCopyObjectIfUnModifiedSinceReq(sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (Request, error) {
 	// copyObjectIfUnModifiedSinceReq - A new HTTP request for CopyObject with if-unmodified-since header set.
 	var copyObjectIfUnModifiedSinceReq = Request{
 		customHeader: http.Header{},
@@ -138,7 +138,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		Message: "At least one of the pre-conditions you specified did not hold",
 	}
 	// Create a new valid request.
-	req, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.LastModified.Add(time.Hour*2))
+	req, err := newCopyObjectIfUnModifiedSinceReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.LastModified.Add(time.Hour*2))
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -164,7 +164,7 @@ func mainCopyObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request.
-	badReq, err := newCopyObjectIfUnModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
+	badReq, err := newCopyObjectIfUnModifiedSinceReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
 	if err != nil {
 		printMessage(message, err)
 		return false

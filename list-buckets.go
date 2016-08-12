@@ -28,7 +28,7 @@ import (
 )
 
 // newListBucketsReq - Create a new List Buckets request.
-func newListBucketsReq(config ServerConfig) (Request, error) {
+func newListBucketsReq() (Request, error) {
 	// listBucketsReq - a new HTTP request to list all buckets.
 	var listBucketsReq = Request{
 		customHeader: http.Header{},
@@ -144,7 +144,7 @@ func mainListBuckets(config ServerConfig, curTest int) bool {
 	}
 
 	// Generate new List Buckets request.
-	req, err := newListBucketsReq(config)
+	req, err := newListBucketsReq()
 	if err != nil {
 		printMessage(message, err)
 		return false

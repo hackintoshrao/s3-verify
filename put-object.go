@@ -39,7 +39,7 @@ var preparedObjects = []*ObjectInfo{}
 var copyObjects = []*ObjectInfo{}
 
 // newPutObjectReq - Create a new HTTP request for PUT object.
-func newPutObjectReq(config ServerConfig, bucketName, objectName string, objectData []byte) (Request, error) {
+func newPutObjectReq(bucketName, objectName string, objectData []byte) (Request, error) {
 	// An HTTP request for a PUT object.
 	var putObjectReq = Request{
 		customHeader: http.Header{},
@@ -128,7 +128,7 @@ func mainPutObjectPrepared(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
+	req, err := newPutObjectReq(bucket.Name, object.Key, object.Body)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -176,7 +176,7 @@ func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 		body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
 		object.Body = []byte(body)
 		// Create a new request.
-		req, err := newPutObjectReq(config, bucket.Name, object.Key, object.Body)
+		req, err := newPutObjectReq(bucket.Name, object.Key, object.Body)
 		if err != nil {
 			printMessage(message, err)
 			return false

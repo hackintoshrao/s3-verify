@@ -27,7 +27,7 @@ import (
 )
 
 // newCopyObjectReq - Create a new HTTP request for PUT object with copy-
-func newCopyObjectReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string) (Request, error) {
+func newCopyObjectReq(sourceBucketName, sourceObjectName, destBucketName, destObjectName string) (Request, error) {
 	var copyObjectReq = Request{
 		customHeader: http.Header{},
 	}
@@ -112,7 +112,7 @@ func mainCopyObject(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newCopyObjectReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key)
+	req, err := newCopyObjectReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

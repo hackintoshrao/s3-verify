@@ -28,7 +28,7 @@ import (
 )
 
 // newCopyObjectIfModifiedSinceReq - Create a new HTTP request for CopyObject with the x-amz-copy-source-if-modified-since header set.
-func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (Request, error) {
+func newCopyObjectIfModifiedSinceReq(sourceBucketName, sourceObjectName, destBucketName, destObjectName string, lastModified time.Time) (Request, error) {
 	// Create a new HTTP request for a CopyObject.
 	var copyObjectIfModifiedSinceReq = Request{
 		customHeader: http.Header{},
@@ -44,6 +44,7 @@ func newCopyObjectIfModifiedSinceReq(config ServerConfig, sourceBucketName, sour
 	if err != nil {
 		return Request{}, err
 	}
+	// Set the header.
 	copyObjectIfModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectIfModifiedSinceReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
 	copyObjectIfModifiedSinceReq.customHeader.Set("x-amz-copy-source-if-modified-since", lastModified.Format(http.TimeFormat))
@@ -139,7 +140,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request with a valid date.
-	req, err := newCopyObjectIfModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
+	req, err := newCopyObjectIfModifiedSinceReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, pastDate)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -163,7 +164,7 @@ func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request with an invalid date.
-	badReq, err := newCopyObjectIfModifiedSinceReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, time.Now().UTC().Add(2*time.Hour))
+	badReq, err := newCopyObjectIfModifiedSinceReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, time.Now().UTC().Add(2*time.Hour))
 	if err != nil {
 		printMessage(message, err)
 		return false

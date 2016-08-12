@@ -27,7 +27,7 @@ import (
 )
 
 // newGetObjectRangeReq - Create a new GET object range request.
-func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, startRange, endRange int64) (Request, error) {
+func newGetObjectRangeReq(bucketName, objectName string, startRange, endRange int64) (Request, error) {
 	// getObjectRangeReq - a new HTTP request for a GET object with a specific range request.
 	var getObjectRangeReq = Request{
 		customHeader: http.Header{},
@@ -65,7 +65,7 @@ func mainGetObjectRange(config ServerConfig, curTest int) bool {
 		startRange := rand.Int63n(object.Size)
 		endRange := rand.Int63n(int64(object.Size-startRange)) + startRange
 		// Create new GET object range request...testing range.
-		req, err := newGetObjectRangeReq(config, bucketName, object.Key, startRange, endRange)
+		req, err := newGetObjectRangeReq(bucketName, object.Key, startRange, endRange)
 		if err != nil {
 			printMessage(message, err)
 			return false

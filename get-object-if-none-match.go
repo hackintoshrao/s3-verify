@@ -26,7 +26,7 @@ import (
 )
 
 // newGetObjectIfNoneMatchReq - Create a new HTTP request to perform.
-func newGetObjectIfNoneMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+func newGetObjectIfNoneMatchReq(bucketName, objectName, ETag string) (Request, error) {
 	var getObjectIfNoneMatchReq = Request{
 		customHeader: http.Header{},
 	}
@@ -108,7 +108,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-None-Match request.
-		req, err := newGetObjectIfNoneMatchReq(config, bucketName, object.Key, object.ETag)
+		req, err := newGetObjectIfNoneMatchReq(bucketName, object.Key, object.ETag)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -126,7 +126,7 @@ func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 			return false
 		}
 		// Create a bad GET object If-None-Match request with invalid ETag.
-		badReq, err := newGetObjectIfNoneMatchReq(config, bucketName, object.Key, invalidETag)
+		badReq, err := newGetObjectIfNoneMatchReq(bucketName, object.Key, invalidETag)
 		if err != nil {
 			printMessage(message, err)
 			return false

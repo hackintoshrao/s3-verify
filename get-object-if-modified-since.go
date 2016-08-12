@@ -27,7 +27,7 @@ import (
 )
 
 // newGetObjcetIfModifiedSinceReq - Create a new HTTP request to perform.
-func newGetObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
+func newGetObjectIfModifiedSinceReq(bucketName, objectName string, lastModified time.Time) (Request, error) {
 	var getObjectIfModifiedReq = Request{
 		customHeader: http.Header{},
 	}
@@ -112,7 +112,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object request.
-		req, err := newGetObjectIfModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
+		req, err := newGetObjectIfModifiedSinceReq(bucketName, object.Key, object.LastModified)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -130,7 +130,7 @@ func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 			return false
 		}
 		// Create an acceptable request.
-		goodReq, err := newGetObjectIfModifiedSinceReq(config, bucketName, object.Key, pastDate)
+		goodReq, err := newGetObjectIfModifiedSinceReq(bucketName, object.Key, pastDate)
 		if err != nil {
 			printMessage(message, err)
 			return false

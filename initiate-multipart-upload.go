@@ -43,7 +43,7 @@ var multipartObjects = []*ObjectInfo{
 }
 
 // newInitiateMultipartUploadReq - Create a new HTTP request for the initiate-multipart-upload API.
-func newInitiateMultipartUploadReq(config ServerConfig, bucketName, objectName string) (Request, error) {
+func newInitiateMultipartUploadReq(bucketName, objectName string) (Request, error) {
 	// Initialize url queries.
 	urlValues := make(url.Values)
 	urlValues.Set("uploads", "")
@@ -127,7 +127,7 @@ func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new InitiateMultiPartUpload request.
-		req, err := newInitiateMultipartUploadReq(config, bucketName, object.Key)
+		req, err := newInitiateMultipartUploadReq(bucketName, object.Key)
 		if err != nil {
 			printMessage(message, err)
 			return false

@@ -27,7 +27,7 @@ import (
 )
 
 // newRemoveBucketReq - Fill in the dynamic fields of a DELETE request here.
-func newRemoveBucketReq(config ServerConfig, bucketName string) (Request, error) {
+func newRemoveBucketReq(bucketName string) (Request, error) {
 	// removeBucketReq is a new DELETE bucket request.
 	var removeBucketReq = Request{
 		customHeader: http.Header{},
@@ -106,7 +106,7 @@ func mainRemoveBucketExists(config ServerConfig, curTest int) bool {
 		// Spin the scanBar
 		scanBar(message)
 		// Generate the new DELETE bucket request.
-		req, err := newRemoveBucketReq(config, bucket.Name)
+		req, err := newRemoveBucketReq(bucket.Name)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -148,7 +148,7 @@ func mainRemoveBucketDNE(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Generate a new DELETE bucket request for a bucket that does not exist.
-	req, err := newRemoveBucketReq(config, bucketName)
+	req, err := newRemoveBucketReq(bucketName)
 	if err != nil {
 		printMessage(message, err)
 		return false

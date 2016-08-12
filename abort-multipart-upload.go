@@ -26,26 +26,29 @@ import (
 )
 
 // newAbortMultipartUploadReq - Create a new HTTP request for an abort multipart API.
-func newAbortMultipartUploadReq(config ServerConfig, bucketName, objectName, uploadID string) (Request, error) {
+func newAbortMultipartUploadReq(bucketName, objectName, uploadID string) (Request, error) {
 	// abortMultipartUploadReq - a new HTTP request for an abort multipart.
 	var abortMultipartUploadReq = Request{
 		customHeader: http.Header{},
 	}
+
 	// Set the bucketName and objectName
 	abortMultipartUploadReq.bucketName = bucketName
 	abortMultipartUploadReq.objectName = objectName
-	// Set the req URL and Header.
+
+	// Set the query values.
 	urlValues := make(url.Values)
 	urlValues.Set("uploadId", uploadID)
+	abortMultipartUploadReq.queryValues = urlValues
+
+	// Set the header.
 	reader := bytes.NewReader([]byte{})
 	_, sha256Sum, _, err := computeHash(reader)
 	if err != nil {
 		return Request{}, err
 	}
-	abortMultipartUploadReq.queryValues = urlValues
 	abortMultipartUploadReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	abortMultipartUploadReq.customHeader.Set("User-Agent", appUserAgent)
-	abortMultipartUploadReq.contentBody = nil // There is no body sent for DELETE request.
 
 	return abortMultipartUploadReq, nil
 }
@@ -111,7 +114,7 @@ func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newAbortMultipartUploadReq(config, bucketName, validObject.Key, validObject.UploadID)
+	req, err := newAbortMultipartUploadReq(bucketName, validObject.Key, validObject.UploadID)
 	if err != nil {
 		printMessage(message, err)
 		return false

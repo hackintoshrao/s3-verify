@@ -27,7 +27,7 @@ import (
 )
 
 // newListObjectsV1Req - Create a new HTTP request for ListObjects V1.
-func newListObjectsV1Req(config ServerConfig, bucketName string, parameters map[string]string) (Request, error) {
+func newListObjectsV1Req(bucketName string, parameters map[string]string) (Request, error) {
 	// listObjectsV1Req - a new HTTP request for ListObjects V1.
 	var listObjectsV1Req = Request{
 		customHeader: http.Header{},
@@ -124,7 +124,7 @@ func mainListObjectsV1(config ServerConfig, curTest int, bucketName string, test
 		Contents: objectInfo, // The first bucket created will house all the objects created by the PUT object test.
 	}
 	// Create a new request.
-	noParamReq, err := newListObjectsV1Req(config, bucketName, nil) // No extra parameters for the first test.
+	noParamReq, err := newListObjectsV1Req(bucketName, nil) // No extra parameters for the first test.
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -159,7 +159,7 @@ func mainListObjectsV1(config ServerConfig, curTest int, bucketName string, test
 		"max-keys": "30", // 30 objects.
 	}
 	// Create a new request with max-keys set to 30.
-	maxKeysReq, err := newListObjectsV1Req(config, bucketName, maxKeysMap) // MaxKeys set to 30.
+	maxKeysReq, err := newListObjectsV1Req(bucketName, maxKeysMap) // MaxKeys set to 30.
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -195,7 +195,7 @@ func mainListObjectsV1(config ServerConfig, curTest int, bucketName string, test
 		"prefix": "s3verify/put/object/",
 	}
 
-	prefixReq, err := newListObjectsV1Req(config, bucketName, prefixMap)
+	prefixReq, err := newListObjectsV1Req(bucketName, prefixMap)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -233,7 +233,7 @@ func mainListObjectsV1(config ServerConfig, curTest int, bucketName string, test
 		"prefix":    "s3verify/put/",
 	}
 
-	prefixDelimiterReq, err := newListObjectsV1Req(config, bucketName, prefixDelimiterMap)
+	prefixDelimiterReq, err := newListObjectsV1Req(bucketName, prefixDelimiterMap)
 	if err != nil {
 		printMessage(message, err)
 		return false

@@ -27,7 +27,7 @@ import (
 )
 
 // newListObjectsV2Req - Create a new HTTP request for ListObjects V2 API.
-func newListObjectsV2Req(config ServerConfig, bucketName string, requestParameters map[string]string) (Request, error) {
+func newListObjectsV2Req(bucketName string, requestParameters map[string]string) (Request, error) {
 	// listObjectsV2Req - a new HTTP request for ListObjects V2 API.
 	var listObjectsV2Req = Request{
 		customHeader: http.Header{},
@@ -124,7 +124,7 @@ func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, test
 		Contents: objectInfo,
 	}
 	// Create a new request.
-	req, err := newListObjectsV2Req(config, bucketName, nil)
+	req, err := newListObjectsV2Req(bucketName, nil)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -158,7 +158,7 @@ func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, test
 	}
 
 	// Create a new request.
-	startAfterReq, err := newListObjectsV2Req(config, bucketName, startAfterMap)
+	startAfterReq, err := newListObjectsV2Req(bucketName, startAfterMap)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -189,7 +189,7 @@ func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, test
 		"max-keys": "30", // 30 objects.
 	}
 	// Create a new request with max-keys set to 30.
-	maxKeysReq, err := newListObjectsV2Req(config, bucketName, maxKeysMap) // MaxKeys set to 30.
+	maxKeysReq, err := newListObjectsV2Req(bucketName, maxKeysMap) // MaxKeys set to 30.
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -225,7 +225,7 @@ func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, test
 		"prefix": "s3verify/put/object/",
 	}
 
-	prefixReq, err := newListObjectsV2Req(config, bucketName, prefixMap)
+	prefixReq, err := newListObjectsV2Req(bucketName, prefixMap)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -263,7 +263,7 @@ func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, test
 		"prefix":    "s3verify/put/",
 	}
 
-	prefixDelimiterReq, err := newListObjectsV2Req(config, bucketName, prefixDelimiterMap)
+	prefixDelimiterReq, err := newListObjectsV2Req(bucketName, prefixDelimiterMap)
 	if err != nil {
 		printMessage(message, err)
 		return false

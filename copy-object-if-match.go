@@ -27,13 +27,14 @@ import (
 )
 
 // newCopyObjectIfMatchReq - Create a new HTTP request for a PUT copy object.
-func newCopyObjectIfMatchReq(config ServerConfig, sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
+func newCopyObjectIfMatchReq(sourceBucketName, sourceObjectName, destBucketName, destObjectName, ETag string) (Request, error) {
 	var copyObjectIfMatchReq = Request{
 		customHeader: http.Header{},
 	}
 	// Set the bucketName and objectName
 	copyObjectIfMatchReq.bucketName = destBucketName
 	copyObjectIfMatchReq.objectName = destObjectName
+
 	// The body will be set by the server so calculate SHA from an empty body.
 	reader := bytes.NewReader([]byte(""))
 	_, sha256Sum, _, err := computeHash(reader)
@@ -137,7 +138,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new valid PUT object copy request.
-	req, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
+	req, err := newCopyObjectIfMatchReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, sourceObject.ETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -156,7 +157,7 @@ func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 	}
 
 	// Create a new invalid PUT object copy request.
-	badReq, err := newCopyObjectIfMatchReq(config, sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag)
+	badReq, err := newCopyObjectIfMatchReq(sourceBucketName, sourceObject.Key, destBucketName, destObject.Key, badETag)
 	if err != nil {
 		printMessage(message, err)
 		return false

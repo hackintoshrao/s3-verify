@@ -27,7 +27,7 @@ import (
 )
 
 // newHeadObjectIfUnModifiedReq - Create a new HTTP request for HEAD object with if-unmodified-since header set.
-func newHeadObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
+func newHeadObjectIfUnModifiedSinceReq(bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// headObjectIfUnModifiedReq - a new HTTP request for HEAD object with if-unmodified-since header set.
 	var headObjectIfUnModifiedSinceReq = Request{
 		customHeader: http.Header{},
@@ -109,7 +109,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	bucketName := s3verifyBuckets[0].Name
 	object := s3verifyObjects[0]
 	// Create a new request.
-	req, err := newHeadObjectIfUnModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
+	req, err := newHeadObjectIfUnModifiedSinceReq(bucketName, object.Key, object.LastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -133,7 +133,7 @@ func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
-	badReq, err := newHeadObjectIfUnModifiedSinceReq(config, bucketName, object.Key, lastModified)
+	badReq, err := newHeadObjectIfUnModifiedSinceReq(bucketName, object.Key, lastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false

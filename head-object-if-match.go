@@ -26,7 +26,7 @@ import (
 )
 
 // newHeadObjectIfMatchReq - Create a new HTTP request for HEAD object with if-match header set.
-func newHeadObjectIfMatchReq(config ServerConfig, bucketName, objectName, ETag string) (Request, error) {
+func newHeadObjectIfMatchReq(bucketName, objectName, ETag string) (Request, error) {
 	// headObjectIfMatchReq - an HTTP request for HEAD with if-match header set.
 	var headObjectIfMatchReq = Request{
 		customHeader: http.Header{},
@@ -105,7 +105,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	bucketName := s3verifyBuckets[0].Name
 	object := s3verifyObjects[0]
 	// Create a new valid request for HEAD object with if-match header set.
-	req, err := newHeadObjectIfMatchReq(config, bucketName, object.Key, object.ETag)
+	req, err := newHeadObjectIfMatchReq(bucketName, object.Key, object.ETag)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -129,7 +129,7 @@ func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new invalid request for HEAD object with if-match header set.
-	badReq, err := newHeadObjectIfMatchReq(config, bucketName, object.Key, invalidETag)
+	badReq, err := newHeadObjectIfMatchReq(bucketName, object.Key, invalidETag)
 	if err != nil {
 		printMessage(message, err)
 		return false

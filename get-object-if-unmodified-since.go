@@ -27,7 +27,7 @@ import (
 )
 
 // newGetObjectIfUnModifiedSinceReq - Create a new HTTP GET request with the If-Unmodified-Since header set to perform.
-func newGetObjectIfUnModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
+func newGetObjectIfUnModifiedSinceReq(bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// An HTTP GET request with the If-Unmodified-Since header set.
 	var getObjectIfUnModifiedSinceReq = Request{
 		customHeader: http.Header{},
@@ -128,7 +128,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 		// Spin scanBar
 		scanBar(message)
 		// Form a request with a pastDate to make sure the object is not returned.
-		req, err := newGetObjectIfUnModifiedSinceReq(config, bucketName, object.Key, pastDate)
+		req, err := newGetObjectIfUnModifiedSinceReq(bucketName, object.Key, pastDate)
 		if err != nil {
 			printMessage(message, err)
 			return false
@@ -146,7 +146,7 @@ func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 			return false
 		}
 		// Form a request with a date in the past.
-		goodReq, err := newGetObjectIfUnModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
+		goodReq, err := newGetObjectIfUnModifiedSinceReq(bucketName, object.Key, object.LastModified)
 		if err != nil {
 			printMessage(message, err)
 			return false

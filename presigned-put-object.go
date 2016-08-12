@@ -121,7 +121,6 @@ func mainPresignedPutObject(config ServerConfig, curTest int) bool {
 	// Prefix this object differently to allow ListObjects to function easier.
 	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify/presigned/object/00")
 
-	// Attempt to use the presignedURL to upload an object.
 	presignedObject := &ObjectInfo{
 		Key:  objectName,
 		Body: []byte(randString(60, rand.NewSource(time.Now().UnixNano()), "a")),

@@ -45,7 +45,7 @@ var complMultipartUploads = []*completeMultipartUpload{
 }
 
 // newUploadPartReq - Create a new HTTP request for an upload part request.
-func newUploadPartReq(config ServerConfig, bucketName, objectName, uploadID string, partNumber int, partData []byte) (Request, error) {
+func newUploadPartReq(bucketName, objectName, uploadID string, partNumber int, partData []byte) (Request, error) {
 	// Create a new request for uploading a part.
 	var uploadPartReq = Request{
 		customHeader: http.Header{},
@@ -143,7 +143,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 			return false
 		}
 		// Create a new multipart upload part request.
-		req, err := newUploadPartReq(config, bucketName, object.Key, object.UploadID, 1, objectData)
+		req, err := newUploadPartReq(bucketName, object.Key, object.UploadID, 1, objectData)
 		if err != nil {
 			printMessage(message, err)
 			return false

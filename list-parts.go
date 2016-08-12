@@ -26,7 +26,7 @@ import (
 )
 
 // newListPartsReq - Create a new HTTP request for the ListParts API.
-func newListPartsReq(config ServerConfig, bucketName, objectName, uploadID string) (Request, error) {
+func newListPartsReq(bucketName, objectName, uploadID string) (Request, error) {
 	// listPartsReq - a new HTTP request for ListParts.
 	var listPartsReq = Request{
 		customHeader: http.Header{},
@@ -127,7 +127,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 		ObjectParts: objectParts,
 	}
 	// Create a new ListParts request.
-	req, err := newListPartsReq(config, bucketName, object.Key, object.UploadID)
+	req, err := newListPartsReq(bucketName, object.Key, object.UploadID)
 	if err != nil {
 		printMessage(message, err)
 		return false

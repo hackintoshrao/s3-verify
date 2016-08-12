@@ -27,7 +27,7 @@ import (
 )
 
 // newHeadObjectIfModifiedSinceReq - Create a new HTTP request for HEAD object with if-modified-since header set.
-func newHeadObjectIfModifiedSinceReq(config ServerConfig, bucketName, objectName string, lastModified time.Time) (Request, error) {
+func newHeadObjectIfModifiedSinceReq(bucketName, objectName string, lastModified time.Time) (Request, error) {
 	// headObjectIfModifiedSinceReq - a new HTTP request for HEAD object with if-modified-since header set.
 	var headObjectIfModifiedSinceReq = Request{
 		customHeader: http.Header{},
@@ -109,7 +109,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a new request.
-	req, err := newHeadObjectIfModifiedSinceReq(config, bucketName, object.Key, lastModified)
+	req, err := newHeadObjectIfModifiedSinceReq(bucketName, object.Key, lastModified)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -133,7 +133,7 @@ func mainHeadObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad request.
-	badReq, err := newHeadObjectIfModifiedSinceReq(config, bucketName, object.Key, object.LastModified.Add(time.Hour*2))
+	badReq, err := newHeadObjectIfModifiedSinceReq(bucketName, object.Key, object.LastModified.Add(time.Hour*2))
 	if err != nil {
 		printMessage(message, err)
 		return false
