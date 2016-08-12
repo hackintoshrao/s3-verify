@@ -92,7 +92,11 @@ func validateBucket(config ServerConfig, bucketName string) error {
 	if err != nil {
 		return err
 	}
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, true)
+	secure := false
+	if hostURL.Scheme == "https" {
+		secure = true
+	}
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
 	if err != nil {
 		return err
 	}
@@ -130,8 +134,11 @@ func mainPrepareS3Verify(config ServerConfig) ([]string, error) {
 		return nil, err
 	}
 	region := config.Region
-	// Create a new Minio-Go client object.
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, true)
+	secure := false
+	if hostURL.Scheme == "https" {
+		secure = true
+	}
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
 	if err != nil {
 		return nil, err
 	}

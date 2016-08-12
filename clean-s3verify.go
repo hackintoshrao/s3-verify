@@ -32,7 +32,11 @@ func cleanObjects(config ServerConfig, bucketName string) error {
 	if err != nil {
 		return err
 	}
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, true)
+	secure := false
+	if hostURL.Scheme == "https" {
+		secure = true
+	}
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
 	if err != nil {
 		return err
 	}
@@ -64,7 +68,11 @@ func cleanBucket(config ServerConfig, bucketName string) error {
 	if err != nil {
 		return err
 	}
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, true)
+	secure := false
+	if hostURL.Scheme == "https" {
+		secure = true
+	}
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
 	if err != nil {
 		return err
 	}
