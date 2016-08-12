@@ -110,11 +110,16 @@ func verifyBodyPresignedPutObject(resBody io.Reader, expectedError ErrorResponse
 	return nil
 }
 
-// testPresignedPutObject - test the compatibility of the presigned PutObject API.
-func testPresignedPutObject(config ServerConfig, curTest int, bucketName, objectName string, objectStore *[]*ObjectInfo) bool {
+// THIS MIGHT CAUSE PROBLEMS HAVE TO CHECK LIST OBJECTS AFTER THIS IS DONE.
+// mainPresignedPutObject - test the compatibility of the presigned PutObject API.
+func mainPresignedPutObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutObject (Presigned):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	// New objects will only be added to s3verify created buckets.
+	bucketName := s3verifyBuckets[0].Name
+	// Prefix this object differently to allow ListObjects to function easier.
+	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify/presigned/object/00")
 
 	// Attempt to use the presignedURL to upload an object.
 	presignedObject := &ObjectInfo{
@@ -151,24 +156,9 @@ func testPresignedPutObject(config ServerConfig, curTest int, bucketName, object
 	}
 
 	// Store the newly created object.
-	*objectStore = append(*objectStore, presignedObject)
+	s3verifyObjects = append(s3verifyObjects, presignedObject)
+
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainPresignedPutObjectPrepared - entry point for the test of presigned PUT object if --prepare was used.
-func mainPresignedPutObjectPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	// Prefix this object differently to allow ListObjects to function easier.
-	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-a")
-	return testPresignedPutObject(config, curTest, bucketName, objectName, &s3verifyObjects)
-}
-
-// mainPresignedPutObjectUnPrepared - entry point for the test of presigned PUT object if --prepare was not used.
-func mainPresignedPutObjectUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	// Prefix this object differently to allow ListObjects to function easier.
-	objectName := randString(60, rand.NewSource(time.Now().UnixNano()), "s3verify-a")
-	return testPresignedPutObject(config, curTest, bucketName, objectName, &objects)
 }

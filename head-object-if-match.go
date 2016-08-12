@@ -93,13 +93,17 @@ func verifyHeaderHeadObjectIfMatch(header http.Header) error {
 	return nil
 }
 
-// testHeadObjectIfMatch - tests the HeadObject API with the If-Match header set.
-func testHeadObjectIfMatch(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
+// mainHeadObjectIfMatch - tests the HeadObject API with the If-Match header set.
+func mainHeadObjectIfMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create a bad ETag.
 	invalidETag := "1234567890"
+	// All headObject if-match tests are run in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
 	// Create a new valid request for HEAD object with if-match header set.
 	req, err := newHeadObjectIfMatchReq(config, bucketName, object.Key, object.ETag)
 	if err != nil {
@@ -150,18 +154,4 @@ func testHeadObjectIfMatch(config ServerConfig, curTest int, bucketName string, 
 	scanBar(message)
 	printMessage(message, nil)
 	return true
-}
-
-// mainHeadObjectIfMatchUnPrepared - Entry point for the HEAD object with if-match header set test. if --prepare was not used.
-func mainHeadObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	object := objects[0]
-	return testHeadObjectIfMatch(config, curTest, bucketName, object)
-}
-
-// mainHeadObjectIfMatchPrepared - Entry point for the HeadObject test with if-match header set. if --prepare was used.
-func mainHeadObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	object := s3verifyObjects[0]
-	return testHeadObjectIfMatch(config, curTest, bucketName, object)
 }

@@ -103,10 +103,17 @@ func verifyHeaderCopyObjectIfNoneMatch(header http.Header) error {
 }
 
 // Test the CopyObject API with the if-none-match header set.
-func testCopyObjectIfNoneMatch(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
+func mainCopyObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+
+	// All copy-object-if-none-match tests happen in s3verify created buckets
+	// on s3verify created objects.
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
 	// Create unmatchable ETag.
 	goodETag := "1234567890"
 
@@ -157,22 +164,4 @@ func testCopyObjectIfNoneMatch(config ServerConfig, curTest int, sourceBucketNam
 	}
 	printMessage(message, nil)
 	return true
-}
-
-// mainCopyObjectIfNoneMatchPrepared - entry point for the CopyObject with if-none-match header and --prepare used.
-func mainCopyObjectIfNoneMatchPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := s3verifyBuckets[0].Name
-	destBucketName := s3verifyBuckets[1].Name
-	sourceObject := s3verifyObjects[0]
-
-	return testCopyObjectIfNoneMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
-}
-
-// mainCopyObjectIfNoneMatchUnPrepared - entry point for the CopyObject with if-none-match header and --prepare not used.
-func mainCopyObjectIfNoneMatchUnPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := unpreparedBuckets[0].Name
-	destBucketName := unpreparedBuckets[1].Name
-	sourceObject := objects[0]
-
-	return testCopyObjectIfNoneMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

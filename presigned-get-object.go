@@ -119,14 +119,17 @@ func verifyHeaderGetObjectPresigned(header http.Header) error {
 	return nil
 }
 
-// testGetObjectPresigned - test the compliance of the GetObject API using presigned URLs.
-func testGetObjectPresigned(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+// mainGetObjectPresigned - test the compliance of the GetObject API using presigned URLs.
+func mainGetObjectPresigned(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (Presigned):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Save an expired presigned url for testing the error response.
 	var expiredURL *url.URL
-	for i, object := range testObjects {
+	// Presigned getobject will only be tested in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for i, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new presigned GetObject req.
@@ -173,7 +176,7 @@ func testGetObjectPresigned(config ServerConfig, curTest int, bucketName string,
 	}
 	defer closeResponse(badRes)
 	// Verify that this badRes failed as expected.
-	if err := getObjectPresignedVerify(badRes, http.StatusForbidden, testObjects[0].Body, expectedError); err != nil {
+	if err := getObjectPresignedVerify(badRes, http.StatusForbidden, s3verifyObjects[0].Body, expectedError); err != nil {
 		printMessage(message, err)
 		return false
 	}
@@ -182,16 +185,4 @@ func testGetObjectPresigned(config ServerConfig, curTest int, bucketName string,
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectPresignedUnPrepared - entry point for the GetObject Presigned test if --prepare was not used.
-func mainGetObjectPresignedUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectPresigned(config, curTest, bucketName, objects)
-}
-
-// mainGetObjectPresignedPrepared - entry point for the GetObject Presigned test if --prepare was used.
-func mainGetObjectPresignedPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectPresigned(config, curTest, bucketName, s3verifyObjects)
 }

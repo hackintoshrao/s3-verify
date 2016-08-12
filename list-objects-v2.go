@@ -109,13 +109,12 @@ func verifyBodyListObjectsV2(resBody io.Reader, expectedList listBucketV2Result)
 }
 
 // mainListObjectsV2 - Entry point for the ListObjects V2 API test. This test is the same for --prepared environments and non --prepared.
-func mainListObjectsV2(config ServerConfig, curTest int) bool {
+func mainListObjectsV2(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] ListObjects V2:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucketName := unpreparedBuckets[0].Name
 	objectInfo := ObjectInfos{}
-	for _, object := range objects {
+	for _, object := range testObjects {
 		objectInfo = append(objectInfo, *object)
 	}
 	sort.Sort(objectInfo)
@@ -289,4 +288,16 @@ func mainListObjectsV2(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+//
+func mainListObjectsV2UnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return mainListObjectsV2(config, curTest, bucketName, s3verifyObjects)
+}
+
+//
+func mainListObjectsV2Prepared(config ServerConfig, curTest int) bool {
+	bucketName := preparedBuckets[0].Name
+	return mainListObjectsV2(config, curTest, bucketName, preparedObjects)
 }

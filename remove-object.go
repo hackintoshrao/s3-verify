@@ -92,13 +92,15 @@ func verifyStatusRemoveObject(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// testRemoveObjectExists - RemoveObject API test when object exists.
-func testRemoveObjectExists(config ServerConfig, curTest int, testBuckets []BucketInfo, testObjects []*ObjectInfo) bool {
+// mainRemoveObjectExists - RemoveObject API test when object exists.
+func mainRemoveObjectExists(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%d/%d] RemoveObject:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	for _, bucket := range testBuckets {
-		for _, object := range testObjects {
+	// Only remove objects from s3verify created buckets.
+	// Only remove s3verify created objects.
+	for _, bucket := range s3verifyBuckets {
+		for _, object := range s3verifyObjects {
 			// Spin scanBar
 			scanBar(message)
 			// Create a new request.
@@ -177,14 +179,4 @@ func testRemoveObjectExists(config ServerConfig, curTest int, testBuckets []Buck
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainRemoveObjectExistsPrepared - entry point for the removeobject exists test if --prepare was used.
-func mainRemoveObjectExistsPrepared(config ServerConfig, curTest int) bool {
-	return testRemoveObjectExists(config, curTest, s3verifyBuckets, s3verifyObjects)
-}
-
-// mainRemoveObjectExistsUnPrepared - entry point for the removeobject exists test if --prepare was not used.
-func mainRemoveObjectExistsUnPrepared(config ServerConfig, curTest int) bool {
-	return testRemoveObjectExists(config, curTest, unpreparedBuckets, objects)
 }

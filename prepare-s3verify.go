@@ -73,6 +73,13 @@ func prepareObjects(client *minio.Client, bucketName string) error {
 		// Spin scanBar
 		scanBar(message)
 	}
+	randomData := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+	objectKey := "s3verify/list/testprefix"
+	reader := bytes.NewReader([]byte(randomData))
+	_, err := client.PutObject(bucketName, objectKey, reader, "application/octet-stream")
+	if err != nil {
+		printMessage(message, err)
+	}
 	// Object preparation passed.
 	printMessage(message, nil)
 	return nil
@@ -98,17 +105,17 @@ func validateBucket(config ServerConfig, bucketName string) error {
 	validBucket := BucketInfo{
 		Name: bucketName,
 	}
-	// Store the validated bucket in the global unpreparedBuckets array.
-	unpreparedBuckets = append(unpreparedBuckets, validBucket)
+	// Store the validated bucket in the global preparedBuckets array.
+	preparedBuckets = append(preparedBuckets, validBucket)
 
 	// Store the objects s3verify-object- inside this bucket inside the global object array.
 	doneCh := make(chan struct{})
-	objectInfoCh := client.ListObjects(bucketName, "s3verify-object-", true, doneCh)
+	objectInfoCh := client.ListObjects(bucketName, "s3verify/", true, doneCh)
 	for objectInfo := range objectInfoCh {
 		object := &ObjectInfo{
 			Key: objectInfo.Key,
 		}
-		objects = append(objects, object)
+		preparedObjects = append(preparedObjects, object)
 	}
 	return nil
 }

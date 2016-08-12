@@ -95,13 +95,16 @@ func verifyBodyGetObjectIfNoneMatch(resBody io.Reader, expectedBody []byte) erro
 }
 
 // Test the compatibility of the GetObject API when using the If-None-Match header.
-func testGetObjectIfNoneMatch(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+func mainGetObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
 	// Spin scanBar
 	scanBar(message)
-	for _, object := range testObjects {
+	// All getobject if-none-match tests are run in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-None-Match request.
@@ -148,16 +151,4 @@ func testGetObjectIfNoneMatch(config ServerConfig, curTest int, bucketName strin
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectIfNoneMatchPrepared - entry point for the GetObject with if-none-match header set with --prepare used.
-func mainGetObjectIfNoneMatchPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectIfNoneMatch(config, curTest, bucketName, s3verifyObjects)
-}
-
-// mainGetObjectIfNoneMatchUnPrepared - entry point for the GetObject with if-none-match header set with --prepare not used.
-func mainGetObjectIfNoneMatchUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectIfNoneMatch(config, curTest, bucketName, objects)
 }

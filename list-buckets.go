@@ -128,17 +128,18 @@ func verifyBodyListBuckets(resBody io.Reader, expected *listAllMyBucketsResult) 
 }
 
 // Test the ListBuckets API with no added parameters.
-func testListBuckets(config ServerConfig, curTest int, testBuckets []BucketInfo) bool {
+func mainListBuckets(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] ListBuckets:", curTest, globalTotalNumTest)
 	// Spin the scanBar
 	scanBar(message)
+	// ListBuckets test will only run on s3verify created buckets.
 	expectedList := &listAllMyBucketsResult{
 		Owner: owner{
 			DisplayName: "s3verify",
 			ID:          "",
 		},
 		Buckets: buckets{
-			Bucket: testBuckets,
+			Bucket: s3verifyBuckets,
 		},
 	}
 
@@ -169,14 +170,4 @@ func testListBuckets(config ServerConfig, curTest int, testBuckets []BucketInfo)
 	scanBar(message)
 	printMessage(message, err)
 	return true
-}
-
-// mainListBucketsPrepared - Test the listbuckets API if --prepare was used.
-func mainListBucketsPrepared(config ServerConfig, curTest int) bool {
-	return testListBuckets(config, curTest, s3verifyBuckets)
-}
-
-// mainListBucketsUnPrepared - Test the listbuckets API if --prepare was not used.
-func mainListBucketsUnPrepared(config ServerConfig, curTest int) bool {
-	return testListBuckets(config, curTest, unpreparedBuckets)
 }

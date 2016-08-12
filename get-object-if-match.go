@@ -109,11 +109,14 @@ func verifyStatusGetObjectIfMatch(respStatusCode, expectedStatusCode int) error 
 }
 
 // Test the compatibility of the GET object API when using the If-Match header.
-func testGetObjectIfMatch(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+func mainGetObjectIfMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Match):", curTest, globalTotalNumTest)
 	// Set up an invalid ETag to test failed requests responses.
 	invalidETag := "1234567890"
-	for _, object := range testObjects {
+	// All getobject tests happen in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object If-Match request.
@@ -167,16 +170,4 @@ func testGetObjectIfMatch(config ServerConfig, curTest int, bucketName string, t
 	scanBar(message)
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectIfMatchPrepared - Entry point for the GetObject test with if-match header if --prepare was used.
-func mainGetObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectIfMatch(config, curTest, bucketName, s3verifyObjects)
-}
-
-// mainGetObjectIfMatchUnPrepared - Entry point for the GetObject test with if-match header if --prepare not used.
-func mainGetObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectIfMatch(config, curTest, bucketName, objects)
 }

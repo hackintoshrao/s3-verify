@@ -32,8 +32,8 @@ import (
 // Store all objects that are uploaded by s3verify tests.
 var s3verifyObjects = []*ObjectInfo{}
 
-// Store all objects that are uploaded through standard PUT operations.
-var objects = []*ObjectInfo{}
+// Store all objects that are uploaded through the preparing operation.
+var preparedObjects = []*ObjectInfo{}
 
 // Store all objects that were copied.
 var copyObjects = []*ObjectInfo{}
@@ -122,7 +122,7 @@ func mainPutObjectPrepared(config ServerConfig, curTest int) bool {
 	// Since the use of --prepare will have set up enough objects for future tests
 	// only add one more additional object.
 	object := &ObjectInfo{
-		Key:  "s3verify-put-object-1001",
+		Key:  "s3verify/made/put/object",
 		Body: []byte(randString(60, rand.NewSource(time.Now().UnixNano()), "")),
 	}
 	// Spin scanBar
@@ -162,7 +162,7 @@ func mainPutObjectPrepared(config ServerConfig, curTest int) bool {
 func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] PutObject:", curTest, globalTotalNumTest)
 	// TODO: create tests designed to fail.
-	bucket := unpreparedBuckets[0]
+	bucket := s3verifyBuckets[0]
 	// Spin scanBar
 	scanBar(message)
 	// TODO: need to update to 1001 once this is production ready.
@@ -194,7 +194,7 @@ func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 			return false
 		}
 		// Add the new object to the list of objects.
-		objects = append(objects, object)
+		s3verifyObjects = append(s3verifyObjects, object)
 		// Spin scanBar
 		scanBar(message)
 	}

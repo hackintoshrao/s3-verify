@@ -95,7 +95,7 @@ func verifyHeaderGetObjectIfModifiedSince(header http.Header) error {
 }
 
 // Test the compatibility of the GET object API when using the If-Modified-Since header.
-func testGetObjectIfModifiedSince(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+func mainGetObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	// Set a date in the past.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
@@ -105,7 +105,10 @@ func testGetObjectIfModifiedSince(config ServerConfig, curTest int, bucketName s
 	}
 	// Spin scanBar
 	scanBar(message)
-	for _, object := range testObjects {
+	// All getobject if-modified-since tests happen in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object request.
@@ -150,16 +153,4 @@ func testGetObjectIfModifiedSince(config ServerConfig, curTest int, bucketName s
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectIfModifiedSincePrepared - Entry point for the GetObject with if-modified-since header set if --prepare was used.
-func mainGetObjectIfModifiedSincePrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectIfModifiedSince(config, curTest, bucketName, s3verifyObjects)
-}
-
-// mainGetObjectIfModifiedSinceUnPrepared - Entry point for the GetObject with if-modified-since header set if --prepare wasn't used.
-func mainGetObjectIfModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectIfModifiedSince(config, curTest, bucketName, objects)
 }

@@ -94,10 +94,16 @@ func verifyStatusCopyObject(respStatusCode, expectedStatusCode int) error {
 }
 
 // Test a PUT object request with the copy header set.
-func testCopyObject(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
+func mainCopyObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	// All copy-object tests happen in s3verify created buckets
+	// on s3verify created objects.
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
 	// TODO: create tests designed to fail.
 	destObject := &ObjectInfo{
 		Key: sourceObject.Key,
@@ -131,22 +137,4 @@ func testCopyObject(config ServerConfig, curTest int, sourceBucketName, destBuck
 	scanBar(message)
 	printMessage(message, nil)
 	return true
-}
-
-// mainCopyObjectPrepared - entry point for the CopyObject if --prepare was used.
-func mainCopyObjectPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := s3verifyBuckets[0].Name
-	destBucketName := s3verifyBuckets[1].Name
-	sourceObject := s3verifyObjects[0]
-
-	return testCopyObject(config, curTest, sourceBucketName, destBucketName, sourceObject)
-}
-
-// mainCopyObjectUnPrepared - entry point for the CopyObject if --prepare was not used.
-func mainCopyObjectUnPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := unpreparedBuckets[0].Name
-	destBucketName := unpreparedBuckets[1].Name
-	sourceObject := objects[0]
-
-	return testCopyObject(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

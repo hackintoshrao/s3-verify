@@ -125,33 +125,33 @@ func callAllAPIs(ctx *cli.Context) {
 		for _, bucketName := range ctx.Args() {
 			validateBucket(*config, bucketName)
 		}
-		testCount := 1
+		mainCount := 1
 		for _, test := range preparedTests { // Run all tests that have been set up.
 			if test.Extended {
 				if ctx.GlobalBool("extended") {
-					test.Test(*config, testCount)
-					testCount++
+					test.Test(*config, mainCount)
+					mainCount++
 				}
 			} else {
-				if !test.Test(*config, testCount) && test.Critical {
+				if !test.Test(*config, mainCount) && test.Critical {
 					os.Exit(1)
 				}
-				testCount++
+				mainCount++
 			}
 		}
 	} else {
 		// If the user does not use --prepare flag then just run all non preparedTests.
-		testCount := 1
+		mainCount := 1
 		for _, test := range unpreparedTests {
 			if test.Extended {
 				if ctx.GlobalBool("extended") {
-					test.Test(*config, testCount)
+					test.Test(*config, mainCount)
 				}
 			} else {
-				if !test.Test(*config, testCount) && test.Critical {
+				if !test.Test(*config, mainCount) && test.Critical {
 					os.Exit(1)
 				}
-				testCount++
+				mainCount++
 			}
 		}
 	}

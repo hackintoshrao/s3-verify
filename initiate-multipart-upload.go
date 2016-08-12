@@ -115,11 +115,13 @@ func verifyHeaderInitiateMultipartUpload(header http.Header) error {
 	return nil
 }
 
-// testInitiateMultipartUpload - initiate multipart upload test.
-func testInitiateMultipartUpload(config ServerConfig, curTest int, bucketName string) bool {
+// mainInitiateMultipartUpload - initiate multipart upload test.
+func mainInitiateMultipartUpload(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Initiate-Upload):", curTest, globalTotalNumTest)
 	// Spin scanBar.
 	scanBar(message)
+	// All initiate-multipart tests happen in s3verify created buckets.
+	bucketName := s3verifyBuckets[0].Name
 	// Get the bucket to upload to and the objectName to call the new upload.
 	for _, object := range multipartObjects {
 		// Spin scanBar
@@ -155,16 +157,4 @@ func testInitiateMultipartUpload(config ServerConfig, curTest int, bucketName st
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainInitiateMultipartUploadPrepared - entry point for the iniatiate-multipart test if --prepare was used.
-func mainInitiateMultipartUploadPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testInitiateMultipartUpload(config, curTest, bucketName)
-}
-
-// mainInitiateMultipartUploadUnPrepared - entry point for the initiate-multipart test if --prepare was not used.
-func mainInitiateMultipartUploadUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testInitiateMultipartUpload(config, curTest, bucketName)
 }

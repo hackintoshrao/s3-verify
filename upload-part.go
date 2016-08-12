@@ -121,11 +121,13 @@ func verifyHeaderUploadPart(header http.Header) error {
 	return nil
 }
 
-// testUploadPart - upload part test.
-func testUploadPart(config ServerConfig, curTest int, bucketName string) bool {
+// mainUploadPart - upload part test.
+func mainUploadPart(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Upload-Part):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	// All multipart objects created by s3verify will be stored in s3verify buckets.
+	bucketName := s3verifyBuckets[0].Name
 	// TODO: upload more than one part for at least one object.
 	for i, object := range multipartObjects { // Upload 1 5MB or smaller part per object.
 		// Spin scanBar
@@ -175,16 +177,4 @@ func testUploadPart(config ServerConfig, curTest int, bucketName string) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainUploadPartPrepared - entry point for the upload part test if --prepare was used.
-func mainUploadPartPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testUploadPart(config, curTest, bucketName)
-}
-
-// mainUploadPartUnPrepared - entry point for the upload part test if --prepare was not used.
-func mainUploadPartUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testUploadPart(config, curTest, bucketName)
 }

@@ -101,10 +101,12 @@ func verifyStatusAbortMultipartUpload(respStatusCode, expectedStatusCode int) er
 // AWS maintains the uploadIDs for several hours there is no sure way to test for the right error messages.  // As of now though it is known there is a bug within the Minio Server that returns a shortened form of the
 // error AWS is said to return.
 
-// testAbortMultipartUpload - abort multipart upload API test.
-func testAbortMultipartUpload(config ServerConfig, curTest int, bucketName string) bool {
+// mainAbortMultipartUpload - abort multipart upload API test.
+func mainAbortMultipartUpload(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] Multipart (Abort Upload):", curTest, globalTotalNumTest)
 	scanBar(message)
+	// All multipart operations take place in the s3verify created buckets.
+	bucketName := s3verifyBuckets[0].Name
 	validObject := multipartObjects[1] // This multipart has not been completed and will instead be aborted.
 	// Spin scanBar
 	scanBar(message)
@@ -135,16 +137,4 @@ func testAbortMultipartUpload(config ServerConfig, curTest int, bucketName strin
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-//
-func mainAbortMultipartUploadPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testAbortMultipartUpload(config, curTest, bucketName)
-}
-
-//
-func mainAbortMultipartUploadUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testAbortMultipartUpload(config, curTest, bucketName)
 }

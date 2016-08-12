@@ -94,13 +94,17 @@ func verifyHeaderHeadObjectIfNoneMatch(header http.Header) error {
 	return nil
 }
 
-// testHeadObjectIfNoneMatch - tests the HEAD object with if-none-match header set.
-func testHeadObjectIfNoneMatch(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
+// mainHeadObjectIfNoneMatch - tests the HEAD object with if-none-match header set.
+func mainHeadObjectIfNoneMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-None-Match):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	// Create an ETag that won't match any already created.
 	validETag := "1234567890"
+	// All headobject if-none-match tests happen in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
 	// Create a new request for a HEAD object with if-none-match header set.
 	req, err := newHeadObjectIfNoneMatchReq(config, bucketName, object.Key, validETag)
 	if err != nil {
@@ -151,18 +155,4 @@ func testHeadObjectIfNoneMatch(config ServerConfig, curTest int, bucketName stri
 	scanBar(message)
 	printMessage(message, nil)
 	return true
-}
-
-// mainHeadObjectIfNoneMatchPrepared - Entry point for the HEAD object with if-none-match header set and --prepare was used.
-func mainHeadObjectIfNoneMatchPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	object := s3verifyObjects[0]
-	return testHeadObjectIfNoneMatch(config, curTest, bucketName, object)
-}
-
-// mainHeadObjectIfNoneMatchUnPrepared - Entry point for the HEAD object with if-none-match header set and --prepare was not used.
-func mainHeadObjectIfNoneMatchUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	object := objects[0]
-	return testHeadObjectIfNoneMatch(config, curTest, bucketName, object)
 }

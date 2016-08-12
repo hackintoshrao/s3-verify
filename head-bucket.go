@@ -92,11 +92,12 @@ func verifyStatusHeadBucket(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// testHeadBucket - test the HeadBucket API.
-func testHeadBucket(config ServerConfig, curTest int, bucketName string) bool {
+// mainHeadBucket - test the HeadBucket API.
+func mainHeadBucket(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadBucket:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	bucketName := s3verifyBuckets[0].Name
 	// Create a new HeadBucket request.
 	req, err := newHeadBucketReq(config, bucketName)
 	if err != nil {
@@ -118,16 +119,4 @@ func testHeadBucket(config ServerConfig, curTest int, bucketName string) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainHeadBucketPrepared - entry point for the HeadBucket API test. if --prepared flag was used.
-func mainHeadBucketPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testHeadBucket(config, curTest, bucketName)
-}
-
-// mainHeadBucketUnPrepared - Entry point for the HeadBucket API test. if --prepared flag was not used.
-func mainHeadBucketUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testHeadBucket(config, curTest, bucketName)
 }

@@ -96,10 +96,12 @@ func verifyHeaderHeadObject(header http.Header) error {
 	return nil
 }
 
-// testHeadObject - test the HeadObject API with no header set.
-func testHeadObject(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+// mainHeadObject - test the HeadObject API with no header set.
+func mainHeadObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject:", curTest, globalTotalNumTest)
-	for _, object := range testObjects {
+	// All headobject tests are run in s3verify buckets on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create a new HEAD object with no headers.
@@ -144,16 +146,17 @@ func testHeadObject(config ServerConfig, curTest int, bucketName string, testObj
 	return true
 }
 
+// TODO: I THINK THESE CAN BE REDUCED TOO JUST NEED TO VERIFY.
 // mainHeadObjectPrepared - entry point for HeadObject test with --prepare used.
-func mainHeadObjectPrepared(config ServerConfig, curTest int) bool {
-	// Run on s3verify created buckets.
-	bucketName := s3verifyBuckets[0].Name
-	return testHeadObject(config, curTest, bucketName, s3verifyObjects)
-}
-
-// mainHeadObjectUnPrepared - entry point for HeadObject test without --prepare used.
-func mainHeadObjectUnPrepared(config ServerConfig, curTest int) bool {
-	// Needs to only run on s3verify created objects.
-	bucketName := unpreparedBuckets[0].Name
-	return testHeadObject(config, curTest, bucketName, objects)
-}
+// func mainHeadObjectPrepared(config ServerConfig, curTest int) bool {
+// 	// Run on s3verify created buckets.
+// 	bucketName := s3verifyBuckets[0].Name
+// 	return mainHeadObject(config, curTest, bucketName, s3verifyObjects)
+// }
+//
+// // mainHeadObjectUnPrepared - entry point for HeadObject test without --prepare used.
+// func mainHeadObjectUnPrepared(config ServerConfig, curTest int) bool {
+// 	// Needs to only run on s3verify created objects.
+// 	bucketName := s3verifyBuckets[0].Name
+// 	return mainHeadObject(config, curTest, bucketName, s3verifyObjects)
+// }

@@ -114,10 +114,16 @@ func verifyStatusCopyObjectIfMatch(respStatusCode, expectedStatusCode int) error
 }
 
 // Test the PUT Object Copy with If-Match header is set.
-func testCopyObjectIfMatch(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
+func mainCopyObjectIfMatch(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Match)", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	// All copy-object-if-match tests take place in
+	// s3verify created buckets on s3verify created objects.
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
 	// Create bad ETag.
 	badETag := "1234567890"
 
@@ -172,22 +178,4 @@ func testCopyObjectIfMatch(config ServerConfig, curTest int, sourceBucketName, d
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainCopyObjectIfMatchPrepared - entry point for the CopyObject with if-match header and --prepare used.
-func mainCopyObjectIfMatchPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := s3verifyBuckets[0].Name
-	destBucketName := s3verifyBuckets[1].Name
-	sourceObject := s3verifyObjects[0]
-
-	return testCopyObjectIfMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
-}
-
-// mainCopyObjectIfMatchUnPrepared - entry point for the CopyObject with if-match header and --prepare not used.
-func mainCopyObjectIfMatchUnPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := unpreparedBuckets[0].Name
-	destBucketName := unpreparedBuckets[1].Name
-	sourceObject := objects[0]
-
-	return testCopyObjectIfMatch(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

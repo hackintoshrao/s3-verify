@@ -111,11 +111,17 @@ func verifyHeaderCopyObjectIfModifiedSince(header http.Header) error {
 	return nil
 }
 
-// testCopyObjectIfModifiedSince - test the CopyObject with if-modified-since header.
-func testCopyObjectIfModifiedSince(config ServerConfig, curTest int, sourceBucketName, destBucketName string, sourceObject *ObjectInfo) bool {
+// mainCopyObjectIfModifiedSince - test the CopyObject with if-modified-since header.
+func mainCopyObjectIfModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] CopyObject (If-Modified-Since):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
+	// All copy-object-if-modified-since tests happen in s3verify created buckets
+	// on s3verify created objects.
+	sourceBucketName := s3verifyBuckets[0].Name
+	destBucketName := s3verifyBuckets[1].Name
+	sourceObject := s3verifyObjects[0]
+
 	// Set a date in the past.
 	pastDate, err := time.Parse(http.TimeFormat, "Thu, 01 Jan 1970 00:00:00 GMT")
 	if err != nil {
@@ -182,22 +188,4 @@ func testCopyObjectIfModifiedSince(config ServerConfig, curTest int, sourceBucke
 	scanBar(message)
 	printMessage(message, err)
 	return true
-}
-
-// mainCopyObjectIfModifiedSincePrepared - entry point for the CopyObject with if-modified-since header set and --prepare used.
-func mainCopyObjectIfModifiedSincePrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := s3verifyBuckets[0].Name
-	destBucketName := s3verifyBuckets[1].Name
-	sourceObject := s3verifyObjects[0]
-
-	return testCopyObjectIfModifiedSince(config, curTest, sourceBucketName, destBucketName, sourceObject)
-}
-
-// mainCopyObjectIfModifiedSinceUnPrepared - entry point for the CopyObject with if-modified-since header set and --prepare not used.
-func mainCopyObjectIfModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
-	sourceBucketName := unpreparedBuckets[0].Name
-	destBucketName := unpreparedBuckets[1].Name
-	sourceObject := objects[0]
-
-	return testCopyObjectIfModifiedSince(config, curTest, sourceBucketName, destBucketName, sourceObject)
 }

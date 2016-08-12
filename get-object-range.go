@@ -51,12 +51,15 @@ func newGetObjectRangeReq(config ServerConfig, bucketName, objectName string, st
 }
 
 // Test a GET object request with a range header set.
-func testGetObjectRange(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+func mainGetObjectRange(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (Range):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
 	rand.Seed(time.Now().UnixNano())
-	for _, object := range testObjects {
+	// All getobject tests happen in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		startRange := rand.Int63n(object.Size)
@@ -89,16 +92,4 @@ func testGetObjectRange(config ServerConfig, curTest int, bucketName string, tes
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectRangePrepared - entry point for the GetObject with range header set and --prepare used.
-func mainGetObjectRangePrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectRange(config, curTest, bucketName, s3verifyObjects)
-}
-
-//
-func mainGetObjectRangeUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectRange(config, curTest, bucketName, objects)
 }

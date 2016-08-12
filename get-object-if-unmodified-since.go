@@ -111,7 +111,7 @@ func verifyHeaderGetObjectIfUnModifiedSince(header http.Header) error {
 }
 
 // Test the GET object API with the If-Unmodified-Since header set.
-func testGetObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+func mainGetObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
@@ -121,7 +121,10 @@ func testGetObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName
 		printMessage(message, err)
 		return false
 	}
-	for _, object := range testObjects {
+	// All getobject if-unmodified-since tests run in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Form a request with a pastDate to make sure the object is not returned.
@@ -166,16 +169,4 @@ func testGetObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectIfUnModifiedSincePrepared - entry point for the GetObject with if-unmodified-since header set and --prepare flag used.
-func mainGetObjectIfUnModifiedSincePrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObjectIfUnModifiedSince(config, curTest, bucketName, s3verifyObjects)
-}
-
-// mainGetObjectIfUnModifiedSinceUnPrepared - entry point for the GetObject with if-unmodified-since header set and --prepare flag not used.
-func mainGetObjectIfUnModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObjectIfUnModifiedSince(config, curTest, bucketName, objects)
 }

@@ -124,20 +124,23 @@ func verifyStatusGetObject(respStatusCode, expectedStatusCode int) error {
 	return nil
 }
 
-// testGetObject - test a get object request.
-func testGetObject(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
+// mainGetObject - test a get object request.
+func mainGetObject(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] GetObject:", curTest, globalTotalNumTest)
 	// Use the bucket created in the mainPutBucketPrepared Test.
 	// Set the response headers to be overwritten.
 	expectedHeaders := map[string]string{
-		"response-content-type":        "image/gif",
-		"response-content-language":    "da",
+		"response-content-type": "image/gif",
+		//		"response-content-language":    "da",
 		"response-expires":             "Thu, 01 Dec 1994 16:00:00 GMT",
 		"response-cache-control":       "no-cache",
 		"response-content-disposition": "attachment; filename=\"s3verify.txt\"",
-		"response-content-encoding":    "gzip",
+		//		"response-content-encoding":    "gzip",
 	}
-	for _, object := range testObjects {
+	// All getobject tests happen in s3verify created buckets
+	// on s3verify objects.
+	bucketName := s3verifyBuckets[0].Name
+	for _, object := range s3verifyObjects {
 		// Spin scanBar
 		scanBar(message)
 		// Create new GET object request.
@@ -166,16 +169,4 @@ func testGetObject(config ServerConfig, curTest int, bucketName string, testObje
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainGetObjectUnPrepared - entry point for the GetObject test if --prepare was not used.
-func mainGetObjectUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	return testGetObject(config, curTest, bucketName, objects)
-}
-
-// mainGetObjectPrepared - entry point for the GetObject test if --prepare was used.
-func mainGetObjectPrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	return testGetObject(config, curTest, bucketName, s3verifyObjects)
 }

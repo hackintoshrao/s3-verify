@@ -109,13 +109,12 @@ func verifyHeaderListObjectsV1(header http.Header) error {
 }
 
 // mainListObjectsV1 - ListObjects V1 API test. This test is the same for both --prepared and non --prepared environments.
-func mainListObjectsV1(config ServerConfig, curTest int) bool {
+func mainListObjectsV1(config ServerConfig, curTest int, bucketName string, testObjects []*ObjectInfo) bool {
 	message := fmt.Sprintf("[%02d/%d] ListObjects V1:", curTest, globalTotalNumTest)
 	// Spin scanBar
 	scanBar(message)
-	bucketName := unpreparedBuckets[0].Name
 	objectInfo := ObjectInfos{}
-	for _, object := range objects {
+	for _, object := range testObjects {
 		objectInfo = append(objectInfo, *object)
 	}
 	sort.Sort(objectInfo)
@@ -259,4 +258,16 @@ func mainListObjectsV1(config ServerConfig, curTest int) bool {
 	// Test passed.
 	printMessage(message, nil)
 	return true
+}
+
+//
+func mainListObjectsV1UnPrepared(config ServerConfig, curTest int) bool {
+	bucketName := s3verifyBuckets[0].Name
+	return mainListObjectsV1(config, curTest, bucketName, s3verifyObjects)
+}
+
+//
+func mainListObjectsV1Prepared(config ServerConfig, curTest int) bool {
+	bucketName := preparedBuckets[0].Name
+	return mainListObjectsV1(config, curTest, bucketName, preparedObjects)
 }

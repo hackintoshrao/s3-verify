@@ -94,8 +94,8 @@ func verifyHeaderHeadObjectIfUnModifiedSince(header http.Header) error {
 	return nil
 }
 
-// testHeadObjectIfUnModifiedSince - HEAD object with if-unmodified-since header set test.
-func testHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketName string, object *ObjectInfo) bool {
+// mainHeadObjectIfUnModifiedSince - HEAD object with if-unmodified-since header set test.
+func mainHeadObjectIfUnModifiedSince(config ServerConfig, curTest int) bool {
 	message := fmt.Sprintf("[%02d/%d] HeadObject (If-Unmodified-Since):", curTest, globalTotalNumTest)
 	scanBar(message)
 	// Create a date in the past to use.
@@ -104,6 +104,10 @@ func testHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketNam
 		printMessage(message, err)
 		return false
 	}
+	// All headobject if-unmodified-since tests happen in s3verify created buckets
+	// on s3verify created objects.
+	bucketName := s3verifyBuckets[0].Name
+	object := s3verifyObjects[0]
 	// Create a new request.
 	req, err := newHeadObjectIfUnModifiedSinceReq(config, bucketName, object.Key, object.LastModified)
 	if err != nil {
@@ -155,18 +159,4 @@ func testHeadObjectIfUnModifiedSince(config ServerConfig, curTest int, bucketNam
 	// Test passed.
 	printMessage(message, nil)
 	return true
-}
-
-// mainHeadObjectIfUnModifiedSinceUnPrepared - Entry point for the HEAD object with if-unmodified-since header set and --prepare used.
-func mainHeadObjectIfUnModifiedSincePrepared(config ServerConfig, curTest int) bool {
-	bucketName := s3verifyBuckets[0].Name
-	object := s3verifyObjects[0]
-	return testHeadObjectIfUnModifiedSince(config, curTest, bucketName, object)
-}
-
-// mainHeadObjectIfUnModifiedSinceUnPrepared - Entry point for the HEAD object with if-unmodified-since header set and --prepare not used.
-func mainHeadObjectIfUnModifiedSinceUnPrepared(config ServerConfig, curTest int) bool {
-	bucketName := unpreparedBuckets[0].Name
-	object := objects[0]
-	return testHeadObjectIfUnModifiedSince(config, curTest, bucketName, object)
 }
