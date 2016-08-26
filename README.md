@@ -1,7 +1,7 @@
 <p align="center">
-<img src="https://raw.githubusercontent.com/minio/s3verify/master/S3Verify.png" width="140px">
+<img src="https://raw.githubusercontent.com/minio/s3verify/master/logo.png">
 </p>
-# s3verify - Test for Amazon S3 V4 Signature API Compatibility <a href="https://travis-ci.org/minio/s3verify"><img src="https://img.shields.io/travis/minio/s3verify.svg?style=flat-square" alt="Build Status"></a>
+# s3verify - Test for Amazon S3 V4 Signature API Compatibility [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/minio/minio?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Go Report Card](https://goreportcard.com/badge/minio/minio)](https://goreportcard.com/report/minio/minio) [![Build Status](https://travis-ci.org/minio/s3verify.svg?branch=master)](https://travis-ci.org/minio/s3verify)
 
 s3verify performs a series of API calls against an object storage server and checks the responses for AWS S3 signature version 4 compatibility.
 
