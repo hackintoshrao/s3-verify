@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://raw.githubusercontent.com/minio/s3verify/master/s3v_logo.svg">
+<img src="https://github.com/minio/s3verify/blob/master/s3v_logo-01.png?raw=true" width="140px">
 </p>
 # s3verify - A tool to test for Amazon S3 V4 Signature API Compatibility [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/minio/minio?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Go Report Card](https://goreportcard.com/badge/minio/minio)](https://goreportcard.com/report/minio/minio) [![Build Status](https://travis-ci.org/minio/s3verify.svg?branch=master)](https://travis-ci.org/minio/s3verify)
 
