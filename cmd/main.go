@@ -40,24 +40,27 @@ var (
 // Custom help template.
 // Revert to API not command.
 var s3verifyHelpTemplate = `NAME:
-	{{.Name}} - {{.Usage}}
-
-VERSION: {{.Version}}
+ {{.Name}} - {{.Usage}}
 
 USAGE:
-	{{.Name}} {{if .Flags}}[FLAGS...] {{end}}
+  {{.Name}} {{if .Flags}}[FLAGS...] {{end}}
+
+VERSION:
+  {{.Version}}
 
 GLOBAL FLAGS:
-{{range .Flags}}{{.}}
-{{end}}
+  {{range .Flags}}{{.}}
+  {{end}}
 EXAMPLES:
-1. Run all tests on Minio server. play.minio.io:9000 is a public test server. 
-You can use these secret and access keys in all your tests.
-$ S3_URL=https://play.minio.io:9000 S3_ACCESS=Q3AM3UQ867SPQQA43P2F S3_SECRET=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG s3verify --extended
+  1. Run all tests on Minio server. play.minio.io:9000 is a public test server.
+     You can use these secret and access keys in all your tests.
+     $ S3_URL=https://play.minio.io:9000 S3_ACCESS=Q3AM3UQ867SPQQA43P2F S3_SECRET=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG s3verify --extended
 
-2. Run all basic tests on Amazon S3 server using flags. 
-NOTE: Passing access and secret keys as flags should be avoided on a multi-user server for security reasons.
-$ s3verify --access YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY --url https://s3.amazonaws.com --region us-west-1
+  2. Run all basic tests on Amazon S3 server using flags.
+     NOTE: Passing access and secret keys as flags should be avoided on a multi-user server for security reasons.
+     $ set +o history
+     $ s3verify --access YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY --url https://s3.amazonaws.com --region us-west-1
+     $ set -o history
 `
 
 // APItest - Define all mainXXX tests to be of this form.
@@ -75,7 +78,7 @@ func commandNotFound(ctx *cli.Context, command string) {
 // registerApp - Create a new s3verify app.
 func registerApp() *cli.App {
 	app := cli.NewApp()
-	app.Usage = "Test for Amazon S3 v4 API compatibility."
+	app.Usage = "A tool to test for Amazon S3 V4 Signature API Compatibility"
 	app.Author = "Minio.io"
 	app.Name = "s3verify"
 	app.Flags = append(s3verifyFlags, globalFlags...)
