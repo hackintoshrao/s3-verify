@@ -105,6 +105,10 @@ func newPutBucketReq(region, bucketName string) (Request, error) {
 
 // putBucketVerify - Check the response Body, Header, Status for AWS S3 compliance.
 func putBucketVerify(res *http.Response, bucketName string, expectedStatusCode int, expectedError ErrorResponse) error {
+	// Previous attempt to create bucket succeeded, treat it as a good condition.
+	if res.StatusCode == http.StatusConflict {
+		return nil
+	}
 	if err := verifyStatusPutBucket(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}

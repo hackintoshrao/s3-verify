@@ -225,7 +225,7 @@ func mainCopyObject(config ServerConfig, curTest int) bool {
 		Key: sourceObject.Key + "DNE",
 	}
 	// This object will not be created.
-	invalidSourceBucketReq, err := newCopyObjectReq(sourceBucketName+"DNE", sourceObject.Key, destBucketName, destObjectNoSourceBucket.Key)
+	invalidSourceBucketReq, err := newCopyObjectReq(sourceBucketName+"dne", sourceObject.Key, destBucketName, destObjectNoSourceBucket.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false
@@ -256,7 +256,7 @@ func mainCopyObject(config ServerConfig, curTest int) bool {
 		Key: sourceObject.Key + "DNE",
 	}
 	// This object will not be created.
-	invalidDestBucketReq, err := newCopyObjectReq(sourceBucketName, sourceObject.Key, destBucketName+"DNE", destObjectNoDestBucket.Key)
+	invalidDestBucketReq, err := newCopyObjectReq(sourceBucketName, sourceObject.Key, destBucketName+"dne", destObjectNoDestBucket.Key)
 	if err != nil {
 		printMessage(message, err)
 		return false

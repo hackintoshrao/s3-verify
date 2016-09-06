@@ -66,7 +66,7 @@ func prepareBuckets(region string, client *minio.Client) (string, error) {
 func prepareObjects(client *minio.Client, bucketName string) error {
 	message := "Creating test objects"
 	// First check that the bucketName does not already contain the correct number of s3verify objects.
-	objCount := numTestObjects
+	var objCount int
 	doneCh := make(chan struct{})
 	objectInfoCh := client.ListObjects(bucketName, "s3verify/", true, doneCh)
 	for _ = range objectInfoCh {
