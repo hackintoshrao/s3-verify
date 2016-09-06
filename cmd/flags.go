@@ -41,6 +41,7 @@ var globalFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:   "url, u",
 		Usage:  "URL to S3 compatible server",
+		Value:  "https://s3.amazonaws.com",
 		EnvVar: "S3_URL",
 	},
 	cli.BoolFlag{

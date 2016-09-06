@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -89,33 +90,20 @@ func registerApp() *cli.App {
 	return app
 }
 
-// makeConfigFromCtx - parse the passed context to create a new config.
-func makeConfigFromCtx(ctx *cli.Context) (*ServerConfig, error) {
-	var config *ServerConfig
-	if ctx.GlobalString("access") != "" &&
-		ctx.GlobalString("secret") != "" &&
-		ctx.GlobalString("url") != "" {
-		config = newServerConfig(ctx)
-	}
-	// Set the region for the config here.
-	// Default to us-west-1 for AWS hosts and us-east-1 for all others.
-	// Unless specified by the --region flag.
-	if err := setRegion(config); err != nil {
-		return nil, fmt.Errorf("Unable to create config.")
-	}
-	// If config cannot be created successfully show help and exit immediately.
-	return nil, fmt.Errorf("Unable to create config.")
-}
-
 // callAllAPIS parse context extract flags and then call all.
 func callAllAPIs(ctx *cli.Context) {
 	// Create a new config from the context.
-	config, err := makeConfigFromCtx(ctx)
+	config, err := newServerConfig(ctx)
 	if err != nil {
 		// Could not create a config. Exit immediately.
 		cli.ShowAppHelpAndExit(ctx, 1)
 	}
-
+	if config.Access == "" {
+		console.Fatalln(errors.New("Please set S3_ACCESS=<your-access-key>. Refer 's3verify --help'"))
+	}
+	if config.Secret == "" {
+		console.Fatalln(errors.New("Please set S3_SECRET=<your-secret-key>. Refer 's3verify --help'"))
+	}
 	// Test that the given endpoint is reachable with a simple GET request.
 	if err := verifyHostReachable(config.Endpoint, config.Region); err != nil {
 		// If the provided endpoint is unreachable error out instantly.

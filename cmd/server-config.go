@@ -37,7 +37,7 @@ type ServerConfig struct {
 }
 
 // newServerConfig - new server config.
-func newServerConfig(ctx *cli.Context) *ServerConfig {
+func newServerConfig(ctx *cli.Context) (*ServerConfig, error) {
 	// Set config fields from either flags or env. variables.
 	serverCfg := &ServerConfig{
 		Access:   ctx.String("access"),
@@ -53,28 +53,27 @@ func newServerConfig(ctx *cli.Context) *ServerConfig {
 			},
 		},
 	}
+	// Region was not provided, we try to set a default region instead.
+	if !ctx.IsSet("region") {
+		endpointURL, err := url.Parse(serverCfg.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+		serverCfg.Region = defaultRegion(endpointURL)
+	}
+
 	if ctx.Bool("verbose") || ctx.GlobalBool("verbose") {
 		// Set up new tracer.
 		serverCfg.Client.Transport = httptracer.GetNewTraceTransport(newTraceV4(), http.DefaultTransport)
 	}
-	return serverCfg
+	return serverCfg, nil
 }
 
-// setRegion - set the region of the new config.
-func setRegion(config *ServerConfig) error {
-	endpointURL, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return err
+// defaultRegion - returns default region for a given URL.
+func defaultRegion(endpointURL *url.URL) string {
+	// If this is an AmazonHost default the region to us-west-1.
+	if isAmazonEndpoint(endpointURL) {
+		return "us-west-1"
 	}
-	// If no region was provided set it here.
-	if config.Region == "" {
-		// If this is an AmazonHost default the region to us-west-1.
-		if isAmazonEndpoint(endpointURL) {
-			config.Region = "us-west-1"
-		} else {
-			// Otherwise default to us-east-1.
-			config.Region = globalDefaultRegion
-		}
-	}
-	return nil
+	return globalDefaultRegion
 }

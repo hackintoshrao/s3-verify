@@ -26,15 +26,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/minio/minio-go/pkg/policy"
 )
 
 // s3verifyPolicies - maintain a list of all access policies used by s3verify.
-var s3verifyPolicies = []policy.BucketAccessPolicy{}
+var s3verifyPolicies = []BucketAccessPolicy{}
 
 // newPutBucketPolicyReq - create a new PutBucketPolicyReq
-func newPutBucketPolicyReq(bucketName string, bucketPolicy policy.BucketAccessPolicy) (Request, error) {
+func newPutBucketPolicyReq(bucketName string, bucketPolicy BucketAccessPolicy) (Request, error) {
 	//
 	var putBucketPolicyReq = Request{
 		customHeader: http.Header{},
@@ -121,10 +119,10 @@ func mainPutBucketPolicy(config ServerConfig, curTest int) bool {
 	scanBar(message)
 
 	// List of different bucketPolicies to create.
-	policies := []policy.BucketPolicy{
-		policy.BucketPolicyReadWrite, // Set the second bucket to have both read/write permissions.
-		policy.BucketPolicyReadOnly,  // Set the third bucket to only read.
-		policy.BucketPolicyWriteOnly, // Set the last bucket to only write.
+	policies := []BucketPolicy{
+		BucketPolicyReadWrite, // Set the second bucket to have both read/write permissions.
+		BucketPolicyReadOnly,  // Set the third bucket to only read.
+		BucketPolicyWriteOnly, // Set the last bucket to only write.
 	}
 
 	// Set a policy for all buckets created by s3verify.
@@ -136,8 +134,8 @@ func mainPutBucketPolicy(config ServerConfig, curTest int) bool {
 		// Gather the policy you wish to create.
 		setPolicy := policies[i]
 		// Create the statements required.
-		statements := policy.SetPolicy([]policy.Statement{}, setPolicy, bucketName, "")
-		bucketPolicy := policy.BucketAccessPolicy{
+		statements := SetPolicy([]Statement{}, setPolicy, bucketName, "")
+		bucketPolicy := BucketAccessPolicy{
 			Version:    "2008-10-17",
 			Statements: statements,
 		}

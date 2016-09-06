@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-
-	"github.com/minio/minio-go/pkg/policy"
 )
 
 // newGetBucketPolicyReq - create a new request for the get-bucket-policy API.
@@ -57,7 +55,7 @@ func newGetBucketPolicyReq(bucketName string) (Request, error) {
 }
 
 // getBucketPolicyVerify - Verify the response returned matches what is expected.
-func getBucketPolicyVerify(res *http.Response, expectedStatusCode int, expectedPolicy policy.BucketAccessPolicy, expectedError ErrorResponse) error {
+func getBucketPolicyVerify(res *http.Response, expectedStatusCode int, expectedPolicy BucketAccessPolicy, expectedError ErrorResponse) error {
 	if err := verifyStatusGetBucketPolicy(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
@@ -88,9 +86,9 @@ func verifyHeaderGetBucketPolicy(header http.Header) error {
 }
 
 // verifyBodyGetBucketPolicy - verify the policy returned matches what is expected.
-func verifyBodyGetBucketPolicy(resBody io.Reader, expectedPolicy policy.BucketAccessPolicy, expectedError ErrorResponse) error {
+func verifyBodyGetBucketPolicy(resBody io.Reader, expectedPolicy BucketAccessPolicy, expectedError ErrorResponse) error {
 	if len(expectedPolicy.Statements) != 0 {
-		receivedPolicy := policy.BucketAccessPolicy{}
+		receivedPolicy := BucketAccessPolicy{}
 		if err := jsonDecoder(resBody, &receivedPolicy); err != nil {
 			return err
 		}
@@ -121,7 +119,7 @@ func mainGetBucketPolicy(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 
-	// Test missing bucket policy.
+	// Test missing bucket
 	expectedError := ErrorResponse{
 		Message: "The bucket policy does not exist",
 		Code:    "NoSuchBucketPolicy",
@@ -140,7 +138,7 @@ func mainGetBucketPolicy(config ServerConfig, curTest int) bool {
 		return false
 	}
 	// Verify the response.
-	if err := getBucketPolicyVerify(res, http.StatusNotFound, policy.BucketAccessPolicy{}, expectedError); err != nil {
+	if err := getBucketPolicyVerify(res, http.StatusNotFound, BucketAccessPolicy{}, expectedError); err != nil {
 		printMessage(message, err)
 		return false
 	}

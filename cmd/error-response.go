@@ -48,19 +48,7 @@ type ErrorResponse struct {
 	Region string
 }
 
-// ToErrorResponse - Returns parsed ErrorResponse struct from body and
-// http headers.
-//
-// For example:
-//
-//   import s3 "github.com/minio/minio-go"
-//   ...
-//   ...
-//   reader, stat, err := s3.GetObject(...)
-//   if err != nil {
-//      resp := s3.ToErrorResponse(err)
-//   }
-//   ...
+// ToErrorResponse - Returns parsed ErrorResponse struct from body and http headers.
 func ToErrorResponse(err error) ErrorResponse {
 	switch err := err.(type) {
 	case ErrorResponse:
@@ -75,14 +63,12 @@ func (e ErrorResponse) Error() string {
 	return e.Message
 }
 
-// Common string for errors to report issue location in unexpected
-// cases.
+// Common string for errors to report issue location in unexpected cases.
 const (
 	reportIssue = "Please report this issue at https://github.com/minio/s3verify/issues."
 )
 
-// httpRespToErrorResponse returns a new encoded ErrorResponse
-// structure as error.
+// httpRespToErrorResponse returns a new encoded ErrorResponse structure as error.
 func httpRespToErrorResponse(resp *http.Response, bucketName, objectName string) error {
 	if resp == nil {
 		msg := "Response is empty. " + reportIssue
@@ -90,7 +76,7 @@ func httpRespToErrorResponse(resp *http.Response, bucketName, objectName string)
 	}
 	var errResp ErrorResponse
 	err := xmlDecoder(resp.Body, &errResp)
-	// Xml decoding failed with no body, fall back to HTTP headers.
+	// XML decoding failed with no body, fall back to HTTP headers.
 	if err != nil {
 		switch resp.StatusCode {
 		case http.StatusNotFound:

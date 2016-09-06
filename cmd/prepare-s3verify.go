@@ -75,26 +75,24 @@ func prepareObjects(client *minio.Client, bucketName string) error {
 	if objCount == numTestObjects {
 		printMessage(message, nil)
 		return nil
-	} else {
-		// TODO: update this to 1001...for testing purposes it is OK to leave it at 101 for now.
-		// Upload 1001 objects specifically for the list-objects tests.
-		for i := objCount; i < numTestObjects; i++ {
-			// Spin scanBar
-			scanBar(message)
-			randomData := randString(60, rand.NewSource(time.Now().UnixNano()), "")
-			objectKey := "s3verify/put/object/" + globalSuffix + strconv.Itoa(i)
-			// Create 60 bytes worth of random data for each object.
-			reader := bytes.NewReader([]byte(randomData))
-			_, err := client.PutObject(bucketName, objectKey, reader, "application/octet-stream")
-			if err != nil {
-				printMessage(message, err)
-				return err
-			}
-			// Spin scanBar
-			scanBar(message)
-		}
 	}
-
+	// TODO: update this to 1001...for testing purposes it is OK to leave it at 101 for now.
+	// Upload 1001 objects specifically for the list-objects tests.
+	for i := objCount; i < numTestObjects; i++ {
+		// Spin scanBar
+		scanBar(message)
+		randomData := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+		objectKey := "s3verify/put/object/" + globalSuffix + strconv.Itoa(i)
+		// Create 60 bytes worth of random data for each object.
+		reader := bytes.NewReader([]byte(randomData))
+		_, err := client.PutObject(bucketName, objectKey, reader, "application/octet-stream")
+		if err != nil {
+			printMessage(message, err)
+			return err
+		}
+		// Spin scanBar
+		scanBar(message)
+	}
 	randomData := randString(60, rand.NewSource(time.Now().UnixNano()), "")
 	objectKey := "s3verify/list/" + globalSuffix
 	reader := bytes.NewReader([]byte(randomData))
@@ -114,11 +112,8 @@ func validateBucket(config ServerConfig, bucketName string) error {
 	if err != nil {
 		return err
 	}
-	secure := false
-	if hostURL.Scheme == "https" {
-		secure = true
-	}
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
+	isSecure := hostURL.Scheme == "https"
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, isSecure)
 	if err != nil {
 		return err
 	}
@@ -164,11 +159,8 @@ func mainPrepareS3Verify(config ServerConfig) (string, error) {
 		return "", err
 	}
 	region := config.Region
-	secure := false
-	if hostURL.Scheme == "https" {
-		secure = true
-	}
-	client, err := minio.New(hostURL.Host, config.Access, config.Secret, secure)
+	isSecure := hostURL.Scheme == "https"
+	client, err := minio.New(hostURL.Host, config.Access, config.Secret, isSecure)
 	if err != nil {
 		return "", err
 	}
