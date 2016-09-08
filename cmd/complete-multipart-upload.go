@@ -65,11 +65,11 @@ func newCompleteMultipartUploadReq(bucketName, objectName, uploadID string, comp
 // TODO: So far only valid multipart requests are used. Implement tests that SHOULD fail.
 //
 // completeMultipartUploadVerify - verify tthat the response returned matches what is expected.
-func completeMultipartUploadVerify(res *http.Response, expectedStatusCode int) error {
+func completeMultipartUploadVerify(res *http.Response, expectedStatusCode int, bucketName, objectKey string) error {
 	if err := verifyStatusCompleteMultipartUpload(res.StatusCode, expectedStatusCode); err != nil {
 		return err
 	}
-	if err := verifyBodyCompleteMultipartUpload(res.Body); err != nil {
+	if err := verifyBodyCompleteMultipartUpload(res.Body, bucketName, objectKey); err != nil {
 		return err
 	}
 	if err := verifyHeaderCompleteMultipartUpload(res.Header); err != nil {
@@ -88,10 +88,18 @@ func verifyStatusCompleteMultipartUpload(respStatusCode, expectedStatusCode int)
 }
 
 // verifyBodyCompleteMultipartUpload - verify the body returned matches what is expected.
-func verifyBodyCompleteMultipartUpload(resBody io.Reader) error {
+func verifyBodyCompleteMultipartUpload(resBody io.Reader, bucketName, objectKey string) error {
 	resCompleteMultipartUploadResult := completeMultipartUploadResult{}
 	if err := xmlDecoder(resBody, &resCompleteMultipartUploadResult); err != nil {
 		return err
+	}
+	if resCompleteMultipartUploadResult.Bucket != bucketName {
+		return fmt.Errorf("Wrong bucket in Complete Multipart XML result, expected: %s, received: %s",
+			resCompleteMultipartUploadResult.Bucket, bucketName)
+	}
+	if resCompleteMultipartUploadResult.Key != objectKey {
+		return fmt.Errorf("Wrong key in Complete Multipart XML result, expected: %s, received: %s",
+			resCompleteMultipartUploadResult.Key, objectKey)
 	}
 	return nil
 }
@@ -129,7 +137,7 @@ func mainCompleteMultipartUpload(config ServerConfig, curTest int) bool {
 	// Spin scanBar
 	scanBar(message)
 	// Verify the response.
-	if err := completeMultipartUploadVerify(res, http.StatusOK); err != nil {
+	if err := completeMultipartUploadVerify(res, http.StatusOK, bucketName, object.Key); err != nil {
 		printMessage(message, err)
 		return false
 	}

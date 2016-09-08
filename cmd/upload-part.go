@@ -31,8 +31,8 @@ import (
 	"strings"
 )
 
-// Store parts to be listed.
-var objectParts = []objectPart{}
+// Store parts to be listed. Parts are grouped by object in sub-lists
+var objectParts = [2][]objectPart{}
 
 // Complete multipart upload.
 var complMultipartUploads = []*completeMultipartUpload{
@@ -137,6 +137,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 		// Create some random data at most 5MB to upload via multipart operations.
 		objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
 		part.PartNumber = 1
+		part.Data = objectData
 		part.Size = int64(len(objectData))
 		_, err := io.ReadFull(crand.Reader, objectData)
 		if err != nil {
@@ -165,7 +166,7 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 		part.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
 		part.ETag = strings.TrimSuffix(part.ETag, "\"")
 		// Store the parts to be listed in the list-multipart-uploads test.
-		objectParts = append(objectParts, part)
+		objectParts[i] = append(objectParts[i], part)
 		// Test cleared store the uploaded parts to be completed/aborted.
 		var complPart completePart
 		complPart.ETag = part.ETag

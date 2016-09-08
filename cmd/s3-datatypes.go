@@ -144,6 +144,9 @@ type objectPart struct {
 
 	// Size of the uploaded part data.
 	Size int64
+
+	// Part data
+	Data []byte
 }
 
 // completeMultipartUploadResult container for completed multipart

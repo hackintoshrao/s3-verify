@@ -199,6 +199,11 @@ var preparedTests = []APItest{
 		Critical: false, // This test does not affect future tests.
 	},
 	APItest{
+		Test:     mainGetObjectMultipart,
+		Extended: false, // GetObject is not an extended API.
+		Critical: false, // This test does not affect future tests.
+	},
+	APItest{
 		Test:     mainGetObjectPresigned,
 		Extended: false, // GetObject Presigned is not an extended API.
 		Critical: false, // This test does not affect future tests.
@@ -424,6 +429,12 @@ var unpreparedTests = []APItest{
 	// Tests for GetObject API.
 	APItest{
 		Test:     mainGetObject,
+		Extended: false, // GetObject is not an extended API.
+		Critical: false, // This test does not affect future tests.
+	},
+	// Tests for GetObject API.
+	APItest{
+		Test:     mainGetObjectMultipart,
 		Extended: false, // GetObject is not an extended API.
 		Critical: false, // This test does not affect future tests.
 	},

@@ -124,7 +124,7 @@ func mainListParts(config ServerConfig, curTest int) bool {
 		Bucket:      bucketName,
 		Key:         object.Key,
 		UploadID:    object.UploadID,
-		ObjectParts: objectParts,
+		ObjectParts: objectParts[0],
 	}
 	// Create a new ListParts request.
 	req, err := newListPartsReq(bucketName, object.Key, object.UploadID)

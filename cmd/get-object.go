@@ -110,7 +110,12 @@ func verifyBodyGetObject(resBody io.Reader, expectedBody []byte, expectedError E
 		}
 		// Compare what was created to be uploaded and what is contained in the response body.
 		if !bytes.Equal(body, expectedBody) {
-			err := fmt.Errorf("Unexpected Body Received: wanted %v, got %v", string(expectedBody), string(body))
+			var err error
+			if len(body) > 1024 || len(expectedBody) > 1024 {
+				err = fmt.Errorf("Unexpected Body Received. Body too long to be printed.")
+			} else {
+				err = fmt.Errorf("Unexpected Body Received: wanted %v, got %v", string(expectedBody), string(body))
+			}
 			return err
 		}
 		return nil
@@ -198,6 +203,59 @@ func mainGetObject(config ServerConfig, curTest int) bool {
 	defer closeResponse(invalidKeyRes)
 	// Verify the request failed.
 	if err := getObjectVerify(invalidKeyRes, []byte{}, http.StatusNotFound, nil, invalidKeyError); err != nil {
+		printMessage(message, err)
+		return false
+	}
+
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
+	printMessage(message, nil)
+	return true
+}
+
+// mainGetObjectMultipart - test a get object request of a object uploaded via multipart operation
+func mainGetObjectMultipart(config ServerConfig, curTest int) bool {
+	message := fmt.Sprintf("[%02d/%d] GetObject (multipart):", curTest, globalTotalNumTest)
+	// Use the bucket created in the mainPutBucketPrepared Test.
+	// Set the response headers to be overwritten.
+	expectedHeaders := map[string]string{
+		"response-content-type":        "image/gif",
+		"response-content-language":    "da",
+		"response-expires":             "Thu, 01 Dec 1994 16:00:00 GMT",
+		"response-cache-control":       "no-cache",
+		"response-content-disposition": "attachment; filename=\"s3verify.txt\"",
+		// "response-content-encoding":    "gzip",
+	}
+	// All getobject tests happen in s3verify created buckets
+	// on s3verify objects.
+	bucketName := s3verifyBuckets[0].Name
+	testObject := multipartObjects[0]
+	// Spin scanBar
+	scanBar(message)
+
+	// Create new valid GET object request.
+	req, err := newGetObjectReq(bucketName, testObject.Key, expectedHeaders)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Execute the request.
+	res, err := config.execRequest("GET", req)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(res)
+
+	// Join parts to check the uploaded data
+	var data []byte
+	for _, obj := range objectParts[0] {
+		data = append(data, obj.Data...)
+	}
+
+	// Verify the response.
+	if err := getObjectVerify(res, data, http.StatusOK, expectedHeaders, ErrorResponse{}); err != nil {
 		printMessage(message, err)
 		return false
 	}
