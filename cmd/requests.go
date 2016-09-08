@@ -34,6 +34,9 @@ type Request struct {
 	presignURL bool  // Indicates whether or not this will be a presigned http.Request.
 	expires    int64 // Describes for how long the presigned URL will be valid for.
 
+	streamingSign bool
+	chunkSize     int64
+
 	customHeader http.Header
 	contentBody  io.Reader
 
@@ -155,6 +158,8 @@ func (c ServerConfig) newRequest(method string, customReq Request) (req *http.Re
 	} else if customReq.presignURL {
 		// Presign the request.
 		req = signv4.PreSignV4(*req, c.Access, c.Secret, c.Region, customReq.expires)
+	} else if customReq.streamingSign {
+		req = signv4.StreamingSignV4(*req, c.Access, c.Secret, c.Region, customReq.chunkSize)
 	} else {
 		// Else use regular signature v4.
 		req = signv4.SignV4(*req, c.Access, c.Secret, c.Region)

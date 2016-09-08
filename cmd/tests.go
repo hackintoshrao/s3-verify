@@ -67,6 +67,13 @@ var preparedTests = []APItest{
 		Extended: false, // PutObject is not an extended API.
 		Critical: false, // Because -- has been used this object is not necessary for future tests.
 	},
+	// Tests for PutObject streaming API.
+	APItest{
+		Test:     mainPutObjectStream,
+		Extended: false, // PutObject streaming v4 is not an extended API.
+		Critical: false, // Because -- has been used this object is not necessary for future tests.
+	},
+
 	APItest{
 		Test:     mainPresignedPutObject,
 		Extended: false, // PutObject presigned is not an extended API.
@@ -306,6 +313,13 @@ var unpreparedTests = []APItest{
 		Extended: false, // PutObject is not an extended API.
 		Critical: true,  // These objects are necessary for future tests.
 	},
+	// Tests for PutObject Streaming API.
+	APItest{
+		Test:     mainPutObjectStream,
+		Extended: false, // PutObject Streaming V4 is not an extended API.
+		Critical: true,  // These objects are necessary for future tests.
+	},
+
 	APItest{
 		Test:     mainPresignedPutObject,
 		Extended: false, // PutObject presigned is not an extended API.

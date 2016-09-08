@@ -19,6 +19,9 @@ package signv4
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"sort"
 	"strconv"
@@ -70,11 +73,16 @@ const (
 ///
 ///      Is skipped for obvious reasons
 ///
-var ignoredHeaders = map[string]bool{
+var ignoredSignV4Headers = map[string]bool{
 	"Authorization":  true,
 	"Content-Type":   true,
 	"Content-Length": true,
 	"User-Agent":     true,
+}
+var ignoredStreamSignV4Headers = map[string]bool{
+	"Authorization": true,
+	"Content-Type":  true,
+	"User-Agent":    true,
 }
 
 // getSigningKey hmac seed to calculate final signature.
@@ -122,7 +130,7 @@ func getHashedPayload(req http.Request) string {
 
 // getCanonicalHeaders generate a list of request headers for
 // signature.
-func getCanonicalHeaders(req http.Request) string {
+func getCanonicalHeaders(req http.Request, ignoredHeaders map[string]bool) string {
 	var headers []string
 	vals := make(map[string][]string)
 	for k, vv := range req.Header {
@@ -161,7 +169,7 @@ func getCanonicalHeaders(req http.Request) string {
 // getSignedHeaders generate all signed request headers.
 // i.e lexically sorted, semicolon-separated list of lowercase
 // request header names.
-func getSignedHeaders(req http.Request) string {
+func getSignedHeaders(req http.Request, ignoredHeaders map[string]bool) string {
 	var headers []string
 	for k := range req.Header {
 		if _, ok := ignoredHeaders[http.CanonicalHeaderKey(k)]; ok {
@@ -183,14 +191,14 @@ func getSignedHeaders(req http.Request) string {
 //  <CanonicalHeaders>\n
 //  <SignedHeaders>\n
 //  <HashedPayload>
-func getCanonicalRequest(req http.Request) string {
+func getCanonicalRequest(req http.Request, ignoredHeaders map[string]bool) string {
 	req.URL.RawQuery = strings.Replace(req.URL.Query().Encode(), "+", "%20", -1)
 	canonicalRequest := strings.Join([]string{
 		req.Method,
 		urlEncodePath(req.URL.Path),
 		req.URL.RawQuery,
-		getCanonicalHeaders(req),
-		getSignedHeaders(req),
+		getCanonicalHeaders(req, ignoredHeaders),
+		getSignedHeaders(req, ignoredHeaders),
 		getHashedPayload(req),
 	}, "\n")
 	return canonicalRequest
@@ -219,7 +227,7 @@ func PreSignV4(req http.Request, accessKeyID, secretAccessKey, location string, 
 	credential := GetCredential(accessKeyID, location, t)
 
 	// Get all signed headers.
-	signedHeaders := getSignedHeaders(req)
+	signedHeaders := getSignedHeaders(req, ignoredSignV4Headers)
 
 	// Set URL query.
 	query := req.URL.Query()
@@ -231,7 +239,7 @@ func PreSignV4(req http.Request, accessKeyID, secretAccessKey, location string, 
 	req.URL.RawQuery = query.Encode()
 
 	// Get canonical request.
-	canonicalRequest := getCanonicalRequest(req)
+	canonicalRequest := getCanonicalRequest(req, ignoredSignV4Headers)
 
 	// Get string to sign from canonical request.
 	stringToSign := getStringToSignV4(t, location, canonicalRequest)
@@ -273,7 +281,7 @@ func SignV4(req http.Request, accessKeyID, secretAccessKey, location string) *ht
 	req.Header.Set("X-Amz-Date", t.Format(iso8601DateFormat))
 
 	// Get canonical request.
-	canonicalRequest := getCanonicalRequest(req)
+	canonicalRequest := getCanonicalRequest(req, ignoredSignV4Headers)
 
 	// Get string to sign from canonical request.
 	stringToSign := getStringToSignV4(t, location, canonicalRequest)
@@ -285,7 +293,7 @@ func SignV4(req http.Request, accessKeyID, secretAccessKey, location string) *ht
 	credential := GetCredential(accessKeyID, location, t)
 
 	// Get all signed headers.
-	signedHeaders := getSignedHeaders(req)
+	signedHeaders := getSignedHeaders(req, ignoredSignV4Headers)
 
 	// Calculate signature.
 	signature := getSignature(signingKey, stringToSign)
@@ -300,6 +308,100 @@ func SignV4(req http.Request, accessKeyID, secretAccessKey, location string) *ht
 	// Set authorization header.
 	auth := strings.Join(parts, ", ")
 	req.Header.Set("Authorization", auth)
+
+	return &req
+}
+
+// generateSignedChunks - generates a data stream with streamed chunk metadata
+func generateSignedChunks(body io.Reader, seed, secretKey string, chunkSize int64) io.ReadCloser {
+	var stream []byte
+	for {
+		buffer := make([]byte, chunkSize)
+		n, err := body.Read(buffer)
+		if err != nil && err != io.EOF {
+			return nil
+		}
+
+		currTime := time.Now().UTC()
+		// Get scope.
+		scope := strings.Join([]string{
+			currTime.Format(yyyymmdd),
+			"us-east-1",
+			"s3",
+			"aws4_request",
+		}, "/")
+
+		stringToSign := "AWS4-HMAC-SHA256-PAYLOAD" + "\n"
+		stringToSign = stringToSign + currTime.Format(iso8601DateFormat) + "\n"
+		stringToSign = stringToSign + scope + "\n"
+		stringToSign = stringToSign + seed + "\n"
+		stringToSign = stringToSign + "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" + "\n" // hex(sum256(""))
+		stringToSign = stringToSign + hex.EncodeToString(sum256(buffer[:n]))
+
+		date := sumHMAC([]byte("AWS4"+secretKey), []byte(currTime.Format(yyyymmdd)))
+		region := sumHMAC(date, []byte("us-east-1"))
+		service := sumHMAC(region, []byte("s3"))
+		signingKey := sumHMAC(service, []byte("aws4_request"))
+
+		seed = hex.EncodeToString(sumHMAC(signingKey, []byte(stringToSign)))
+
+		stream = append(stream, []byte(fmt.Sprintf("%x", n)+";chunk-signature="+seed+"\r\n")...)
+		stream = append(stream, buffer[:n]...)
+		stream = append(stream, []byte("\r\n")...)
+
+		if n <= 0 {
+			break
+		}
+	}
+
+	return ioutil.NopCloser(bytes.NewReader(stream))
+}
+
+// StreamingSignV4 sign the request before Do(), in accordance with
+// http://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-streaming.html
+func StreamingSignV4(req http.Request, accessKeyID, secretAccessKey, location string, chunkSize int64) *http.Request {
+	// Signature calculation is not needed for anonymous credentials.
+	if accessKeyID == "" || secretAccessKey == "" {
+		return &req
+	}
+
+	// Initial time.
+	t := time.Now().UTC()
+
+	// Set x-amz-date.
+	req.Header.Set("X-Amz-Date", t.Format(iso8601DateFormat))
+
+	// Get canonical request.
+	canonicalRequest := getCanonicalRequest(req, ignoredStreamSignV4Headers)
+
+	// Get string to sign from canonical request.
+	stringToSign := getStringToSignV4(t, location, canonicalRequest)
+
+	// Get hmac signing key.
+	signingKey := getSigningKey(secretAccessKey, location, t)
+
+	// Get credential string.
+	credential := GetCredential(accessKeyID, location, t)
+
+	// Get all signed headers.
+	signedHeaders := getSignedHeaders(req, ignoredStreamSignV4Headers)
+
+	// Calculate signature.
+	signature := getSignature(signingKey, stringToSign)
+
+	// If regular request, construct the final authorization header.
+	parts := []string{
+		signV4Algorithm + " Credential=" + credential,
+		"SignedHeaders=" + signedHeaders,
+		"Signature=" + signature,
+	}
+
+	// Set authorization header.
+	auth := strings.Join(parts, ", ")
+	req.Header.Set("Authorization", auth)
+
+	// Rebuild the request body after signature signing to deliver correct chunk metadata
+	req.Body = generateSignedChunks(req.Body, signature, secretAccessKey, chunkSize)
 
 	return &req
 }

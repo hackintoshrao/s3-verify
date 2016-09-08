@@ -67,6 +67,62 @@ func newPutObjectReq(bucketName, objectName string, objectData []byte) (Request,
 	return putObjectReq, nil
 }
 
+// calculateSignedChunkLength - calculates the length of chunk metadata
+func calculateSignedChunkLength(chunkDataSize int64) int64 {
+	return int64(len(fmt.Sprintf("%x", chunkDataSize))) +
+		17 + // ";chunk-signature="
+		64 + // e.g. "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"
+		2 + // CRLF
+		chunkDataSize +
+		2 // CRLF
+}
+
+// calculateStreamContentLength - calculates the length of the overall stream (data + metadata)
+func calculateStreamContentLength(dataLen, chunkSize int64) int64 {
+	if dataLen <= 0 {
+		return 0
+	}
+	chunksCount := int64(dataLen / chunkSize)
+	remainingBytes := int64(dataLen % chunkSize)
+	streamLen := int64(0)
+	streamLen += chunksCount * calculateSignedChunkLength(chunkSize)
+	if remainingBytes > 0 {
+		streamLen += calculateSignedChunkLength(remainingBytes)
+	}
+	streamLen += calculateSignedChunkLength(0)
+	return streamLen
+}
+
+// newPutObjectStreamingReq - Create a new HTTP streaming request for PUT object.
+func newPutObjectStreamingReq(config ServerConfig, bucketName, objectName string, objectData []byte) (Request, error) {
+	// An HTTP request for a PUT object.
+	var putObjectReq = Request{
+		customHeader:  http.Header{},
+		streamingSign: true,
+		chunkSize:     64 * 1024,
+	}
+
+	// Set the bucketName and objectName.
+	putObjectReq.bucketName = bucketName
+	putObjectReq.objectName = objectName
+
+	dataLen := int64(len(objectData))
+	contentLength := calculateStreamContentLength(dataLen, putObjectReq.chunkSize)
+
+	putObjectReq.customHeader.Set("User-Agent", appUserAgent)
+	putObjectReq.customHeader.Set("x-amz-content-sha256", "STREAMING-AWS4-HMAC-SHA256-PAYLOAD")
+	putObjectReq.customHeader.Set("content-encoding", "aws-chunked")
+	putObjectReq.customHeader.Set("x-amz-decoded-content-length", strconv.FormatInt(dataLen, 10))
+	putObjectReq.customHeader.Set("Content-Length", strconv.FormatInt(contentLength, 10))
+
+	// Set the body to the data held in objectData.
+	reader := bytes.NewReader(objectData)
+	putObjectReq.contentBody = reader
+	putObjectReq.contentLength = contentLength
+
+	return putObjectReq, nil
+}
+
 // putObjectVerify - Verify the response matches what is expected.
 func putObjectVerify(res *http.Response, expectedStatusCode int) error {
 	if err := verifyHeaderPutObject(res.Header); err != nil {
@@ -177,6 +233,53 @@ func mainPutObjectUnPrepared(config ServerConfig, curTest int) bool {
 		object.Body = []byte(body)
 		// Create a new request.
 		req, err := newPutObjectReq(bucket.Name, object.Key, object.Body)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Execute the request.
+		res, err := config.execRequest("PUT", req)
+		if err != nil {
+			printMessage(message, err)
+			return false
+		}
+		defer closeResponse(res)
+		// Verify the response.
+		if err := putObjectVerify(res, http.StatusOK); err != nil {
+			printMessage(message, err)
+			return false
+		}
+		// Add the new object to the list of objects.
+		s3verifyObjects = append(s3verifyObjects, object)
+		// Spin scanBar
+		scanBar(message)
+	}
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
+	printMessage(message, nil)
+	return true
+}
+
+// Test a PUT object streaming request with no special headers set. This adds one object to each of the test buckets.
+func mainPutObjectStream(config ServerConfig, curTest int) bool {
+	message := fmt.Sprintf("[%02d/%d] PutObject (Streaming):", curTest, globalTotalNumTest)
+	// TODO: create tests designed to fail.
+	bucket := s3verifyBuckets[0]
+	// Spin scanBar
+	scanBar(message)
+	// TODO: need to update to 1001 once this is production ready.
+	// Upload 1001 objects with 1 byte each to check the ListObjects API with.
+	for i := 0; i < 101; i++ {
+		// Spin scanBar
+		scanBar(message)
+		object := &ObjectInfo{}
+		object.Key = "s3verify/put/object/" + strconv.Itoa(i)
+		// Create 60 bytes worth of random data for each object.
+		body := randString(60, rand.NewSource(time.Now().UnixNano()), "")
+		object.Body = []byte(body)
+		// Create a new request.
+		req, err := newPutObjectStreamingReq(config, bucket.Name, object.Key, object.Body)
 		if err != nil {
 			printMessage(message, err)
 			return false
