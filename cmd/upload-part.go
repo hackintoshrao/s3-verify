@@ -197,6 +197,7 @@ func mainReuploadPart(config ServerConfig, curTest int) bool {
 	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
 	part.PartNumber = 1
 	part.Size = int64(len(objectData))
+	part.Data = objectData
 	_, err := io.ReadFull(crand.Reader, objectData)
 	if err != nil {
 		printMessage(message, err)
@@ -230,7 +231,7 @@ func mainReuploadPart(config ServerConfig, curTest int) bool {
 	complPart.PartNumber = part.PartNumber
 
 	complMultipartUploads[0].Parts[0] = complPart
-	objectParts[0] = part
+	objectParts[0][0] = part
 
 	// Spin scanBar
 	scanBar(message)
