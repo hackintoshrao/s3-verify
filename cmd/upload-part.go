@@ -180,3 +180,61 @@ func mainUploadPart(config ServerConfig, curTest int) bool {
 	printMessage(message, nil)
 	return true
 }
+
+// mainReuploadPart - reupload the first part of a multipart upload operation
+// initiated in previous tests
+func mainReuploadPart(config ServerConfig, curTest int) bool {
+	message := fmt.Sprintf("[%02d/%d] Multipart (Reupload-Part):", curTest, globalTotalNumTest)
+	// Spin scanBar
+	scanBar(message)
+	// All multipart objects created by s3verify will be stored in s3verify buckets.
+	bucketName := s3verifyBuckets[0].Name
+	object := multipartObjects[0]
+	// Spin scanBar
+	scanBar(message)
+	part := objectPart{}
+	// Create some random data at most 5MB to upload via multipart operations.
+	objectData := make([]byte, rand.Intn(1<<20)+4*1024*1024)
+	part.PartNumber = 1
+	part.Size = int64(len(objectData))
+	_, err := io.ReadFull(crand.Reader, objectData)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Create a new multipart upload part request.
+	req, err := newUploadPartReq(bucketName, object.Key, object.UploadID, 1, objectData)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	// Execute the request.
+	res, err := config.execRequest("PUT", req)
+	if err != nil {
+		printMessage(message, err)
+		return false
+	}
+	defer closeResponse(res)
+	// Verify the response.
+	if err := uploadPartVerify(res, http.StatusOK); err != nil {
+		printMessage(message, err)
+		return false
+	}
+
+	// At this point, we need to update data in global objectParts
+	// and complMultipartUploads to make further tests work as expected
+	var complPart completePart
+	part.ETag = strings.TrimPrefix(res.Header.Get("ETag"), "\"")
+	part.ETag = strings.TrimSuffix(part.ETag, "\"")
+	complPart.ETag = part.ETag
+	complPart.PartNumber = part.PartNumber
+
+	complMultipartUploads[0].Parts[0] = complPart
+	objectParts[0] = part
+
+	// Spin scanBar
+	scanBar(message)
+	// Test passed.
+	printMessage(message, nil)
+	return true
+}

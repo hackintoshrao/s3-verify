@@ -145,6 +145,11 @@ var preparedTests = []APItest{
 		Critical: true,  // Upload Part test must pass before other tests can be run.
 	},
 	APItest{
+		Test:     mainReuploadPart,
+		Extended: false, // Upload Part test must be run even without extended flag being set.
+		Critical: true,  // Upload Part test must pass before other tests can be run.
+	},
+	APItest{
 		Test:     mainListParts,
 		Extended: false, // List Part test must be run even without extended flag being set.
 		Critical: false, // List Part test can fail without affecting other tests.
@@ -375,6 +380,11 @@ var unpreparedTests = []APItest{
 	},
 	APItest{
 		Test:     mainUploadPart,
+		Extended: false, // Upload Part test must be run even without extended flag being set.
+		Critical: true,  // Upload Part test must pass before other tests can be run.
+	},
+	APItest{
+		Test:     mainReuploadPart,
 		Extended: false, // Upload Part test must be run even without extended flag being set.
 		Critical: true,  // Upload Part test must pass before other tests can be run.
 	},
