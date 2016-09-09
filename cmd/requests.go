@@ -56,8 +56,13 @@ func (c ServerConfig) execRequest(method string, customReq Request) (resp *http.
 		bodySeeker, isRetryable = customReq.contentBody.(io.Seeker)
 	}
 
+	doneCh := make(chan struct{}, 1)
+	defer func() {
+		doneCh <- struct{}{}
+	}()
+
 	// Do not need the index.
-	for _ = range newRetryTimer(MaxRetry, time.Second, time.Second*30, MaxJitter, globalRandom) {
+	for _ = range newRetryTimer(MaxRetry, time.Second, doneCh) {
 		if isRetryable {
 			// Seek back to beginning for each attempt.
 			if _, err := bodySeeker.Seek(0, 0); err != nil {

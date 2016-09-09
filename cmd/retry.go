@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,52 +27,30 @@ import (
 // MaxRetry is the maximum number of retries before stopping.
 var MaxRetry = 5
 
-// MaxJitter will randomize over the full exponential backoff time
-const MaxJitter = 1.0
-
-// NoJitter disables the use of jitter for randomizing the exponential backoff time
-const NoJitter = 0.0
-
 // TCPretry holds all the errors that can and should be retried.
 var TCPretry = []string{"i/o timeout", "net/http: TLS handshake timeout", "connection reset by peer", "read: operation timed out"}
 
-// newRetryTimer creates a timer with exponentially increasing delays
+// newRetryTimer creates a timer with binomial increasing delays
 // until the maximum retry attempts are reached.
-func newRetryTimer(maxRetry int, unit time.Duration, cap time.Duration, jitter float64, rand *rand.Rand) <-chan int {
+func newRetryTimer(maxRetry int, unit time.Duration, doneCh <-chan struct{}) <-chan int {
 	attemptCh := make(chan int)
 
-	// computes the exponential backoff duration according to
-	// https://www.awsarchitectureblog.com/2015/03/backoff.html
-	exponentialBackoffWait := func(attempt int) time.Duration {
-		// normalize jitter to the range [0, 1.0]
-		if jitter < NoJitter {
-			jitter = NoJitter
-		}
-		if jitter > MaxJitter {
-			jitter = MaxJitter
-		}
-
-		//sleep = random_between(0, min(cap, base * 2 ** attempt))
-		sleep := unit * time.Duration(1<<uint(attempt))
-		if sleep > cap {
-			sleep = cap
-		}
-		if jitter != NoJitter {
-			sleep -= time.Duration(rand.Float64() * float64(sleep) * jitter)
-		}
-		return sleep
+	binomialWait := func(attempt int) time.Duration {
+		return unit * time.Duration(1<<uint(attempt-1))
 	}
 
-	go func() {
+	go func(done <-chan struct{}) {
 		defer close(attemptCh)
 		for i := 0; i < maxRetry; i++ {
+			attemptCh <- i + 1
+			timer := time.NewTimer(binomialWait(i))
 			select {
-			// Attempts start from 1.
-			case attemptCh <- i + 1:
+			case <-timer.C:
+			case <-done:
+				return
 			}
-			time.Sleep(exponentialBackoffWait(i))
 		}
-	}()
+	}(doneCh)
 	return attemptCh
 }
 
