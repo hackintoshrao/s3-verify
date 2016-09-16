@@ -46,7 +46,7 @@ func newCopyObjectIfUnModifiedSinceReq(sourceBucketName, sourceObjectName, destB
 	}
 	copyObjectIfUnModifiedSinceReq.customHeader.Set("X-Amz-Content-Sha256", hex.EncodeToString(sha256Sum))
 	copyObjectIfUnModifiedSinceReq.customHeader.Set("x-amz-copy-source", url.QueryEscape(sourceBucketName+"/"+sourceObjectName))
-	copyObjectIfUnModifiedSinceReq.customHeader.Set("x-amz-copy-if-unmodified-since", lastModified.Format(http.TimeFormat))
+	copyObjectIfUnModifiedSinceReq.customHeader.Set("x-amz-copy-source-if-unmodified-since", lastModified.Format(http.TimeFormat))
 	copyObjectIfUnModifiedSinceReq.customHeader.Set("User-Agent", appUserAgent)
 
 	return copyObjectIfUnModifiedSinceReq, nil
