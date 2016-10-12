@@ -59,6 +59,28 @@ var successStatus = []int{
 	http.StatusPartialContent,
 }
 
+// List of known, valid headers taken from http://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonResponseHeaders.html
+var validResponseHeaders = map[string]struct{}{
+	"accept-ranges":       struct{}{},
+	"cache-control":       struct{}{},
+	"content-length":      struct{}{},
+	"content-type":        struct{}{},
+	"connection":          struct{}{},
+	"content-disposition": struct{}{},
+	"content-language":    struct{}{},
+	"date":                struct{}{},
+	"etag":                struct{}{},
+	"expires":             struct{}{},
+	"last-modified":       struct{}{},
+	"location":            struct{}{},
+	"server":              struct{}{},
+	"vary":                struct{}{},
+	"x-amz-delete-marker": struct{}{},
+	"x-amz-id-2":          struct{}{},
+	"x-amz-request-id":    struct{}{},
+	"x-amz-version-id":    struct{}{},
+}
+
 // printMessage - Print test pass/fail messages with errors.
 func printMessage(message string, err error) {
 	// Erase the old progress line.
@@ -184,6 +206,12 @@ func verifyDate(respDateStr string) error {
 
 // Verify all standard headers in an HTTP response.
 func verifyStandardHeaders(header http.Header) error {
+	for headerName, values := range map[string][]string(header) {
+		if _, ok := validResponseHeaders[strings.ToLower(headerName)]; !ok {
+			return fmt.Errorf("Invalid response header received: %s with values: %v", headerName, values)
+		}
+	}
+
 	// Check the date header.
 	respDateStr := header.Get("Date")
 	if err := verifyDate(respDateStr); err != nil {
