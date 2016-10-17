@@ -79,6 +79,7 @@ var validResponseHeaders = map[string]struct{}{
 	"x-amz-id-2":          struct{}{},
 	"x-amz-request-id":    struct{}{},
 	"x-amz-version-id":    struct{}{},
+	"x-amz-bucket-region": struct{}{},
 }
 
 // printMessage - Print test pass/fail messages with errors.
